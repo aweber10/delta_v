@@ -14,12 +14,14 @@ export const FUEL_MAIN = 1.0; // per frame
 export const FUEL_RCS = 0.15; // per pulse
 export const RCS_PULSE_MS = 150; // ms
 
-export const SHIP_RADIUS = 12; // visual
-export const TOT_ZONE_RADIUS = 25; // px
+export const ROCKET_RADIUS = 12; // visual
 
-export const CAMERA_MIN_ZOOM = 0.6;
-export const CAMERA_MAX_ZOOM = 1.0;
-export const CAMERA_ZOOM_SPEED = 0.05; // interpolation speed
-export const CAMERA_LERP = 0.08; // camera follow speed
+export const TOT_ZONE_RADIUS = 25; // px (world-space, legacy name)
 
-export const ARM_LENGTH = 40; // px
+export const RCS_ZONE_RADIUS_PX = 120; // px (screen-space)
+export const TOT_ZONE_RADIUS_PX = 40; // px (screen-space)
+
+// legacy world-space constants for physics/station calculations
+export const RCS_ZONE_RADIUS = 300; // px (world-space)
+
+// ...[rest der Datei unverändert lassen]
