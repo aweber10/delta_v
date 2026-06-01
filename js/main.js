@@ -102,7 +102,7 @@ function loop() {
     }
   }
 
-  renderer.drawShip(ctx, ship, cam, canvas, flags.thrustMain);
+  renderer.drawShip(ctx, ship, cam, canvas, flags);
   renderer.drawTargetAngle(ctx, ship, cam, canvas);
   renderer.drawVelocityVec(ctx, ship, cam, canvas);
   

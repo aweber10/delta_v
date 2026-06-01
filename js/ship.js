@@ -12,6 +12,7 @@ export function createShip(x = 300, y = 300) {
     cargo: 0,
     dockedTimer: 0,
     targetAngle: 0, // Zielwinkel für die Ausrichtung
-    pendingThrustTime: 0, // Verbleibende Schubdauer nach Ausrichtung
+    thrustHeld: false, // Schub durch Halten
+    tapThrustTime: 0, // Kurzer Impuls nach Tap wenn aligned
   };
 }

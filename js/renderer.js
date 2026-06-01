@@ -14,7 +14,7 @@ export function drawStars(ctx, stars, cam, canvas) {
   }
 }
 
-export function drawShip(ctx, ship, cam, canvas, thrustActive) {
+export function drawShip(ctx, ship, cam, canvas, flags) {
   const p = worldToScreen(cam, ship.x, ship.y, canvas);
   const z = cam.zoom;
   ctx.save();
@@ -30,8 +30,7 @@ export function drawShip(ctx, ship, cam, canvas, thrustActive) {
 
   // thrust flame
   ctx.fillStyle = 'orange';
-  // Prüfe ob ship.pendingThrustTime aktiv ist (und ausgerichtet) ODER ob flags.thrustMain (Desktop) aktiv ist
-  const isBurning = (thrustActive || (ship.pendingThrustTime > 0 && Math.abs(normalizeAngle(ship.targetAngle - ship.angle)) < 0.05));
+  const isBurning = (flags.thrustMain || ship.thrustHeld || ship.tapThrustTime > 0);
   
   if (isBurning && ship.fuel > 0) {
     ctx.beginPath();
@@ -40,6 +39,29 @@ export function drawShip(ctx, ship, cam, canvas, thrustActive) {
     ctx.lineTo(-SHIP_RADIUS * z - 6 * z, -4 * z);
     ctx.closePath();
     ctx.fill();
+  }
+
+  // RCS flash (blaues Aufflackern an der Gegenseite)
+  if (flags.rcsFlash) {
+    const flashAge = performance.now() - flags.rcsFlash.time;
+    if (flashAge < 200) {
+      const alpha = (1 - flashAge / 200) * 0.85;
+      ctx.save();
+      // rotate so we face the rcs force direction, but we draw on the opposite side
+      // the ship coordinate system is already rotated by ship.angle, so we must calculate relative angle
+      const rcsWorldAngle = Math.atan2(flags.rcsFlash.dy, flags.rcsFlash.dx);
+      const relativeRcsAngle = rcsWorldAngle - ship.angle;
+      ctx.rotate(relativeRcsAngle);
+      
+      ctx.fillStyle = `rgba(100, 180, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(-SHIP_RADIUS * z - 10 * z, 0); // draw at opposite side (negative x)
+      ctx.lineTo(-SHIP_RADIUS * z, 5 * z);
+      ctx.lineTo(-SHIP_RADIUS * z, -5 * z);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   ctx.restore();
@@ -260,7 +282,8 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
 }
 
 export function drawTargetAngle(ctx, ship, cam, canvas) {
-  if (ship.pendingThrustTime <= 0) return;
+  const angleDiff = Math.abs(normalizeAngle(ship.targetAngle - ship.angle));
+  if (angleDiff <= 0.05 && !ship.thrustHeld) return;
   
   const shipScreen = worldToScreen(cam, ship.x, ship.y, canvas);
   const lineLength = 60 * cam.zoom;

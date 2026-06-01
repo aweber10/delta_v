@@ -46,16 +46,16 @@ export function updatePhysics(ship, flags, dt) {
     isAligned = true;
   }
 
-  // --- Schub-Logik (Align then Burn) ---
+  // --- Schub-Logik ---
   let activeThrust = flags.thrustMain; // Desktop Keyboard hat Priorität
 
-  // Automatischer Schub (Mobile) nur wenn ausgerichtet
-  if (ship.pendingThrustTime > 0) {
-    if (isAligned) {
-      activeThrust = true;
-      ship.pendingThrustTime -= dt * 16.6667;
-    }
-    // Wenn nicht ausgerichtet, wartet pendingThrustTime einfach
+  if (ship.thrustHeld) {
+    activeThrust = true;
+  }
+  
+  if (ship.tapThrustTime > 0) {
+    activeThrust = true;
+    ship.tapThrustTime -= dt * 16.6667;
   }
 
   if (activeThrust && ship.fuel > 0) {
