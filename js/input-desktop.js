@@ -9,30 +9,30 @@ export function createInputFlags() {
   };
 }
 
-export function setupDesktopInput(flags) {
+export function setupDesktopInput(flags, ship) {
   window.addEventListener('keydown', (e) => {
+    // Hauptschub
     if (e.key === 'ArrowUp') flags.thrustMain = true;
-    if (e.key === 'ArrowLeft') flags.rotateLeft = true;
-    if (e.key === 'ArrowRight') flags.rotateRight = true;
-    if (e.key === ' ') {
-      flags.brake = true;
-      e.preventDefault();
+    // Rotation mit Zieltwinkel für den Bordcomputer
+    if (e.key === 'ArrowLeft') {
+      ship.targetAngle += Math.PI * 0.03;
     }
-    // WASD for RCS
-    if (e.key === 'w') queueRcs(flags, 0, -1);
-    if (e.key === 's') queueRcs(flags, 0, 1);
-    if (e.key === 'a') queueRcs(flags, -1, 0);
-    if (e.key === 'd') queueRcs(flags, 1, 0);
+    if (e.key === 'ArrowRight') {
+      ship.targetAngle -= Math.PI * 0.03;
+    }
+    // RCS
+    if (e.key === 'w') queueRcs(flags, ship, 0, -1);
+    if (e.key === 's') queueRcs(flags, ship, 0, 1);
+    if (e.key === 'a') queueRcs(flags, ship, -1, 0);
+    if (e.key === 'd') queueRcs(flags, ship, 1, 0);
   });
 
   window.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') flags.thrustMain = false;
-    if (e.key === 'ArrowLeft') flags.rotateLeft = false;
-    if (e.key === 'ArrowRight') flags.rotateRight = false;
   });
 }
 
-function queueRcs(flags, dx, dy) {
+function queueRcs(flags, ship, dx, dy) {
   flags.rcsPulse = { dx, dy };
   setTimeout(() => {
     flags.rcsPulse = null;

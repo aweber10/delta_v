@@ -12,12 +12,54 @@ export function updatePhysics(ship, flags, dt) {
     return;
   }
 
-  // Rotation input
-  if (flags.rotateLeft) ship.angularVel -= ROT_ACCEL * dt;
-  if (flags.rotateRight) ship.angularVel += ROT_ACCEL * dt;
+  // --- Rotation mit Bordcomputer-Logik (Auto-Stop) ---
+  // Zielwinkel setzen (wird im Input gesetzt, aber hier sicherheitshalber)
+  ship.targetAngle = normalizeAngle(ship.targetAngle);
 
-  ship.angularVel *= ROT_DAMP;
+  // Angle-Difference: kürzester Weg zum Zielwinkel
+  const angleDiff = normalizeAngle(ship.targetAngle - ship.angle);
+  const absAngleDiff = Math.abs(angleDiff);
+  const targetAngleRad = angleDiff;
+
+  // Direction multiplier: +1 oder -1
+  const direction = angleDiff > 0 ? 1 : -1;
+
+  // Beschleunigen wenn weit vom Ziel entfernt
+  let acc = 0;
+  const MAX_ACC = ROT_ACCEL * dt;
+  
+  // Wenn Winkel-Differenz groß -> volle Beschleunigung
+  if (absAngleDiff > 0.2) {
+    acc = direction * MAX_ACC;
+  } else if (absAngleDiff > 0.05) {
+    // Bei mittlerer Nähe Geschwindigkeit reduzieren
+    acc = direction * MAX_ACC * 0.5;
+  } else if (absAngleDiff > 0.01) {
+    // Bei sehr geringer Differenz nur noch minimal beschleunigen
+    acc = direction * MAX_ACC * 0.2;
+  } else {
+    // Ziel fast erreicht: Keine Beschleunigung mehr
+    acc = 0;
+  }
+
+  // Apply acceleration with gentle damping when close to target
+  acc -= ship.angularVel * ROT_DAMP * 0.3; // leichte Bremse abhängig von Geschwindigkeit -> Auto-Stop
+
+  const nextAngularVel = ship.angularVel + acc;
+  
+  // Prevent large velocity overshoots
+  const MAX_VEL_MAG = 0.15; // limits angular velocity magnitude to prevent flipping
+  ship.angularVel = Math.max(-MAX_VEL_MAG, Math.min(MAX_VEL_MAG, nextAngularVel));
+
+  // Update ship angle (BEFORE setting to target)
   ship.angle += ship.angularVel * dt;
+  ship.angle = normalizeAngle(ship.angle);
+
+  // Final clamping: if extremely close align perfectly
+  if (absAngleDiff < 0.005 && Math.abs(ship.angularVel) < 0.005) {
+    ship.angle = ship.targetAngle;
+    ship.angularVel = 0;
+  }
 
   // Main thrust
   if (flags.thrustMain && ship.fuel > 0) {

@@ -1,6 +1,17 @@
 import { RCS_PULSE_MS, RCS_ZONE_RADIUS_PX, RCS_ZONE_RADIUS } from './constants.js';
 import { screenToWorld, worldToScreen } from './camera.js';
 
+function normalizeAngle(a) {
+  a = (a + Math.PI * 2) % (Math.PI * 2);
+  if (a > Math.PI) a -= Math.PI * 2;
+  return a;
+}
+
+function shortestDirToTarget(from, target) {
+  const diff = normalizeAngle(target - from);
+  return diff;
+}
+
 export function setupMobileInput(flags, canvas, cam, ship) {
   canvas.addEventListener('touchstart', (ev) => {
     ev.preventDefault();
@@ -31,28 +42,14 @@ export function setupMobileInput(flags, canvas, cam, ship) {
       return;
     }
     
-    // Außerhalb RCS-Zone: Reise-Modus: Drehen in Richtung des Taps + Hauptschub
+    // Außerhalb RCS-Zone: Reise-Modus -> Zielwinkel setzen
     const world = screenToWorld(cam, tx, ty, canvas);
     const dx = world.x - ship.x;
     const dy = world.y - ship.y;
     const ang = Math.atan2(dy, dx);
-    // Setze Rotation in Richtung des Taps
-    const diff = normalizeAngle(ang - ship.angle);
-    if (diff < 0) {
-      flags.rotateLeft = true;
-      setTimeout(() => (flags.rotateLeft = false), 200);
-    } else {
-      flags.rotateRight = true;
-      setTimeout(() => (flags.rotateRight = false), 200);
-    }
+    ship.targetAngle = ang; // Bordcomputer-Zielwinkel setzen
     flags.thrustMain = true;
     // stoppe Schub nach kurzer Zeit
     setTimeout(() => (flags.thrustMain = false), 200);
   });
-}
-
-function normalizeAngle(a) {
-  a = (a + Math.PI * 2) % (Math.PI * 2);
-  if (a > Math.PI) a -= Math.PI * 2;
-  return a;
 }

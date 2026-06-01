@@ -11,5 +11,6 @@ export function createShip(x = 300, y = 300) {
     fuel: FUEL_START,
     cargo: 0,
     dockedTimer: 0,
+    targetAngle: 0, // Zielwinkel für die Ausrichtung
   };
 }

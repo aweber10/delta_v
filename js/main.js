@@ -27,7 +27,7 @@ resize();
 const ship = createShip(200, 200);
 const cam = createCamera(ship.x, ship.y);
 const flags = createInputFlags();
-setupDesktopInput(flags);
+setupDesktopInput(flags, ship);
 setupMobileInput(flags, canvas, cam, ship);
 
 const stationA = createStation(200, 1200, 0); // Arm points right (toward B)
