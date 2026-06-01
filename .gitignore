@@ -1,0 +1,116 @@
+.DS_Store
+.DS_Store?
+__MACOSX
+db.json
+*.log
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+/.nyc_output
+/.cache
+
+# production
+/build
+
+# misc
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.DS_Store
+
+# IDE
+.idea
+*.swp
+*.swo
+.vscode/*
+.nvmrc
+*.orig
+*.crdownload
+*~
+
+# macOS
+.DS_Store
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotuse
+
+# macOS junk files
+.DS_Store
+.DS_Store.index
+.DS_Store+.DS_Store
+*.QTMPreview
+*.pepper
+.pgservice.conf
+.Trashes
+.vol
+
+# macOS preserve these
+!.gitignore
+
+# Dependencies
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Next.js
+.next/
+out/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Local env files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# parcel-bundler cache (parcel 2)
+.cache
+.parcel-cache
+
+# Stores the project identification and info.
+.pnp
+.pnp.js
+
+# Avoid committing lock files (unless insisting)
+packages-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# parcel v1
+.cache
+.parcel-cache
+
+# Nuxt.js
+.nuxt
+.nuxt/analyze
+.nuxt/cache
+.nuxt/dist
+
+# nuxt 3
+.output
+.cache
+.nuxt
+
+# Pug stuff
+!
+.pug-lintrc
+
+.prettierignore
