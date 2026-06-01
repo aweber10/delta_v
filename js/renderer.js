@@ -1,4 +1,4 @@
-import { SHIP_RADIUS, RCS_ZONE_RADIUS, DOCK_RADIUS, ARM_LENGTH } from './constants.js';
+import { SHIP_RADIUS, ARM_LENGTH, FUEL_START } from './constants.js';
 import { worldToScreen } from './camera.js';
 
 export function clear(ctx, canvas) {
@@ -256,14 +256,14 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
   ctx.restore();
 }
 
-export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dockColorValue) {
+export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dockColorValue, level = 1) {
   // top left info
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 10, 220, 100);
   ctx.fillStyle = '#555';
   ctx.fillRect(15, 20, 210, 20);
   ctx.fillStyle = 'lime';
-  ctx.fillRect(15, 20, Math.max(0, (ship.fuel / 100) * 210), 20);
+  ctx.fillRect(15, 20, (ship.fuel / FUEL_START) * 210, 20);
 
   ctx.fillStyle = '#fff';
   ctx.font = '14px sans-serif';
@@ -279,19 +279,20 @@ export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dock
   ctx.fillRect(trX, 10, 220, 120);
   
   ctx.fillStyle = '#fff';
-  ctx.fillText('Score: ' + score, trX + 10, 30);
-  ctx.fillText('Target Dist: ' + Math.floor(dockCheck.dist), trX + 10, 50);
+  ctx.fillText('Level: ' + level, trX + 10, 30);
+  ctx.fillText('Score: ' + score, trX + 10, 50);
+  ctx.fillText('Target Dist: ' + Math.floor(dockCheck.dist), trX + 10, 70);
   
   // Angle diff to degrees
   const targetApproachAngle = targetStation.dockAngle + Math.PI;
   const angleDiffDeg = Math.floor(Math.abs(ship.angle - targetApproachAngle) * (180/Math.PI)) % 360;
   const actualDiff = angleDiffDeg > 180 ? 360 - angleDiffDeg : angleDiffDeg;
-  ctx.fillText('Target Angle: ' + actualDiff + '°', trX + 10, 70);
+  ctx.fillText('Target Angle: ' + actualDiff + '°', trX + 10, 90);
   
   // Dock status
-  ctx.fillText('Dock Status: ', trX + 10, 90);
+  ctx.fillText('Dock Status: ', trX + 10, 110);
   ctx.fillStyle = dockColorValue;
-  ctx.fillRect(trX + 100, 78, 14, 14);
+  ctx.fillRect(trX + 100, 98, 14, 14);
 
   // Docked timer
   if (ship.dockedTimer > 0) {

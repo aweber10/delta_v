@@ -1,0 +1,19 @@
+{
+  "name": "Delta V",
+  "short_name": "Delta V",
+  "description": "Zero-G Cargo-Docking-Spiel",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#020408",
+  "theme_color": "#020408",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

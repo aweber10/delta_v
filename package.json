@@ -1,6 +1,7 @@
 {
-  "name": "delta-v-poc",
+  "name": "delta-v",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "npx http-server . -p 8080 -c-1 --cors"
