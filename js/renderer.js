@@ -30,7 +30,10 @@ export function drawShip(ctx, ship, cam, canvas, thrustActive) {
 
   // thrust flame
   ctx.fillStyle = 'orange';
-  if (thrustActive && ship.fuel > 0) {
+  // Prüfe ob ship.pendingThrustTime aktiv ist (und ausgerichtet) ODER ob flags.thrustMain (Desktop) aktiv ist
+  const isBurning = (thrustActive || (ship.pendingThrustTime > 0 && Math.abs(normalizeAngle(ship.targetAngle - ship.angle)) < 0.05));
+  
+  if (isBurning && ship.fuel > 0) {
     ctx.beginPath();
     ctx.moveTo(-SHIP_RADIUS * z, 0);
     ctx.lineTo(-SHIP_RADIUS * z - 6 * z, 4 * z);
