@@ -21,3 +21,9 @@ export const RCS_ZONE_RADIUS_PX = 80; // screen space radius for touch RCS pulse
 export const RCS_ZONE_RADIUS = 300; // px (world-space)
 
 export const ARM_LENGTH = 40; // px
+
+export const CAMERA_MIN_ZOOM = 0.6;
+export const CAMERA_MAX_ZOOM = 1.0;
+export const CAMERA_ZOOM_SPEED = 0.05; // interpolation speed
+export const CAMERA_LERP = 0.08; // camera follow speed
+
