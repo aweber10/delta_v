@@ -31,6 +31,7 @@ export function setupMobileInput(flags, canvas, cam, ship) {
       flags.rcsPulse = { dx: nx, dy: ny };
       flags.rcsFlash = { dx: nx, dy: ny, time: performance.now() };
       setTimeout(() => (flags.rcsPulse = null), RCS_PULSE_MS + 10);
+      setTimeout(() => (flags.rcsFlash = null), 200 + 10);
       return;
     }
     

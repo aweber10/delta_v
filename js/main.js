@@ -159,6 +159,8 @@ function resetLevel() {
   ship.fuel = FUEL_START;
   ship.cargo = 0;
   ship.dockedTimer = 0;
+  ship.thrustHeld = false;
+  ship.tapThrustTime = 0;
   stationA.docked = false;
   stationB.docked = false;
   score = 0;

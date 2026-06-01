@@ -6,6 +6,7 @@ export function createInputFlags() {
     rotateLeft: false,
     rotateRight: false,
     rcsPulse: null, // {dx, dy}
+    rcsFlash: null, // {dx, dy, time}
   };
 }
 
