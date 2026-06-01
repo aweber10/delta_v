@@ -6,6 +6,7 @@ export const THRUST_RCS = 0.012; // px/frame^2
 export const ROT_ACCEL = 0.004; // rad/frame^2
 export const ROT_DAMP = 0.96; // damping of angular velocity
 export const V_DOCK_MAX = 0.4; // px/frame
+export const ANGLE_DOCK_TOL = (20 * Math.PI) / 180; // radians
 export const DOCK_RADIUS = 30; // px
 export const FUEL_START = 300; // increased from 100 to allow more time for docking
 export const FUEL_MAIN = 1.0; // per frame
