@@ -291,7 +291,6 @@ export function drawTargetAngle(ctx, ship, cam, canvas) {
   const targetX = shipScreen.x + Math.cos(ship.targetAngle) * lineLength;
   const targetY = shipScreen.y + Math.sin(ship.targetAngle) * lineLength;
   
-  const angleDiff = Math.abs(normalizeAngle(ship.targetAngle - ship.angle));
   const color = angleDiff < 0.05 ? 'rgba(0, 255, 0, 0.6)' : 'rgba(255, 100, 100, 0.6)';
   
   ctx.strokeStyle = color;
