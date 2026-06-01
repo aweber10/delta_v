@@ -1,4 +1,4 @@
-import { DOCK_RADIUS, ANGLE_DOCK_TOL, V_DOCK_MAX, RCS_ZONE_RADIUS, ARM_LENGTH } from './constants.js';
+import { DOCK_RADIUS, ANGLE_DOCK_TOL, V_DOCK_MAX, ARM_LENGTH } from './constants.js';
 
 export function createStation(x, y, dockAngle = 0) {
   return {

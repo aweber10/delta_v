@@ -1,4 +1,4 @@
-import { RCS_PULSE_MS, TOT_ZONE_RADIUS_PX, RCS_ZONE_RADIUS_PX, RCS_ZONE_RADIUS } from './constants.js';
+import { RCS_PULSE_MS, RCS_ZONE_RADIUS_PX, RCS_ZONE_RADIUS } from './constants.js';
 import { screenToWorld, worldToScreen } from './camera.js';
 
 export function setupMobileInput(flags, canvas, cam, ship) {
@@ -18,13 +18,8 @@ export function setupMobileInput(flags, canvas, cam, ship) {
     // Screen-space Distanz zwischen Tap und Schiff (CSS-Pixel)
     const screenDist = Math.hypot(tx - sx, ty - sy);
     
-    if (screenDist <= TOT_ZONE_RADIUS_PX) {
-      flags.brake = true;
-      return;
-    }
-    
     if (screenDist <= RCS_ZONE_RADIUS_PX) {
-      // Verwandle Screen-Pixel-Koordinaten relativ zum Schiff in World-Direction
+      // Steuerdüsen-Impuls in Richtung des Taps
       const world = screenToWorld(cam, tx, ty, canvas);
       const dx = world.x - ship.x;
       const dy = world.y - ship.y;
@@ -36,12 +31,12 @@ export function setupMobileInput(flags, canvas, cam, ship) {
       return;
     }
     
-    // Outside RCS zone -> Travel Mode: rotate to point + main thrust
+    // Außerhalb RCS-Zone: Reise-Modus: Drehen in Richtung des Taps + Hauptschub
     const world = screenToWorld(cam, tx, ty, canvas);
     const dx = world.x - ship.x;
     const dy = world.y - ship.y;
     const ang = Math.atan2(dy, dx);
-    // Set rotation towards angle via flags
+    // Setze Rotation in Richtung des Taps
     const diff = normalizeAngle(ang - ship.angle);
     if (diff < 0) {
       flags.rotateLeft = true;
@@ -51,7 +46,7 @@ export function setupMobileInput(flags, canvas, cam, ship) {
       setTimeout(() => (flags.rotateRight = false), 200);
     }
     flags.thrustMain = true;
-    // stop thrust after short time
+    // stoppe Schub nach kurzer Zeit
     setTimeout(() => (flags.thrustMain = false), 200);
   });
 }

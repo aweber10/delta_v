@@ -40,16 +40,7 @@ export function updatePhysics(ship, flags, dt) {
     }
   }
 
-  // Brake gesture: single impulse opposite to velocity
-  if (flags.brake && (ship.vx !== 0 || ship.vy !== 0) && ship.fuel > 0) {
-    const speed = Math.hypot(ship.vx, ship.vy) || 0.0001;
-    const nx = -ship.vx / speed;
-    const ny = -ship.vy / speed;
-    ship.vx += nx * THRUST_RCS * 2; // slightly stronger
-    ship.vy += ny * THRUST_RCS * 2;
-    ship.fuel = Math.max(0, ship.fuel - FUEL_RCS);
-    flags.brake = false; // single pulse
-  }
+
 
   // Integrate velocity
   ship.x += ship.vx * dt;

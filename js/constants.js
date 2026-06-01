@@ -14,14 +14,12 @@ export const FUEL_MAIN = 1.0; // per frame
 export const FUEL_RCS = 0.15; // per pulse
 export const RCS_PULSE_MS = 150; // ms
 
-export const ROCKET_RADIUS = 12; // visual
+export const SHIP_RADIUS = 12; // visual
 
-export const TOT_ZONE_RADIUS = 25; // px (world-space, legacy name)
+export const RCS_ZONE_RADIUS_PX = 80; // screen space radius for touch RCS pulses
 
-export const RCS_ZONE_RADIUS_PX = 120; // px (screen-space)
-export const TOT_ZONE_RADIUS_PX = 40; // px (screen-space)
+// legacy world-space constants for physics/station calculations only
 
-// legacy world-space constants for physics/station calculations
 export const RCS_ZONE_RADIUS = 300; // px (world-space)
 
-// ...[rest der Datei unverändert lassen]
+export const ARM_LENGTH = 40; // px
