@@ -1,11 +1,7 @@
-import { RCS_PULSE_MS, RCS_ZONE_RADIUS_PX, RCS_ZONE_RADIUS } from './constants.js';
+import { RCS_PULSE_MS, RCS_ZONE_RADIUS_PX, RCS_ZONE_RADIUS, normalizeAngle } from './constants.js';
 import { screenToWorld, worldToScreen } from './camera.js';
 
-function normalizeAngle(a) {
-  a = (a + Math.PI * 2) % (Math.PI * 2);
-  if (a > Math.PI) a -= Math.PI * 2;
-  return a;
-}
+
 
 export function setupMobileInput(flags, canvas, cam, ship) {
   canvas.addEventListener('touchstart', (ev) => {

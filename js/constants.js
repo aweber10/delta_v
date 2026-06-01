@@ -28,3 +28,9 @@ export const CAMERA_MAX_ZOOM = 1.0;
 export const CAMERA_ZOOM_SPEED = 0.05; // interpolation speed
 export const CAMERA_LERP = 0.08; // camera follow speed
 
+export function normalizeAngle(a) {
+  a = (a + Math.PI * 2) % (Math.PI * 2);
+  if (a > Math.PI) a -= Math.PI * 2;
+  return a;
+}
+

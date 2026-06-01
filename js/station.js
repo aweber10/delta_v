@@ -1,4 +1,4 @@
-import { DOCK_RADIUS, ANGLE_DOCK_TOL, V_DOCK_MAX, ARM_LENGTH } from './constants.js';
+import { DOCK_RADIUS, ANGLE_DOCK_TOL, V_DOCK_MAX, ARM_LENGTH, normalizeAngle } from './constants.js';
 
 export function createStation(x, y, dockAngle = 0) {
   return {
@@ -45,8 +45,4 @@ export function dockColor(check) {
   return 'red';
 }
 
-function normalizeAngle(a) {
-  a = (a + Math.PI * 2) % (Math.PI * 2);
-  if (a > Math.PI) a -= Math.PI * 2;
-  return a;
-}
+

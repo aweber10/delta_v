@@ -1,4 +1,4 @@
-import { SHIP_RADIUS, ARM_LENGTH, FUEL_START } from './constants.js';
+import { SHIP_RADIUS, ARM_LENGTH, FUEL_START, normalizeAngle } from './constants.js';
 import { worldToScreen } from './camera.js';
 
 export function clear(ctx, canvas) {

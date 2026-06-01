@@ -1,4 +1,4 @@
-import { THRUST_MAIN, THRUST_RCS, ROT_DAMP, ROT_ACCEL, FUEL_MAIN, FUEL_RCS, RCS_PULSE_MS, WORLD_WIDTH, WORLD_HEIGHT } from './constants.js';
+import { THRUST_MAIN, THRUST_RCS, ROT_DAMP, ROT_ACCEL, FUEL_MAIN, FUEL_RCS, RCS_PULSE_MS, WORLD_WIDTH, WORLD_HEIGHT, normalizeAngle } from './constants.js';
 
 let lastRcsTime = 0;
 
@@ -81,8 +81,4 @@ export function updatePhysics(ship, flags, dt) {
   ship.y += ship.vy * dt;
 }
 
-function normalizeAngle(a) {
-  a = (a + Math.PI * 2) % (Math.PI * 2);
-  if (a > Math.PI) a -= Math.PI * 2;
-  return a;
-}
+
