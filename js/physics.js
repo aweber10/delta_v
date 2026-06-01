@@ -88,3 +88,9 @@ export function updatePhysics(ship, flags, dt) {
   ship.x += ship.vx * dt;
   ship.y += ship.vy * dt;
 }
+
+function normalizeAngle(a) {
+  a = (a + Math.PI * 2) % (Math.PI * 2);
+  if (a > Math.PI) a -= Math.PI * 2;
+  return a;
+}
