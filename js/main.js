@@ -103,6 +103,7 @@ function loop() {
   }
 
   renderer.drawShip(ctx, ship, cam, canvas, flags.thrustMain);
+  renderer.drawTargetAngle(ctx, ship, cam, canvas);
   renderer.drawVelocityVec(ctx, ship, cam, canvas);
   
   const targetCheck = targetStation === stationA ? checkA : checkB;

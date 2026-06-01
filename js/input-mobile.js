@@ -30,6 +30,8 @@ export function setupMobileInput(flags, canvas, cam, ship) {
     }
     
     // Reise-Modus: Ziel setzen, aber Schub wird von der Physik erst nach Ausrichtung gezündet
+    ship.pendingThrustTime = 0; // Bricht laufende Aktion ab
+    
     const world = screenToWorld(cam, tx, ty, canvas);
     const dx = world.x - ship.x;
     const dy = world.y - ship.y;

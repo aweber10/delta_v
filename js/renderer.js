@@ -259,6 +259,28 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
   ctx.restore();
 }
 
+export function drawTargetAngle(ctx, ship, cam, canvas) {
+  if (ship.pendingThrustTime <= 0) return;
+  
+  const shipScreen = worldToScreen(cam, ship.x, ship.y, canvas);
+  const lineLength = 60 * cam.zoom;
+  
+  const targetX = shipScreen.x + Math.cos(ship.targetAngle) * lineLength;
+  const targetY = shipScreen.y + Math.sin(ship.targetAngle) * lineLength;
+  
+  const angleDiff = Math.abs(normalizeAngle(ship.targetAngle - ship.angle));
+  const color = angleDiff < 0.05 ? 'rgba(0, 255, 0, 0.6)' : 'rgba(255, 100, 100, 0.6)';
+  
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(shipScreen.x, shipScreen.y);
+  ctx.lineTo(targetX, targetY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
 export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dockColorValue, level = 1) {
   // top left info
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
