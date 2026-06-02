@@ -387,3 +387,115 @@ export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dock
     ctx.textAlign = 'left'; // reset
   }
 }
+
+// ---- Level 2: Gravity Well Rendering ----
+
+/**
+ * Zeichnet die Gravitationsquelle mit Einflussringen und Gradient.
+ */
+export function drawGravityWell(ctx, well, cam, canvas, eventHorizon) {
+  const p = worldToScreen(cam, well.x, well.y, canvas);
+  const z = cam.zoom;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  // Einflussfeld-Ringe (äußerster = G_RADIUS)
+  const ringColors = [
+    { r: 600 * z, alpha: 0.06 },
+    { r: 420 * z, alpha: 0.10 },
+    { r: 260 * z, alpha: 0.16 },
+    { r: 140 * z, alpha: 0.22 },
+  ];
+  for (const ring of ringColors) {
+    ctx.strokeStyle = `rgba(255, 160, 40, ${ring.alpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, ring.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Radiales Glühen
+  const glow = ctx.createRadialGradient(0, 0, well.wellRadius * z * 0.5, 0, 0, 180 * z);
+  glow.addColorStop(0, 'rgba(255, 200, 80, 0.35)');
+  glow.addColorStop(0.4, 'rgba(255, 120, 20, 0.12)');
+  glow.addColorStop(1, 'rgba(255, 80, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 180 * z, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Event Horizon Ring (Warnung)
+  ctx.strokeStyle = 'rgba(255, 60, 60, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, eventHorizon * z, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Körper
+  const bodyGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, well.wellRadius * z);
+  bodyGrad.addColorStop(0, '#fff8e0');
+  bodyGrad.addColorStop(0.3, '#ffcc44');
+  bodyGrad.addColorStop(0.7, '#ff6600');
+  bodyGrad.addColorStop(1, '#cc2200');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, well.wellRadius * z, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Zeichnet die vorhergesagte Flugbahn als gepunktete Linie.
+ * @param {number} validSteps - Anzahl gültiger Punkte aus predictTrajectory()
+ */
+export function drawTrajectory(ctx, outX, outY, validSteps, cam, canvas, isInDanger) {
+  if (validSteps < 2) return;
+
+  ctx.save();
+  ctx.setLineDash([3, 6]);
+  ctx.lineWidth = 1.5;
+
+  for (let i = 1; i < validSteps; i++) {
+    const t = i / validSteps;
+    // Farbe: grün → gelb → rot je nach Nähe zur Quelle / Gefahr
+    const alpha = isInDanger ? (0.7 - t * 0.5) : (0.5 - t * 0.35);
+    ctx.strokeStyle = isInDanger
+      ? `rgba(255, 80, 80, ${Math.max(0.1, alpha)})`
+      : `rgba(100, 220, 255, ${Math.max(0.08, alpha)})`;
+
+    const p0 = worldToScreen(cam, outX[i - 1], outY[i - 1], canvas);
+    const p1 = worldToScreen(cam, outX[i], outY[i], canvas);
+
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/**
+ * Zeichnet die Event-Horizon-Warnung (pulsierende rote Vignette).
+ */
+export function drawEventHorizonWarning(ctx, canvas, pulse) {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const alpha = 0.15 + 0.2 * pulse;
+
+  const grad = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, Math.hypot(w, h) * 0.6);
+  grad.addColorStop(0, 'rgba(255,0,0,0)');
+  grad.addColorStop(1, `rgba(200,0,0,${alpha})`);
+
+  ctx.save();
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}

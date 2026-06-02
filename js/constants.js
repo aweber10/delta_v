@@ -34,3 +34,10 @@ export function normalizeAngle(a) {
   return a;
 }
 
+// --- Level 2: Gravity Well ---
+export const G_STRENGTH = 120.0;  // Anziehungsstärke
+export const MIN_DIST_SQ = 2500;  // Nahbereich-Deckel (~50px Radius²)
+export const G_RADIUS = 600;      // Einflussradius in World-Units
+export const WELL_RADIUS = 40;    // sichtbarer/tödlicher Körperradius
+export const EVENT_HORIZON = 80;  // Warnschwelle: ab hier ist Absturz gefährlich
+

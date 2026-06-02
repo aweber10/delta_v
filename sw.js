@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delta-v-v24';
+const CACHE_NAME = 'delta-v-v28';
 const ASSETS = [
   './',
   './index.html',
@@ -14,7 +14,9 @@ const ASSETS = [
   './js/physics.js',
   './js/renderer.js',
   './js/ship.js',
-  './js/station.js'
+  './js/gravity.js',
+  './js/station.js',
+  './js/tutorial.js'
 ];
 
 self.addEventListener('install', (event) => {

@@ -98,6 +98,14 @@
       flex-wrap: wrap;
     }
 
+    .level-select {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
     button {
       min-height: 48px;
       border: 1px solid rgba(255, 255, 255, 0.22);
@@ -120,35 +128,71 @@
       .desktop-only { display: none; }
       .mobile-only { display: inline; }
     }
+
+    /* Level 2: Gravity Well Accent */
+    .overlay.level2 {
+      background:
+        radial-gradient(circle at 50% 38%, rgba(255, 120, 20, 0.22), transparent 34%),
+        rgba(2, 4, 8, 0.88);
+    }
+    .eyebrow.orange { color: #ffb040; }
   </style>
 </head>
 <body>
   <canvas id="game"></canvas>
+
+  <!-- Level 1: Start Screen (Tutorial) -->
   <div class="overlay" id="startScreen">
     <section class="start-panel" aria-labelledby="gameTitle">
-      <p class="eyebrow">Level 1</p>
+      <p class="eyebrow">Mission Select</p>
       <h1 id="gameTitle">Delta V</h1>
-      <p class="mission">Transportiere die Fracht von Station A nach Station B.</p>
-      <p class="mission" style="font-size: 13px; color: #8fd0ff; margin-top: -10px;">
-        <span class="desktop-only">↑ Schub | ← → Drehen | WASD RCS</span>
-        <span class="mobile-only">Halten: Schub | Tippen: RCS / Drehen</span>
-      </p>
+      <p class="mission">Wähle dein Zielsystem:</p>
+      
+      <div class="level-select">
+        <button id="startL1" type="button" style="height: auto; padding: 16px; flex-direction: column; align-items: flex-start; text-align: left;">
+          <span style="display: block; font-size: 10px; color: #8fd0ff; margin-bottom: 4px;">Level 1</span>
+          <span style="display: block;">First Delivery</span>
+        </button>
+        <button id="startL2" type="button" style="height: auto; padding: 16px; flex-direction: column; align-items: flex-start; text-align: left;">
+          <span style="display: block; font-size: 10px; color: #ffb040; margin-bottom: 4px;">Level 2</span>
+          <span style="display: block;">Gravity Well</span>
+        </button>
+      </div>
+
       <div class="actions">
-        <button id="startButton" type="button">Start</button>
         <button class="secondary" id="muteButton" type="button" aria-pressed="false">Sound an</button>
       </div>
     </section>
   </div>
+
+  <!-- Level Complete Screen -->
   <div class="overlay" id="levelCompleteScreen" hidden>
     <section class="start-panel" aria-labelledby="completeTitle">
       <p class="eyebrow">Level 1 abgeschlossen</p>
       <h1 id="completeTitle">Transport erfolgreich</h1>
       <p class="mission">Grundlagen gemeistert! Die erste Lieferung ist angekommen.</p>
       <div class="actions">
-        <button id="restartButton" type="button">Neu starten</button>
+        <button id="nextLevelButton" type="button">Nächstes Level</button>
+        <button class="secondary" id="backToMenuButton" type="button">Hauptmenü</button>
       </div>
     </section>
   </div>
-  <script type="module" src="./js/main.js?v=24"></script>
+
+  <!-- Level 2: Start Screen -->
+  <div class="overlay level2" id="level2StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l2Title">
+      <p class="eyebrow orange">Level 2 — Gravity Well</p>
+      <h1 id="l2Title">Delta V</h1>
+      <p class="mission">Eine Gravitationsquelle liegt auf deiner Route. Nutze ihren Sog — oder flieg außen herum.</p>
+      <p class="mission" style="font-size: 13px; color: #ffb040; margin-top: -10px;">
+        Die gestrichelte Linie zeigt deine vorhergesagte Flugbahn.
+      </p>
+      <div class="actions">
+        <button id="level2StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="./js/main.js?v=28"></script>
 </body>
 </html>

@@ -1,8 +1,15 @@
 import { THRUST_MAIN, THRUST_RCS, ROT_DAMP, ROT_ACCEL, FUEL_MAIN, FUEL_RCS, RCS_PULSE_MS, WORLD_WIDTH, WORLD_HEIGHT, normalizeAngle } from './constants.js';
+import { applyGravity } from './gravity.js';
 
 let lastRcsTime = 0;
 
-export function updatePhysics(ship, flags, dt) {
+/**
+ * @param {object} ship
+ * @param {object} flags
+ * @param {number} dt
+ * @param {object|null} gravityWell - optionale Gravitationsquelle (Level 2+)
+ */
+export function updatePhysics(ship, flags, dt, gravityWell = null) {
   if (ship.dockedTimer > 0) {
     ship.dockedTimer -= dt * 16.6667;
     ship.vx = 0;
@@ -47,7 +54,7 @@ export function updatePhysics(ship, flags, dt) {
   }
 
   // --- Schub-Logik ---
-  let activeThrust = flags.thrustMain; // Desktop Keyboard hat Priorität
+  let activeThrust = flags.thrustMain;
 
   if (ship.thrustHeld) {
     activeThrust = true;
@@ -77,8 +84,11 @@ export function updatePhysics(ship, flags, dt) {
     }
   }
 
+  // --- Gravitation (optional, Level 2+) ---
+  if (gravityWell) {
+    applyGravity(ship, gravityWell, dt);
+  }
+
   ship.x += ship.vx * dt;
   ship.y += ship.vy * dt;
 }
-
-
