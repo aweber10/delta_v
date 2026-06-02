@@ -5,7 +5,7 @@ import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
 import { createStation, checkDock, dockColor, getPortPosition } from './station.js';
 import * as renderer from './renderer.js';
-import { FUEL_START, WORLD_WIDTH, WORLD_HEIGHT, WELL_RADIUS, EVENT_HORIZON } from './constants.js';
+import { FUEL_START, WELL_RADIUS, EVENT_HORIZON } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial } from './tutorial.js';
 import { createGravityWell, checkWellCollision, predictTrajectory } from './gravity.js';
@@ -47,7 +47,7 @@ const L2 = {
 };
 
 let currentLevel = L1;
-let ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
+const ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
 const cam = createCamera(ship.x, ship.y);
 const flags = createInputFlags();
 setupDesktopInput(flags, ship);
@@ -77,26 +77,23 @@ for (let i=0;i<200;i++) stars.push({ x: Math.random()*2400, y: Math.random()*160
 let last = performance.now();
 
 function startLevel(targetLevel) {
-  if (targetLevel === 1) {
-    level = 1;
-    currentLevel = L1;
-  } else {
-    level = 2;
-    currentLevel = L2;
-  }
-  
-  ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
-  setupDesktopInput(flags, ship);
-  setupMobileInput(flags, canvas, cam, ship);
-  
+  selectLevel(targetLevel);
+  score = 0;
   resetLevel();
-  
-  initAudio().then(() => {
-    playStart();
-    gameState = 'playing';
-    startScreen.hidden = true;
-    last = performance.now();
-  });
+  startScreen.hidden = true;
+  beginGameplay();
+}
+
+function selectLevel(targetLevel) {
+  level = targetLevel;
+  currentLevel = targetLevel === 1 ? L1 : L2;
+}
+
+async function beginGameplay() {
+  await initAudio();
+  playStart();
+  gameState = 'playing';
+  last = performance.now();
 }
 
 startL1.addEventListener('click', () => startLevel(1));
@@ -130,42 +127,73 @@ function loop() {
   const dt = Math.min(32, now - last) / 16.6667;
   last = now;
 
+  updateGame(dt, now);
+  updateCamera(cam, ship, getStations());
+  renderFrame();
+
+  requestAnimationFrame(loop);
+}
+
+function updateGame(dt, now) {
+  if (gameState !== 'playing') return;
+
+  updatePhysics(ship, flags, dt, currentLevel.well);
+  updateLevelSystems(dt, now);
+  updateDocking();
+}
+
+function updateLevelSystems(dt, now) {
+  if (level === 1) {
+    updateTutorial(tut, ship, flags, dt);
+  }
+
+  if (currentLevel.well) {
+    updateGravityHazards(now);
+    updateTrajectoryPrediction();
+  }
+}
+
+function updateGravityHazards(now) {
+  const well = currentLevel.well;
+  if (checkWellCollision(ship, well)) {
+    crashReset();
+    return;
+  }
+
+  const dist = Math.hypot(well.x - ship.x, well.y - ship.y);
+  isInDanger = dist < EVENT_HORIZON;
+  if (isInDanger) {
+    eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
+  }
+}
+
+function updateTrajectoryPrediction() {
+  trajFrameCounter++;
+  if (trajFrameCounter < 2) return;
+
+  trajFrameCounter = 0;
+  trajValidSteps = predictTrajectory(ship, currentLevel.well, TRAJ_STEPS, trajX, trajY);
+}
+
+function updateDocking() {
+  if (ship.dockedTimer > 0) return;
+
+  const station = getDockableTargetStation();
+  if (!station) return;
+
+  handleDocking(ship, station);
+  targetStation = station === currentLevel.stationA ? currentLevel.stationB : currentLevel.stationA;
+}
+
+function getDockableTargetStation() {
+  const check = checkDock(ship, targetStation);
+  return dockColor(check) === 'green' ? targetStation : null;
+}
+
+function renderFrame() {
   const well = currentLevel.well;
   const stationA = currentLevel.stationA;
   const stationB = currentLevel.stationB;
-
-  if (gameState === 'playing') {
-    updatePhysics(ship, flags, dt, well);
-    if (level === 1) updateTutorial(tut, ship, flags, dt);
-
-    // Level 2: Gravitations-Kollision
-    if (well && checkWellCollision(ship, well)) {
-      crashReset();
-      return;
-    }
-
-    // Level 2: Event Horizon / Danger detection
-    if (well) {
-      const dx = well.x - ship.x;
-      const dy = well.y - ship.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      isInDanger = dist < EVENT_HORIZON;
-      if (isInDanger) {
-        eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
-      }
-    }
-
-    // Level 2: Trajectory-Vorhersage (alle 2 Frames neu berechnen)
-    if (well) {
-      trajFrameCounter++;
-      if (trajFrameCounter >= 2) {
-        trajFrameCounter = 0;
-        trajValidSteps = predictTrajectory(ship, well, TRAJ_STEPS, trajX, trajY);
-      }
-    }
-  }
-
-  updateCamera(cam, ship, getStations());
 
   renderer.clear(ctx, canvas);
   renderer.drawStars(ctx, stars, cam, canvas);
@@ -181,16 +209,6 @@ function loop() {
   const checkB = checkDock(ship, stationB);
   const colorB = dockColor(checkB);
   renderer.drawStation(ctx, stationB, cam, canvas, colorB);
-
-  if (gameState === 'playing' && ship.dockedTimer <= 0) {
-    if (colorA === 'green' && targetStation === stationA) {
-      handleDocking(ship, stationA);
-      targetStation = stationB;
-    } else if (colorB === 'green' && targetStation === stationB) {
-      handleDocking(ship, stationB);
-      targetStation = stationA;
-    }
-  }
 
   // Level 2: Trajectory-Vorschau zeichnen
   if (well && trajValidSteps > 1) {
@@ -213,11 +231,15 @@ function loop() {
   renderer.drawTargetArrow(ctx, ship, targetStation, cam, canvas);
 
   if (level === 1) drawTutorial(ctx, canvas, tut, ship, flags, cam);
-
-  requestAnimationFrame(loop);
 }
 
 function handleDocking(ship, station) {
+  dockShipAtStation(ship, station);
+  transferCargo();
+  scheduleUndock(station);
+}
+
+function dockShipAtStation(ship, station) {
   const port = getPortPosition(station);
   ship.dockedTimer = 1500;
   ship.fuel = FUEL_START;
@@ -229,15 +251,20 @@ function handleDocking(ship, station) {
   ship.angularVel = 0;
   station.docked = true;
   playDock();
+}
 
+function transferCargo() {
   if (ship.cargo === 0) {
     ship.cargo = 1;
-  } else {
-    ship.cargo = 0;
-    score += 1;
-    completeLevel();
+    return;
   }
 
+  ship.cargo = 0;
+  score += 1;
+  completeLevel();
+}
+
+function scheduleUndock(station) {
   setTimeout(() => {
     station.docked = false;
   }, 1500);
@@ -246,25 +273,37 @@ function handleDocking(ship, station) {
 function completeLevel() {
   gameState = 'levelComplete';
   playDeliveryComplete();
-
-  // Level-Complete-Screen: Texte je nach Level anpassen
-  const eyebrow = levelCompleteScreen.querySelector('.eyebrow');
-  const title = levelCompleteScreen.querySelector('h1');
-  const mission = levelCompleteScreen.querySelector('.mission');
-
-  if (level === 1) {
-    eyebrow.textContent = 'Level 1 abgeschlossen';
-    title.textContent = 'Transport erfolgreich';
-    mission.textContent = 'Grundlagen gemeistert! Die erste Lieferung ist angekommen.';
-  } else if (level === 2) {
-    eyebrow.textContent = 'Level 2 abgeschlossen';
-    title.textContent = 'Gravity Well bezwungen';
-    mission.textContent = 'Du hast den Gravitationseinfluss gemeistert und die Fracht sicher geliefert.';
-  }
+  showLevelCompleteCopy(getLevelCompleteCopy(level));
 
   setTimeout(() => {
     levelCompleteScreen.hidden = false;
   }, 800);
+}
+
+function showLevelCompleteCopy(copy) {
+  const eyebrow = levelCompleteScreen.querySelector('.eyebrow');
+  const title = levelCompleteScreen.querySelector('h1');
+  const mission = levelCompleteScreen.querySelector('.mission');
+
+  eyebrow.textContent = copy.eyebrow;
+  title.textContent = copy.title;
+  mission.textContent = copy.mission;
+}
+
+function getLevelCompleteCopy(completedLevel) {
+  if (completedLevel === 1) {
+    return {
+      eyebrow: 'Level 1 abgeschlossen',
+      title: 'Transport erfolgreich',
+      mission: 'Grundlagen gemeistert! Die erste Lieferung ist angekommen.',
+    };
+  }
+
+  return {
+    eyebrow: 'Level 2 abgeschlossen',
+    title: 'Gravity Well bezwungen',
+    mission: 'Du hast den Gravitationseinfluss gemeistert und die Fracht sicher geliefert.',
+  };
 }
 
 function resetLevel() {
@@ -291,7 +330,6 @@ function resetLevel() {
 }
 
 function crashReset() {
-  // Kurzer visueller Blitz (Vignette ist schon rot), dann sofort zurücksetzen
   gameState = 'crashed';
   setTimeout(() => {
     resetLevel();
@@ -300,42 +338,33 @@ function crashReset() {
   }, 600);
 }
 
-// Der Mechanismus: levelCompleteScreen zeigt einen "Weiter"-Button für Level 2.
-
-// Selektiere den Weiter-Button (falls vorhanden)
 const nextLevelButton = document.getElementById('nextLevelButton');
 if (nextLevelButton) {
-  nextLevelButton.addEventListener('click', async () => {
-    await initAudio();
-    level = 2;
-    currentLevel = L2;
-    ship = createShip(L2.shipStart.x, L2.shipStart.y);
-    // Input neu verdrahten
-    setupDesktopInput(flags, ship);
-    setupMobileInput(flags, canvas, cam, ship);
-    targetStation = L2.stationA;
+  nextLevelButton.addEventListener('click', () => {
+    selectLevel(2);
     score = 0;
     resetLevel();
     levelCompleteScreen.hidden = true;
-    // Level-2-Startscreen anzeigen
-    const l2screen = document.getElementById('level2StartScreen');
-    if (l2screen) {
-      l2screen.hidden = false;
-    } else {
-      gameState = 'playing';
-    }
+    showLevel2IntroOrStart();
     last = performance.now();
   });
 }
 
+function showLevel2IntroOrStart() {
+  const level2StartScreen = document.getElementById('level2StartScreen');
+  if (level2StartScreen) {
+    level2StartScreen.hidden = false;
+    return;
+  }
+
+  gameState = 'playing';
+}
+
 const level2StartButton = document.getElementById('level2StartButton');
 if (level2StartButton) {
-  level2StartButton.addEventListener('click', async () => {
-    await initAudio();
-    playStart();
+  level2StartButton.addEventListener('click', () => {
     document.getElementById('level2StartScreen').hidden = true;
-    gameState = 'playing';
-    last = performance.now();
+    beginGameplay();
   });
 }
 

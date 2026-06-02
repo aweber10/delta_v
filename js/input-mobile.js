@@ -1,7 +1,5 @@
-import { RCS_PULSE_MS, RCS_ZONE_RADIUS_PX, RCS_ZONE_RADIUS, normalizeAngle } from './constants.js';
+import { RCS_PULSE_MS, RCS_ZONE_RADIUS_PX, normalizeAngle } from './constants.js';
 import { screenToWorld, worldToScreen } from './camera.js';
-
-
 
 export function setupMobileInput(flags, canvas, cam, ship) {
   let activeTouchId = null;
@@ -10,48 +8,17 @@ export function setupMobileInput(flags, canvas, cam, ship) {
 
   canvas.addEventListener('touchstart', (ev) => {
     ev.preventDefault();
-    const t = ev.changedTouches[0];
-    const rect = canvas.getBoundingClientRect();
-    const tx = t.clientX - rect.left;
-    const ty = t.clientY - rect.top;
-    
-    const shipScreen = worldToScreen(cam, ship.x, ship.y, canvas);
-    const sx = shipScreen.x;
-    const sy = shipScreen.y;
-    
-    const screenDist = Math.hypot(tx - sx, ty - sy);
-    
-    if (screenDist <= RCS_ZONE_RADIUS_PX) {
-      const world = screenToWorld(cam, tx, ty, canvas);
-      const dx = world.x - ship.x;
-      const dy = world.y - ship.y;
-      const dist = Math.hypot(dx, dy);
-      const nx = dx / dist;
-      const ny = dy / dist;
-      flags.rcsPulse = { dx: nx, dy: ny };
-      flags.rcsFlash = { dx: nx, dy: ny, time: performance.now() };
-      setTimeout(() => (flags.rcsPulse = null), RCS_PULSE_MS + 10);
-      setTimeout(() => (flags.rcsFlash = null), 200 + 10);
+    const touch = ev.changedTouches[0];
+    const point = getTouchPoint(canvas, touch);
+
+    if (isInsideRcsZone(point, ship, cam, canvas)) {
+      queueMobileRcsPulse(flags, point, ship, cam, canvas);
       return;
     }
-    
-    // Reise-Modus
-    activeTouchId = t.identifier;
+
+    activeTouchId = touch.identifier;
     touchStartTime = performance.now();
-    ship.thrustHeld = false;
-    ship.tapThrustTime = 0;
-    
-    const world = screenToWorld(cam, tx, ty, canvas);
-    const dx = world.x - ship.x;
-    const dy = world.y - ship.y;
-    ship.targetAngle = Math.atan2(dy, dx);
-    
-    // Check for hold
-    holdTimer = setTimeout(() => {
-      if (activeTouchId !== null) {
-        ship.thrustHeld = true;
-      }
-    }, 150);
+    holdTimer = startTravelTouch(point, ship, cam, canvas, () => activeTouchId !== null);
   });
 
   canvas.addEventListener('touchend', handleTouchEnd);
@@ -60,20 +27,74 @@ export function setupMobileInput(flags, canvas, cam, ship) {
   function handleTouchEnd(ev) {
     for (let i = 0; i < ev.changedTouches.length; i++) {
       if (ev.changedTouches[i].identifier === activeTouchId) {
-        const touchDuration = performance.now() - touchStartTime;
-        clearTimeout(holdTimer);
-        
-        // War es ein kurzer Tap und das Schiff ist schon ausgerichtet?
-        if (touchDuration < 150 && !ship.thrustHeld) {
-          const angleDiff = Math.abs(normalizeAngle(ship.targetAngle - ship.angle));
-          if (angleDiff < 0.05) {
-            ship.tapThrustTime = 300; // 300ms Impuls
-          }
-        }
-        
+        finishTravelTouch(ship, touchStartTime, holdTimer);
         activeTouchId = null;
-        ship.thrustHeld = false;
       }
     }
   }
+}
+
+function getTouchPoint(canvas, touch) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: touch.clientX - rect.left,
+    y: touch.clientY - rect.top,
+  };
+}
+
+function isInsideRcsZone(point, ship, cam, canvas) {
+  const shipScreen = worldToScreen(cam, ship.x, ship.y, canvas);
+  return Math.hypot(point.x - shipScreen.x, point.y - shipScreen.y) <= RCS_ZONE_RADIUS_PX;
+}
+
+function queueMobileRcsPulse(flags, point, ship, cam, canvas) {
+  const direction = getShipRelativeDirection(point, ship, cam, canvas);
+  flags.rcsPulse = direction;
+  flags.rcsFlash = { ...direction, time: performance.now() };
+  setTimeout(() => (flags.rcsPulse = null), RCS_PULSE_MS + 10);
+  setTimeout(() => (flags.rcsFlash = null), 200 + 10);
+}
+
+function startTravelTouch(point, ship, cam, canvas, isTouchActive) {
+  ship.thrustHeld = false;
+  ship.tapThrustTime = 0;
+  ship.targetAngle = getTargetAngle(point, ship, cam, canvas);
+
+  return setTimeout(() => {
+    if (isTouchActive()) {
+      ship.thrustHeld = true;
+    }
+  }, 150);
+}
+
+function finishTravelTouch(ship, touchStartTime, holdTimer) {
+  const touchDuration = performance.now() - touchStartTime;
+  clearTimeout(holdTimer);
+
+  if (touchDuration < 150 && !ship.thrustHeld && isShipAligned(ship)) {
+    ship.tapThrustTime = 300;
+  }
+
+  ship.thrustHeld = false;
+}
+
+function getTargetAngle(point, ship, cam, canvas) {
+  const direction = getShipRelativeDirection(point, ship, cam, canvas);
+  return Math.atan2(direction.dy, direction.dx);
+}
+
+function getShipRelativeDirection(point, ship, cam, canvas) {
+  const world = screenToWorld(cam, point.x, point.y, canvas);
+  const dx = world.x - ship.x;
+  const dy = world.y - ship.y;
+  const dist = Math.hypot(dx, dy);
+
+  return {
+    dx: dx / dist,
+    dy: dy / dist,
+  };
+}
+
+function isShipAligned(ship) {
+  return Math.abs(normalizeAngle(ship.targetAngle - ship.angle)) < 0.05;
 }
