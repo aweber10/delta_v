@@ -1,4 +1,4 @@
-import { SHIP_RADIUS, ARM_LENGTH, FUEL_START, normalizeAngle } from './constants.js';
+import { SHIP_RADIUS, ARM_LENGTH, FUEL_START, normalizeAngle, RCS_ZONE_RADIUS_PX } from './constants.js';
 import { worldToScreen } from './camera.js';
 
 export function clear(ctx, canvas) {
@@ -19,6 +19,16 @@ export function drawShip(ctx, ship, cam, canvas, flags) {
   const z = cam.zoom;
   ctx.save();
   ctx.translate(p.x, p.y);
+
+  // RCS zone indicator (subtle dashed ring)
+  ctx.strokeStyle = 'rgba(100, 180, 255, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 9]);
+  ctx.beginPath();
+  ctx.arc(0, 0, RCS_ZONE_RADIUS_PX, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
   ctx.rotate(ship.angle);
   ctx.fillStyle = '#eee';
   ctx.beginPath();
