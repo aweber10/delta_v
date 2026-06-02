@@ -14,21 +14,50 @@ export function drawStars(ctx, stars, cam, canvas) {
   }
 }
 
+export function drawRcsZone(ctx, ship, cam, canvas, flags) {
+  const p = worldToScreen(cam, ship.x, ship.y, canvas);
+  const r = RCS_ZONE_RADIUS_PX;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  // Flash alpha: wenn RCS aktiv, kurz aufleuchten
+  let ringAlpha = 0.15;
+  if (flags.rcsFlash) {
+    const flashAge = performance.now() - flags.rcsFlash.time;
+    if (flashAge < 300) {
+      // Spike auf 0.55, dann exponentiell abklingen zurück auf 0.15
+      const t = flashAge / 300;
+      ringAlpha = 0.15 + 0.40 * Math.pow(1 - t, 2);
+    }
+  }
+
+  // Radialer Gradient als Flächenfüllung
+  const grad = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r);
+  grad.addColorStop(0, `rgba(100, 180, 255, ${(ringAlpha * 0.25).toFixed(3)})`);
+  grad.addColorStop(1, 'rgba(100, 180, 255, 0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Gestrichelter Randring
+  ctx.strokeStyle = `rgba(100, 180, 255, ${ringAlpha.toFixed(3)})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 9]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
 export function drawShip(ctx, ship, cam, canvas, flags) {
   const p = worldToScreen(cam, ship.x, ship.y, canvas);
   const z = cam.zoom;
   ctx.save();
   ctx.translate(p.x, p.y);
-
-  // RCS zone indicator (subtle dashed ring)
-  ctx.strokeStyle = 'rgba(100, 180, 255, 0.15)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 9]);
-  ctx.beginPath();
-  ctx.arc(0, 0, RCS_ZONE_RADIUS_PX, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
   ctx.rotate(ship.angle);
   ctx.fillStyle = '#eee';
   ctx.beginPath();
