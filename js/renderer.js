@@ -22,19 +22,18 @@ export function drawRcsZone(ctx, ship, cam, canvas, flags) {
   ctx.translate(p.x, p.y);
 
   // Flash alpha: wenn RCS aktiv, kurz aufleuchten
-  let ringAlpha = 0.15;
+  let ringAlpha = 0.35; // Erhöht von 0.15 für bessere Sichtbarkeit auf Schwarz
   if (flags.rcsFlash) {
     const flashAge = performance.now() - flags.rcsFlash.time;
     if (flashAge < 300) {
-      // Spike auf 0.55, dann exponentiell abklingen zurück auf 0.15
       const t = flashAge / 300;
-      ringAlpha = 0.15 + 0.40 * Math.pow(1 - t, 2);
+      ringAlpha = 0.35 + 0.45 * Math.pow(1 - t, 2);
     }
   }
 
-  // Radialer Gradient als Flächenfüllung
-  const grad = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r);
-  grad.addColorStop(0, `rgba(100, 180, 255, ${(ringAlpha * 0.25).toFixed(3)})`);
+  // Radialer Gradient als Flächenfüllung (von Mitte bis Rand)
+  const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  grad.addColorStop(0, `rgba(100, 180, 255, ${(ringAlpha * 0.8).toFixed(3)})`);
   grad.addColorStop(1, 'rgba(100, 180, 255, 0)');
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -42,15 +41,14 @@ export function drawRcsZone(ctx, ship, cam, canvas, flags) {
   ctx.fill();
 
   // Gestrichelter Randring
-  ctx.strokeStyle = `rgba(100, 180, 255, ${ringAlpha.toFixed(3)})`;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 9]);
+  ctx.strokeStyle = `rgba(140, 200, 255, ${ringAlpha.toFixed(3)})`;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 8]);
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
 
-  ctx.restore();
+  ctx.restore(); // restore setzt lineDash automatisch zurück
 }
 
 export function drawShip(ctx, ship, cam, canvas, flags) {
