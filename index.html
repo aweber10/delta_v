@@ -113,6 +113,13 @@
       background: rgba(255, 255, 255, 0.08);
       color: #f4f7fb;
     }
+
+    .desktop-only { display: inline; }
+    .mobile-only { display: none; }
+    @media (hover: none) and (pointer: coarse) {
+      .desktop-only { display: none; }
+      .mobile-only { display: inline; }
+    }
   </style>
 </head>
 <body>
@@ -122,6 +129,10 @@
       <p class="eyebrow">Level 1</p>
       <h1 id="gameTitle">Delta V</h1>
       <p class="mission">Transportiere die Fracht von Station A nach Station B.</p>
+      <p class="mission" style="font-size: 13px; color: #8fd0ff; margin-top: -10px;">
+        <span class="desktop-only">↑ Schub | ← → Drehen | WASD RCS</span>
+        <span class="mobile-only">Halten: Schub | Tippen: RCS / Drehen</span>
+      </p>
       <div class="actions">
         <button id="startButton" type="button">Start</button>
         <button class="secondary" id="muteButton" type="button" aria-pressed="false">Sound an</button>
@@ -132,12 +143,12 @@
     <section class="start-panel" aria-labelledby="completeTitle">
       <p class="eyebrow">Level 1 abgeschlossen</p>
       <h1 id="completeTitle">Transport erfolgreich</h1>
-      <p class="mission">Die erste Lieferung ist angekommen.</p>
+      <p class="mission">Grundlagen gemeistert! Die erste Lieferung ist angekommen.</p>
       <div class="actions">
         <button id="restartButton" type="button">Neu starten</button>
       </div>
     </section>
   </div>
-  <script type="module" src="./js/main.js?v=22"></script>
+  <script type="module" src="./js/main.js?v=24"></script>
 </body>
 </html>

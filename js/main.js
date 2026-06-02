@@ -7,6 +7,7 @@ import { createStation, checkDock, dockColor, getPortPosition } from './station.
 import * as renderer from './renderer.js';
 import { FUEL_START, WORLD_WIDTH, WORLD_HEIGHT } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
+import { createTutorial, updateTutorial, drawTutorial } from './tutorial.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -37,6 +38,7 @@ let score = 0;
 let targetStation = stationA; // start by going to A to pick up
 let gameState = 'start';
 let level = 1;
+const tut = createTutorial();
 
 // stars
 const stars = [];
@@ -80,6 +82,7 @@ function loop() {
 
   if (gameState === 'playing') {
     updatePhysics(ship, flags, dt);
+    if (level === 1) updateTutorial(tut, ship, flags, dt);
   }
   updateCamera(cam, ship, [stationA, stationB]);
 
@@ -111,6 +114,8 @@ function loop() {
   const targetColor = targetStation === stationA ? colorA : colorB;
   renderer.drawHud(ctx, ship, canvas, targetStation, targetCheck, score, targetColor, level);
   renderer.drawTargetArrow(ctx, ship, targetStation, cam, canvas);
+
+  if (level === 1) drawTutorial(ctx, canvas, tut, ship, flags, cam);
 
   requestAnimationFrame(loop);
 }
