@@ -483,6 +483,31 @@ export function drawTrajectory(ctx, outX, outY, validSteps, cam, canvas, isInDan
 }
 
 /**
+ * Zeichnet alle aktiven Explosionspartikel.
+ * @param {Array} particles - Array mit Partikelobjekten
+ */
+export function drawParticles(ctx, cam, canvas, particles) {
+  if (particles.length === 0) return;
+
+  ctx.save();
+  for (const p of particles) {
+    const t = p.life / p.maxLife;          // 1 → 0 während Lebenszeit
+    const alpha = t * t;                   // quadratisch → weicheres Ausblenden
+    const r = Math.max(0.5, p.size * t);   // schrumpft mit der Zeit
+
+    const sp = worldToScreen(cam, p.x, p.y, canvas);
+
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, r * cam.zoom, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+/**
  * Zeichnet die Event-Horizon-Warnung (pulsierende rote Vignette).
  */
 export function drawEventHorizonWarning(ctx, canvas, pulse) {

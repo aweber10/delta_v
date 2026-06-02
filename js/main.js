@@ -70,6 +70,66 @@ let trajFrameCounter = 0;
 let eventHorizonPulse = 0;
 let isInDanger = false;
 
+// Explosionspartikel
+let particles = [];
+
+function spawnExplosion(x, y) {
+  const COUNT = 55;
+  for (let i = 0; i < COUNT; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const type = Math.random();
+
+    let speed, size, maxLife, color;
+    if (type < 0.25) {
+      // Heißer Kern: klein, weiß/gelb, schnell, kurze Lebenszeit
+      speed = 2.5 + Math.random() * 3.5;
+      size = 2 + Math.random() * 2;
+      maxLife = 18 + Math.random() * 14;
+      color = Math.random() < 0.5 ? '#ffffff' : '#ffee88';
+    } else if (type < 0.65) {
+      // Flammenpartikel: mittel, orange/rot
+      speed = 1.2 + Math.random() * 2.5;
+      size = 3 + Math.random() * 3.5;
+      maxLife = 28 + Math.random() * 22;
+      const colors = ['#ff8800', '#ff5500', '#ffaa00', '#ff3300'];
+      color = colors[Math.floor(Math.random() * colors.length)];
+    } else {
+      // Trümmer: größer, dunkelrot/grau, langsam, länger
+      speed = 0.4 + Math.random() * 1.4;
+      size = 4 + Math.random() * 4;
+      maxLife = 40 + Math.random() * 30;
+      const colors = ['#aa2200', '#882200', '#664444', '#553333'];
+      color = colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: maxLife,
+      maxLife,
+      size,
+      color,
+    });
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+  }
+}
+
 // stars
 const stars = [];
 for (let i=0;i<200;i++) stars.push({ x: Math.random()*2400, y: Math.random()*1600 });
@@ -135,6 +195,8 @@ function loop() {
 }
 
 function updateGame(dt, now) {
+  updateParticles(dt);
+
   if (gameState !== 'playing') return;
 
   updatePhysics(ship, flags, dt, currentLevel.well);
@@ -216,7 +278,8 @@ function renderFrame() {
   }
 
   renderer.drawRcsZone(ctx, ship, cam, canvas, flags);
-  renderer.drawShip(ctx, ship, cam, canvas, flags);
+  if (gameState !== 'crashed') renderer.drawShip(ctx, ship, cam, canvas, flags);
+  renderer.drawParticles(ctx, cam, canvas, particles);
   renderer.drawTargetAngle(ctx, ship, cam, canvas);
   renderer.drawVelocityVec(ctx, ship, cam, canvas);
 
@@ -325,17 +388,20 @@ function resetLevel() {
   targetStation = currentLevel.stationA;
   isInDanger = false;
   trajValidSteps = 0;
+  particles = [];
   cam.x = ship.x;
   cam.y = ship.y;
 }
 
 function crashReset() {
+  spawnExplosion(ship.x, ship.y);
   gameState = 'crashed';
   setTimeout(() => {
+    particles = [];
     resetLevel();
     gameState = 'playing';
     last = performance.now();
-  }, 600);
+  }, 1200);
 }
 
 const nextLevelButton = document.getElementById('nextLevelButton');
