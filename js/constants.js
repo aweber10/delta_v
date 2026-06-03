@@ -15,7 +15,7 @@ export const RCS_PULSE_MS = 150; // ms
 
 export const SHIP_RADIUS = 12; // visual
 
-export const RCS_ZONE_RADIUS_PX = 50; // screen space radius for touch RCS pulses
+export const RCS_ZONE_RADIUS_PX = 80; // screen space radius for touch RCS pulses
 
 // legacy world-space constants for physics/station calculations only
 

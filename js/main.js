@@ -27,11 +27,17 @@ const muteButton = document.getElementById('muteButton');
 const backToMenuButton = document.getElementById('backToMenuButton');
 
 function resize() {
-  canvas.width = Math.floor(window.innerWidth * devicePixelRatio);
-  canvas.height = Math.floor(window.innerHeight * devicePixelRatio);
-  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resize);
+}
 resize();
 
 // --- Level 1 ---

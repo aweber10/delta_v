@@ -36,13 +36,15 @@
     }
 
     body {
-      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      position: fixed;
+      inset: 0;
     }
 
     canvas {
       display: block;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
       background: #020408;
     }
 
@@ -52,7 +54,11 @@
       z-index: 10;
       display: grid;
       place-items: center;
-      padding: 24px;
+      padding:
+        max(24px, env(safe-area-inset-top))
+        max(24px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom))
+        max(24px, env(safe-area-inset-left));
       background:
         radial-gradient(circle at 50% 38%, rgba(45, 116, 162, 0.26), transparent 34%),
         rgba(2, 4, 8, 0.86);

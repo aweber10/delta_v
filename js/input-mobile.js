@@ -48,6 +48,7 @@ function isInsideRcsZone(point, ship, cam, canvas) {
 }
 
 function queueMobileRcsPulse(flags, point, ship, cam, canvas) {
+  // Tap-Richtung ist die gewünschte Impulsrichtung des Schiffs.
   const direction = getShipRelativeDirection(point, ship, cam, canvas);
   flags.rcsPulse = direction;
   flags.rcsFlash = { ...direction, time: performance.now() };
@@ -88,6 +89,12 @@ function getShipRelativeDirection(point, ship, cam, canvas) {
   const dx = world.x - ship.x;
   const dy = world.y - ship.y;
   const dist = Math.hypot(dx, dy);
+  if (dist < 0.0001) {
+    return {
+      dx: Math.cos(ship.angle),
+      dy: Math.sin(ship.angle),
+    };
+  }
 
   return {
     dx: dx / dist,
