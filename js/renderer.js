@@ -402,14 +402,14 @@ export function drawGravityWell(ctx, well, cam, canvas, eventHorizon) {
 
   // Einflussfeld-Ringe (äußerster = G_RADIUS)
   const ringColors = [
-    { r: 600 * z, alpha: 0.06 },
-    { r: 420 * z, alpha: 0.10 },
-    { r: 260 * z, alpha: 0.16 },
-    { r: 140 * z, alpha: 0.22 },
+    { r: 600 * z, alpha: 0.15 },
+    { r: 420 * z, alpha: 0.25 },
+    { r: 260 * z, alpha: 0.35 },
+    { r: 140 * z, alpha: 0.50 },
   ];
   for (const ring of ringColors) {
     ctx.strokeStyle = `rgba(255, 160, 40, ${ring.alpha})`;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2.0;
     ctx.setLineDash([6, 8]);
     ctx.beginPath();
     ctx.arc(0, 0, ring.r, 0, Math.PI * 2);
@@ -458,16 +458,16 @@ export function drawTrajectory(ctx, outX, outY, validSteps, cam, canvas, isInDan
   if (validSteps < 2) return;
 
   ctx.save();
-  ctx.setLineDash([3, 6]);
-  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 5]);
+  ctx.lineWidth = 2.0;
 
   for (let i = 1; i < validSteps; i++) {
     const t = i / validSteps;
     // Farbe: grün → gelb → rot je nach Nähe zur Quelle / Gefahr
-    const alpha = isInDanger ? (0.7 - t * 0.5) : (0.5 - t * 0.35);
+    const alpha = isInDanger ? (0.9 - t * 0.25) : (0.8 - t * 0.3);
     ctx.strokeStyle = isInDanger
-      ? `rgba(255, 80, 80, ${Math.max(0.1, alpha)})`
-      : `rgba(100, 220, 255, ${Math.max(0.08, alpha)})`;
+      ? `rgba(255, 80, 80, ${Math.max(0.65, alpha)})`
+      : `rgba(100, 220, 255, ${Math.max(0.5, alpha)})`;
 
     const p0 = worldToScreen(cam, outX[i - 1], outY[i - 1], canvas);
     const p1 = worldToScreen(cam, outX[i], outY[i], canvas);
