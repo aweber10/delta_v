@@ -41,3 +41,8 @@ export const G_RADIUS = 600;      // Einflussradius in World-Units
 export const WELL_RADIUS = 40;    // sichtbarer/tödlicher Körperradius
 export const EVENT_HORIZON = 80;  // Warnschwelle: ab hier ist Absturz gefährlich
 
+// --- Level 3: Asteroid Field ---
+export const ASTEROID_BOUNCE_MAX_SPEED = V_DOCK_MAX;
+export const ASTEROID_BOUNCE_DAMPING = 0.55;
+export const ASTEROID_COLLISION_PADDING = SHIP_RADIUS;
+export const ASTEROID_BOUNCE_FUEL_PENALTY = 8;

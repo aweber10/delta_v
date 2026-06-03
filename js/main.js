@@ -9,6 +9,12 @@ import { FUEL_START, WELL_RADIUS, EVENT_HORIZON } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial } from './tutorial.js';
 import { createGravityWell, checkWellCollision, predictTrajectory } from './gravity.js';
+import {
+  checkAsteroidCollision,
+  createAsteroid,
+  predictAsteroidTrajectory,
+  resolveAsteroidCollision,
+} from './asteroids.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -16,6 +22,7 @@ const startScreen = document.getElementById('startScreen');
 const levelCompleteScreen = document.getElementById('levelCompleteScreen');
 const startL1 = document.getElementById('startL1');
 const startL2 = document.getElementById('startL2');
+const startL3 = document.getElementById('startL3');
 const muteButton = document.getElementById('muteButton');
 const backToMenuButton = document.getElementById('backToMenuButton');
 
@@ -33,6 +40,7 @@ const L1 = {
   stationA: createStation(200, 1200, 0),
   stationB: createStation(1800, 300, Math.PI),
   well: null,
+  asteroids: null,
 };
 
 // --- Level 2: Gravity Well ---
@@ -44,6 +52,56 @@ const L2 = {
   stationA: createStation(220, 1400, -Math.PI * 0.25),   // Arm zeigt nach oben-rechts
   stationB: createStation(2180, 200, Math.PI + Math.PI * 0.25), // Arm zeigt nach unten-links
   well: createGravityWell(1200, 900, WELL_RADIUS),
+  asteroids: null,
+};
+
+// --- Level 3: Asteroid Field ---
+// Statisches, handplatziertes Feld mit freiem diagonalen Korridor.
+const L3 = {
+  shipStart: { x: 220, y: 1380 },
+  stationA: createStation(220, 1380, -Math.PI * 0.22),
+  stationB: createStation(2200, 220, Math.PI + Math.PI * 0.22),
+  well: null,
+  asteroids: [
+    createAsteroid(500, 1260, 46, 101),
+    createAsteroid(560, 940, 38, 102),
+    createAsteroid(690, 1330, 58, 103),
+    createAsteroid(780, 760, 52, 104),
+    createAsteroid(880, 1160, 44, 105),
+    createAsteroid(980, 560, 62, 106),
+    createAsteroid(1040, 1240, 72, 107),
+    createAsteroid(1120, 720, 36, 108),
+    createAsteroid(1220, 1040, 64, 109),
+    createAsteroid(1320, 460, 48, 110),
+    createAsteroid(1380, 860, 42, 111),
+    createAsteroid(1480, 1180, 70, 112),
+    createAsteroid(1560, 600, 58, 113),
+    createAsteroid(1660, 960, 44, 114),
+    createAsteroid(1740, 380, 64, 115),
+    createAsteroid(1840, 780, 52, 116),
+    createAsteroid(1940, 520, 38, 117),
+    createAsteroid(2020, 1020, 60, 118),
+    createAsteroid(420, 720, 34, 119),
+    createAsteroid(520, 520, 56, 120),
+    createAsteroid(660, 380, 44, 121),
+    createAsteroid(760, 220, 36, 122),
+    createAsteroid(900, 1480, 42, 123),
+    createAsteroid(1160, 1460, 54, 124),
+    createAsteroid(1380, 1420, 46, 125),
+    createAsteroid(1600, 1340, 58, 126),
+    createAsteroid(1840, 1260, 40, 127),
+    createAsteroid(2100, 1220, 62, 128),
+    createAsteroid(300, 1040, 40, 129),
+    createAsteroid(2220, 760, 44, 130),
+    createAsteroid(2140, 520, 34, 131),
+    createAsteroid(1260, 220, 54, 132),
+    createAsteroid(1060, 300, 38, 133),
+    createAsteroid(1460, 250, 32, 134),
+    createAsteroid(640, 1120, 34, 135),
+    createAsteroid(920, 880, 32, 136),
+    createAsteroid(1540, 760, 34, 137),
+    createAsteroid(1880, 620, 30, 138),
+  ],
 };
 
 let currentLevel = L1;
@@ -65,6 +123,8 @@ const trajX = new Float32Array(TRAJ_STEPS);
 const trajY = new Float32Array(TRAJ_STEPS);
 let trajValidSteps = 0;
 let trajFrameCounter = 0;
+let trajWillHitAsteroid = false;
+let trajHitAsteroid = null;
 
 // Event Horizon Pulse (für Animation)
 let eventHorizonPulse = 0;
@@ -146,7 +206,9 @@ function startLevel(targetLevel) {
 
 function selectLevel(targetLevel) {
   level = targetLevel;
-  currentLevel = targetLevel === 1 ? L1 : L2;
+  if (targetLevel === 1) currentLevel = L1;
+  else if (targetLevel === 2) currentLevel = L2;
+  else currentLevel = L3;
 }
 
 async function beginGameplay() {
@@ -158,6 +220,7 @@ async function beginGameplay() {
 
 startL1.addEventListener('click', () => startLevel(1));
 startL2.addEventListener('click', () => startLevel(2));
+startL3.addEventListener('click', () => startLevel(3));
 
 muteButton.addEventListener('click', async () => {
   await initAudio();
@@ -201,6 +264,7 @@ function updateGame(dt, now) {
 
   updatePhysics(ship, flags, dt, currentLevel.well);
   updateLevelSystems(dt, now);
+  if (gameState !== 'playing') return;
   updateDocking();
 }
 
@@ -211,7 +275,12 @@ function updateLevelSystems(dt, now) {
 
   if (currentLevel.well) {
     updateGravityHazards(now);
-    updateTrajectoryPrediction();
+    updateGravityTrajectoryPrediction();
+  }
+
+  if (currentLevel.asteroids) {
+    updateAsteroidHazards();
+    updateAsteroidTrajectoryPrediction();
   }
 }
 
@@ -229,12 +298,35 @@ function updateGravityHazards(now) {
   }
 }
 
-function updateTrajectoryPrediction() {
+function updateGravityTrajectoryPrediction() {
   trajFrameCounter++;
   if (trajFrameCounter < 2) return;
 
   trajFrameCounter = 0;
   trajValidSteps = predictTrajectory(ship, currentLevel.well, TRAJ_STEPS, trajX, trajY);
+}
+
+function updateAsteroidHazards() {
+  if (ship.dockedTimer > 0) return;
+
+  const asteroid = checkAsteroidCollision(ship, currentLevel.asteroids);
+  if (!asteroid) return;
+
+  const result = resolveAsteroidCollision(ship, asteroid);
+  if (result === 'crash') {
+    crashReset();
+  }
+}
+
+function updateAsteroidTrajectoryPrediction() {
+  trajFrameCounter++;
+  if (trajFrameCounter < 2) return;
+
+  trajFrameCounter = 0;
+  const prediction = predictAsteroidTrajectory(ship, currentLevel.asteroids, TRAJ_STEPS, trajX, trajY);
+  trajValidSteps = prediction.validSteps;
+  trajWillHitAsteroid = prediction.willHit;
+  trajHitAsteroid = prediction.hitAsteroid;
 }
 
 function updateDocking() {
@@ -254,6 +346,7 @@ function getDockableTargetStation() {
 
 function renderFrame() {
   const well = currentLevel.well;
+  const asteroids = currentLevel.asteroids;
   const stationA = currentLevel.stationA;
   const stationB = currentLevel.stationB;
 
@@ -263,6 +356,10 @@ function renderFrame() {
   // Level 2: Gravity Well zeichnen (vor Stationen, damit Ringe im Hintergrund)
   if (well) {
     renderer.drawGravityWell(ctx, well, cam, canvas, EVENT_HORIZON);
+  }
+
+  if (asteroids) {
+    renderer.drawAsteroids(ctx, asteroids, cam, canvas, trajHitAsteroid);
   }
 
   const checkA = checkDock(ship, stationA);
@@ -275,6 +372,10 @@ function renderFrame() {
   // Level 2: Trajectory-Vorschau zeichnen
   if (well && trajValidSteps > 1) {
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, cam, canvas, isInDanger);
+  }
+
+  if (asteroids && trajValidSteps > 1) {
+    renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, cam, canvas, trajWillHitAsteroid);
   }
 
   renderer.drawRcsZone(ctx, ship, cam, canvas, flags);
@@ -347,10 +448,15 @@ function showLevelCompleteCopy(copy) {
   const eyebrow = levelCompleteScreen.querySelector('.eyebrow');
   const title = levelCompleteScreen.querySelector('h1');
   const mission = levelCompleteScreen.querySelector('.mission');
+  const nextLevelButton = document.getElementById('nextLevelButton');
 
   eyebrow.textContent = copy.eyebrow;
   title.textContent = copy.title;
   mission.textContent = copy.mission;
+  if (nextLevelButton) {
+    nextLevelButton.hidden = !copy.nextLevelLabel;
+    nextLevelButton.textContent = copy.nextLevelLabel || 'Nächstes Level';
+  }
 }
 
 function getLevelCompleteCopy(completedLevel) {
@@ -359,13 +465,24 @@ function getLevelCompleteCopy(completedLevel) {
       eyebrow: 'Level 1 abgeschlossen',
       title: 'Transport erfolgreich',
       mission: 'Grundlagen gemeistert! Die erste Lieferung ist angekommen.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
+  if (completedLevel === 2) {
+    return {
+      eyebrow: 'Level 2 abgeschlossen',
+      title: 'Gravity Well bezwungen',
+      mission: 'Du hast den Gravitationseinfluss gemeistert und die Fracht sicher geliefert.',
+      nextLevelLabel: 'Nächstes Level',
     };
   }
 
   return {
-    eyebrow: 'Level 2 abgeschlossen',
-    title: 'Gravity Well bezwungen',
-    mission: 'Du hast den Gravitationseinfluss gemeistert und die Fracht sicher geliefert.',
+    eyebrow: 'Level 3 abgeschlossen',
+    title: 'Feld durchquert',
+    mission: 'Du hast die Drift sauber gehalten und die Fracht durch das Asteroidenfeld gebracht.',
+    nextLevelLabel: '',
   };
 }
 
@@ -388,6 +505,8 @@ function resetLevel() {
   targetStation = currentLevel.stationA;
   isInDanger = false;
   trajValidSteps = 0;
+  trajWillHitAsteroid = false;
+  trajHitAsteroid = null;
   particles = [];
   cam.x = ship.x;
   cam.y = ship.y;
@@ -407,19 +526,20 @@ function crashReset() {
 const nextLevelButton = document.getElementById('nextLevelButton');
 if (nextLevelButton) {
   nextLevelButton.addEventListener('click', () => {
-    selectLevel(2);
+    const nextLevel = Math.min(level + 1, 3);
+    selectLevel(nextLevel);
     score = 0;
     resetLevel();
     levelCompleteScreen.hidden = true;
-    showLevel2IntroOrStart();
+    showLevelIntroOrStart(nextLevel);
     last = performance.now();
   });
 }
 
-function showLevel2IntroOrStart() {
-  const level2StartScreen = document.getElementById('level2StartScreen');
-  if (level2StartScreen) {
-    level2StartScreen.hidden = false;
+function showLevelIntroOrStart(targetLevel) {
+  const intro = document.getElementById(`level${targetLevel}StartScreen`);
+  if (intro) {
+    intro.hidden = false;
     return;
   }
 
@@ -430,6 +550,14 @@ const level2StartButton = document.getElementById('level2StartButton');
 if (level2StartButton) {
   level2StartButton.addEventListener('click', () => {
     document.getElementById('level2StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
+const level3StartButton = document.getElementById('level3StartButton');
+if (level3StartButton) {
+  level3StartButton.addEventListener('click', () => {
+    document.getElementById('level3StartScreen').hidden = true;
     beginGameplay();
   });
 }

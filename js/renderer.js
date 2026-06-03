@@ -388,6 +388,64 @@ export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dock
   }
 }
 
+// ---- Level 3: Asteroid Field Rendering ----
+
+export function drawAsteroids(ctx, asteroids, cam, canvas, highlightedAsteroid = null) {
+  ctx.save();
+
+  for (const asteroid of asteroids) {
+    const p = worldToScreen(cam, asteroid.x, asteroid.y, canvas);
+    const z = cam.zoom;
+    const r = asteroid.radius * z;
+    const isHighlighted = asteroid === highlightedAsteroid;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate((asteroid.seed % 360) * Math.PI / 180);
+
+    if (isHighlighted) {
+      ctx.strokeStyle = 'rgba(255, 70, 70, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.arc(0, 0, (asteroid.radius + SHIP_RADIUS) * z, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    const grad = ctx.createRadialGradient(-r * 0.25, -r * 0.35, r * 0.1, 0, 0, r);
+    grad.addColorStop(0, '#aeb6bd');
+    grad.addColorStop(0.45, '#5f6870');
+    grad.addColorStop(1, '#242a30');
+
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = isHighlighted ? 'rgba(255, 100, 100, 0.95)' : 'rgba(180, 190, 200, 0.45)';
+    ctx.lineWidth = isHighlighted ? 2 : 1.2;
+    ctx.beginPath();
+
+    for (let i = 0; i < asteroid.shape.length; i++) {
+      const point = asteroid.shape[i];
+      const x = Math.cos(point.angle) * r * point.scale;
+      const y = Math.sin(point.angle) * r * point.scale;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.beginPath();
+    ctx.arc(-r * 0.22, -r * 0.24, Math.max(2, r * 0.16), 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
 // ---- Level 2: Gravity Well Rendering ----
 
 /**

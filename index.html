@@ -100,10 +100,16 @@
 
     .level-select {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 12px;
       width: 100%;
       margin-bottom: 12px;
+    }
+
+    @media (max-width: 560px) {
+      .level-select {
+        grid-template-columns: 1fr;
+      }
     }
 
     button {
@@ -136,6 +142,14 @@
         rgba(2, 4, 8, 0.88);
     }
     .eyebrow.orange { color: #ffb040; }
+
+    /* Level 3: Asteroid Field Accent */
+    .overlay.level3 {
+      background:
+        radial-gradient(circle at 50% 38%, rgba(148, 170, 184, 0.24), transparent 34%),
+        rgba(2, 4, 8, 0.9);
+    }
+    .eyebrow.steel { color: #b8c4cc; }
   </style>
 </head>
 <body>
@@ -156,6 +170,10 @@
         <button id="startL2" type="button" style="height: auto; padding: 16px; flex-direction: column; align-items: flex-start; text-align: left;">
           <span style="display: block; font-size: 10px; color: #ffb040; margin-bottom: 4px;">Level 2</span>
           <span style="display: block;">Gravity Well</span>
+        </button>
+        <button id="startL3" type="button" style="height: auto; padding: 16px; flex-direction: column; align-items: flex-start; text-align: left;">
+          <span style="display: block; font-size: 10px; color: #b8c4cc; margin-bottom: 4px;">Level 3</span>
+          <span style="display: block;">Asteroid Field</span>
         </button>
       </div>
 
@@ -193,6 +211,21 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=28"></script>
+  <!-- Level 3: Start Screen -->
+  <div class="overlay level3" id="level3StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l3Title">
+      <p class="eyebrow steel">Level 3 — Asteroid Field</p>
+      <h1 id="l3Title">Delta V</h1>
+      <p class="mission">Ein dichtes Feld blockiert die Route. Lies die Luecken, halte die Drift sauber und vermeide schnelle Kontakte.</p>
+      <p class="mission" style="font-size: 13px; color: #b8c4cc; margin-top: -10px;">
+        Rote Flugbahn: deine aktuelle Drift schneidet einen Asteroiden.
+      </p>
+      <div class="actions">
+        <button id="level3StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="./js/main.js?v=29"></script>
 </body>
 </html>
