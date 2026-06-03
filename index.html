@@ -63,7 +63,7 @@
     }
 
     .start-panel {
-      width: min(420px, 100%);
+      width: min(760px, 100%);
       text-align: center;
     }
 
@@ -85,7 +85,7 @@
 
     .mission {
       margin: 18px auto 28px;
-      max-width: 320px;
+      max-width: 440px;
       color: #c8d3df;
       font-size: 16px;
       line-height: 1.45;
@@ -101,14 +101,146 @@
     .level-select {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      gap: 14px;
       width: 100%;
-      margin-bottom: 12px;
+      margin-bottom: 18px;
     }
 
-    @media (max-width: 560px) {
+    .level-card {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 178px;
+      padding: 16px;
+      overflow: hidden;
+      text-align: left;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
+        rgba(6, 12, 18, 0.9);
+      color: #f4f7fb;
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .level-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .level-card:hover,
+    .level-card:focus-visible {
+      border-color: color-mix(in srgb, var(--accent) 72%, white);
+      transform: translateY(-1px);
+    }
+
+    .level-card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .level-card__top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .level-card__number {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .level-card__risk {
+      min-width: 0;
+      padding: 4px 7px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      text-transform: uppercase;
+      border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+
+    .level-card__title {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 19px;
+      line-height: 1.1;
+    }
+
+    .level-card__copy {
+      display: block;
+      color: #aebdcc;
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .level-card__route {
+      position: relative;
+      height: 28px;
+      margin-top: 18px;
+    }
+
+    .level-card__route::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      top: 13px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), rgba(255, 255, 255, 0.14));
+    }
+
+    .level-card__route::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 8px;
+      width: 11px;
+      height: 11px;
+      border-top: 2px solid var(--accent);
+      border-right: 2px solid var(--accent);
+      transform: rotate(45deg);
+    }
+
+    .level-card__hazard {
+      position: absolute;
+      left: var(--hazard-x, 50%);
+      top: 50%;
+      width: var(--hazard-size, 14px);
+      height: var(--hazard-size, 14px);
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(2, 4, 8, 0.94);
+      box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 32%, transparent);
+    }
+
+    .level-card__hazard--asteroids {
+      border-radius: 4px;
+      transform: translate(-50%, -50%) rotate(22deg);
+      box-shadow:
+        -23px 8px 0 -4px rgba(184, 196, 204, 0.72),
+        22px -7px 0 -5px rgba(184, 196, 204, 0.58);
+    }
+
+    @media (max-width: 720px) {
       .level-select {
         grid-template-columns: 1fr;
+      }
+
+      .level-card {
+        min-height: 132px;
       }
     }
 
@@ -163,17 +295,44 @@
       <p class="mission">Wähle dein Zielsystem:</p>
       
       <div class="level-select">
-        <button id="startL1" type="button" style="height: auto; padding: 16px; flex-direction: column; align-items: flex-start; text-align: left;">
-          <span style="display: block; font-size: 10px; color: #8fd0ff; margin-bottom: 4px;">Level 1</span>
-          <span style="display: block;">First Delivery</span>
+        <button class="level-card" id="startL1" type="button" style="--accent: #8fd0ff; --hazard-x: 78%; --hazard-size: 8px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 1</span>
+            <span class="level-card__risk">Training</span>
+          </span>
+          <span>
+            <span class="level-card__title">First Delivery</span>
+            <span class="level-card__copy">Fracht aufnehmen, sauber bremsen, andocken.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard" aria-hidden="true"></span>
+          </span>
         </button>
-        <button id="startL2" type="button" style="height: auto; padding: 16px; flex-direction: column; align-items: flex-start; text-align: left;">
-          <span style="display: block; font-size: 10px; color: #ffb040; margin-bottom: 4px;">Level 2</span>
-          <span style="display: block;">Gravity Well</span>
+        <button class="level-card" id="startL2" type="button" style="--accent: #ffb040; --hazard-x: 52%; --hazard-size: 18px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 2</span>
+            <span class="level-card__risk">Gravity</span>
+          </span>
+          <span>
+            <span class="level-card__title">Gravity Well</span>
+            <span class="level-card__copy">Swing-by planen oder sicher außen herum fliegen.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard" aria-hidden="true"></span>
+          </span>
         </button>
-        <button id="startL3" type="button" style="height: auto; padding: 16px; flex-direction: column; align-items: flex-start; text-align: left;">
-          <span style="display: block; font-size: 10px; color: #b8c4cc; margin-bottom: 4px;">Level 3</span>
-          <span style="display: block;">Asteroid Field</span>
+        <button class="level-card" id="startL3" type="button" style="--accent: #b8c4cc; --hazard-x: 55%; --hazard-size: 15px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 3</span>
+            <span class="level-card__risk">Kollision</span>
+          </span>
+          <span>
+            <span class="level-card__title">Asteroid Field</span>
+            <span class="level-card__copy">Lücken lesen, Restdrift halten, Kontakt vermeiden.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--asteroids" aria-hidden="true"></span>
+          </span>
         </button>
       </div>
 
