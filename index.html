@@ -112,8 +112,9 @@
     .actions {
       display: flex;
       justify-content: center;
-      gap: 12px;
+      gap: 14px;
       flex-wrap: wrap;
+      align-items: center;
     }
 
     .level-select {
@@ -380,19 +381,144 @@
     }
 
     button {
+      position: relative;
       min-height: 48px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
+      min-width: 148px;
+      border: 1px solid rgba(143, 208, 255, 0.46);
       border-radius: 8px;
-      padding: 0 20px;
-      background: #f4f7fb;
-      color: #07111b;
+      padding: 0 22px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(184, 222, 248, 0.88)),
+        #e8f5ff;
+      color: #04111c;
       font: inherit;
-      font-weight: 800;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+        0 10px 28px rgba(36, 131, 194, 0.2),
+        0 0 22px rgba(143, 208, 255, 0.14);
+      transition:
+        transform 140ms ease,
+        border-color 140ms ease,
+        box-shadow 140ms ease,
+        background 140ms ease,
+        color 140ms ease;
+    }
+
+    button::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.86), transparent);
+      opacity: 0.78;
+    }
+
+    button:hover,
+    button:focus-visible {
+      border-color: rgba(143, 208, 255, 0.82);
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 14px 34px rgba(36, 131, 194, 0.28),
+        0 0 26px rgba(143, 208, 255, 0.28);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.18) inset,
+        0 5px 16px rgba(36, 131, 194, 0.18);
+    }
+
+    button:focus-visible {
+      outline: 2px solid #8fd0ff;
+      outline-offset: 3px;
+    }
+
+    button:disabled,
+    button[aria-disabled="true"] {
+      cursor: not-allowed;
+      transform: none;
     }
 
     .secondary {
-      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
+        rgba(5, 12, 20, 0.86);
       color: #f4f7fb;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.07) inset,
+        0 10px 24px rgba(0, 0, 0, 0.24);
+    }
+
+    .secondary:hover,
+    .secondary:focus-visible {
+      border-color: rgba(143, 208, 255, 0.58);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.11) inset,
+        0 12px 30px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(143, 208, 255, 0.14);
+    }
+
+    .level-card {
+      min-width: 0;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .level-card::after {
+      pointer-events: none;
+    }
+
+    .level-card--locked:hover,
+    .level-card--locked:focus-visible {
+      border-color: rgba(255, 255, 255, 0.1);
+      transform: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .final-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      width: min(430px, 100%);
+      margin: 0 auto 28px;
+    }
+
+    .final-stat {
+      padding: 12px 14px;
+      text-align: left;
+      border: 1px solid rgba(143, 208, 255, 0.2);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+        rgba(5, 12, 20, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .final-stat__label {
+      display: block;
+      margin-bottom: 4px;
+      color: #8fd0ff;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .final-stat__value {
+      display: block;
+      color: #f4f7fb;
+      font-size: 15px;
+      font-weight: 850;
+      line-height: 1.25;
     }
 
     .desktop-only { display: inline; }
@@ -417,6 +543,27 @@
         rgba(2, 4, 8, 0.9);
     }
     .eyebrow.steel { color: #b8c4cc; }
+
+    .overlay.level4 {
+      background:
+        radial-gradient(circle at 50% 38%, rgba(255, 92, 32, 0.24), transparent 34%),
+        radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0.54), transparent 18%),
+        rgba(2, 4, 8, 0.9);
+    }
+
+    @media (max-width: 720px) {
+      .actions {
+        width: 100%;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .final-stats {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -425,7 +572,7 @@
   <!-- Level 1: Start Screen (Tutorial) -->
   <div class="overlay" id="startScreen">
     <section class="start-panel" aria-labelledby="gameTitle">
-      <p class="eyebrow">Mission Select</p>
+      <p class="eyebrow">Missionsauswahl</p>
       <h1 id="gameTitle">Delta V</h1>
       <p class="mission">Wähle dein Zielsystem:</p>
       
@@ -446,7 +593,7 @@
         <button class="level-card" id="startL2" data-level="2" type="button" style="--accent: #ffb040; --hazard-x: 52%; --hazard-size: 18px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 2</span>
-            <span class="level-card__risk">Gravity</span>
+            <span class="level-card__risk">Gravitation</span>
           </span>
           <span>
             <span class="level-card__title">Gravity Well</span>
@@ -473,7 +620,7 @@
         <button class="level-card" id="startL4" data-level="4" type="button" style="--accent: #ff8800; --hazard-x: 50%; --hazard-size: 16px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 4</span>
-            <span class="level-card__risk">Singularity</span>
+            <span class="level-card__risk">Singularität</span>
           </span>
           <span class="level-card__mid">
             <span class="level-card__title">The Singularity</span>
@@ -487,7 +634,7 @@
       </div>
 
       <div class="actions">
-        <button class="secondary" id="muteButton" type="button" aria-pressed="false">Sound an</button>
+        <button class="secondary" id="muteButton" type="button" aria-pressed="false">Ton an</button>
       </div>
     </section>
   </div>
@@ -505,12 +652,35 @@
     </section>
   </div>
 
+  <!-- Campaign Complete Screen -->
+  <div class="overlay level4" id="finalCompleteScreen" hidden>
+    <section class="start-panel" aria-labelledby="finalTitle">
+      <p class="eyebrow orange">Kampagne abgeschlossen</p>
+      <h1 id="finalTitle">Mission erfüllt</h1>
+      <p class="mission">Alle Lieferungen sind angekommen. Du hast Drift, Gravitation und Singularität kontrolliert genug genutzt, um die Route zu schließen.</p>
+      <div class="final-stats" aria-label="Missionsbilanz">
+        <span class="final-stat">
+          <span class="final-stat__label">Status</span>
+          <span class="final-stat__value">Route abgeschlossen</span>
+        </span>
+        <span class="final-stat">
+          <span class="final-stat__label">Letzte Mission</span>
+          <span class="final-stat__value">The Singularity</span>
+        </span>
+      </div>
+      <div class="actions">
+        <button id="finalMenuButton" type="button">Hauptmenü</button>
+        <button class="secondary" id="finalReplayButton" type="button">Level 4 wiederholen</button>
+      </div>
+    </section>
+  </div>
+
   <!-- Level 2: Start Screen -->
   <div class="overlay level2" id="level2StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l2Title">
       <p class="eyebrow orange">Level 2 — Gravity Well</p>
       <h1 id="l2Title">Delta V</h1>
-      <p class="mission">Eine Gravitationsquelle liegt auf deiner Route. Nutze ihren Sog — oder flieg außen herum.</p>
+      <p class="mission">Eine Gravitationsquelle liegt auf der Route. Nutze ihren Sog kontrolliert oder flieg mit Abstand vorbei.</p>
       <p class="mission" style="font-size: 13px; color: #ffb040; margin-top: -10px;">
         Die gestrichelte Linie zeigt deine vorhergesagte Flugbahn.
       </p>
@@ -525,7 +695,7 @@
     <section class="start-panel" aria-labelledby="l3Title">
       <p class="eyebrow steel">Level 3 — Asteroid Field</p>
       <h1 id="l3Title">Delta V</h1>
-      <p class="mission">Ein dichtes Feld blockiert die Route. Lies die Luecken, halte die Drift sauber und vermeide schnelle Kontakte.</p>
+      <p class="mission">Ein dichtes Feld blockiert die Route. Lies die Lücken, halte die Drift sauber und vermeide harte Kontakte.</p>
       <p class="mission" style="font-size: 13px; color: #b8c4cc; margin-top: -10px;">
         Rote Flugbahn: deine aktuelle Drift schneidet einen Asteroiden.
       </p>
@@ -535,6 +705,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=33"></script>
+  <script type="module" src="./js/main.js?v=35"></script>
 </body>
 </html>

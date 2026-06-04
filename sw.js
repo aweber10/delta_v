@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delta-v-v33';
+const CACHE_NAME = 'delta-v-v35';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/hud.js',
   './js/input-desktop.js',
   './js/input-mobile.js',
+  './js/input-pointer.js',
   './js/main.js',
   './js/physics.js',
   './js/renderer.js',

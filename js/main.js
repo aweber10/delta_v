@@ -20,12 +20,15 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const startScreen = document.getElementById('startScreen');
 const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+const finalCompleteScreen = document.getElementById('finalCompleteScreen');
 const startL1 = document.getElementById('startL1');
 const startL2 = document.getElementById('startL2');
 const startL3 = document.getElementById('startL3');
 const startL4 = document.getElementById('startL4');
 const muteButton = document.getElementById('muteButton');
 const backToMenuButton = document.getElementById('backToMenuButton');
+const finalMenuButton = document.getElementById('finalMenuButton');
+const finalReplayButton = document.getElementById('finalReplayButton');
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
@@ -145,7 +148,7 @@ let currentLevel = L1;
 const ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
 const cam = createCamera(ship.x, ship.y);
 const flags = createInputFlags();
-setupDesktopInput(flags, ship);
+setupDesktopInput(flags, canvas, cam, ship);
 setupMobileInput(flags, canvas, cam, ship);
 
 let score = 0;
@@ -284,6 +287,8 @@ function startLevel(targetLevel) {
   score = 0;
   resetLevel();
   startScreen.hidden = true;
+  levelCompleteScreen.hidden = true;
+  finalCompleteScreen.hidden = true;
   beginGameplay();
 }
 
@@ -328,16 +333,35 @@ document.querySelectorAll('.level-card').forEach(btn => {
 muteButton.addEventListener('click', async () => {
   await initAudio();
   const muted = toggleMute();
-  muteButton.textContent = muted ? 'Sound aus' : 'Sound an';
+  muteButton.textContent = muted ? 'Ton aus' : 'Ton an';
   muteButton.setAttribute('aria-pressed', String(muted));
 });
 
 backToMenuButton.addEventListener('click', () => {
+  showMainMenu();
+});
+
+finalMenuButton.addEventListener('click', () => {
+  showMainMenu();
+});
+
+finalReplayButton.addEventListener('click', () => {
+  finalCompleteScreen.hidden = true;
   levelCompleteScreen.hidden = true;
+  startScreen.hidden = true;
+  selectLevel(4);
+  score = 0;
+  resetLevel();
+  beginGameplay();
+});
+
+function showMainMenu() {
+  levelCompleteScreen.hidden = true;
+  finalCompleteScreen.hidden = true;
   startScreen.hidden = false;
   gameState = 'start';
   updateLevelSelectUI();
-});
+}
 
 updateLevelSelectUI();
 
@@ -673,6 +697,14 @@ function completeLevel() {
   markLevelComplete(level);
   gameState = 'levelComplete';
   playDeliveryComplete();
+
+  if (level === TOTAL_LEVELS) {
+    setTimeout(() => {
+      finalCompleteScreen.hidden = false;
+    }, 800);
+    return;
+  }
+
   showLevelCompleteCopy(getLevelCompleteCopy(level));
 
   setTimeout(() => {
@@ -723,12 +755,7 @@ function getLevelCompleteCopy(completedLevel) {
     };
   }
 
-  return {
-    eyebrow: 'Level 4 abgeschlossen',
-    title: 'Singularität überlebt',
-    mission: 'Unglaublich. Du hast die Raumzeit-Krümmung zu deinem Vorteil genutzt.',
-    nextLevelLabel: '',
-  };
+  return null;
 }
 
 function resetLevel() {
@@ -822,5 +849,5 @@ if (level3StartButton) {
   });
 }
 
-muteButton.textContent = isMuted() ? 'Sound aus' : 'Sound an';
+muteButton.textContent = isMuted() ? 'Ton aus' : 'Ton an';
 loop();
