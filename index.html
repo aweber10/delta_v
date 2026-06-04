@@ -52,8 +52,13 @@
       position: fixed;
       inset: 0;
       z-index: 10;
-      display: grid;
-      place-items: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
       padding:
         max(24px, env(safe-area-inset-top))
         max(24px, env(safe-area-inset-right))
@@ -71,6 +76,13 @@
     .start-panel {
       width: min(760px, 100%);
       text-align: center;
+    }
+
+    .overlay::before,
+    .overlay::after {
+      content: '';
+      flex: 1;
+      min-height: 24px;
     }
 
     .eyebrow {
@@ -316,7 +328,7 @@
       <p class="mission">Wähle dein Zielsystem:</p>
       
       <div class="level-select">
-        <button class="level-card" id="startL1" type="button" style="--accent: #8fd0ff; --hazard-x: 78%; --hazard-size: 8px;">
+        <button class="level-card" id="startL1" data-level="1" type="button" style="--accent: #8fd0ff; --hazard-x: 78%; --hazard-size: 8px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 1</span>
             <span class="level-card__risk">Training</span>
@@ -329,7 +341,7 @@
             <span class="level-card__hazard" aria-hidden="true"></span>
           </span>
         </button>
-        <button class="level-card" id="startL2" type="button" style="--accent: #ffb040; --hazard-x: 52%; --hazard-size: 18px;">
+        <button class="level-card" id="startL2" data-level="2" type="button" style="--accent: #ffb040; --hazard-x: 52%; --hazard-size: 18px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 2</span>
             <span class="level-card__risk">Gravity</span>
@@ -342,7 +354,7 @@
             <span class="level-card__hazard" aria-hidden="true"></span>
           </span>
         </button>
-        <button class="level-card" id="startL3" type="button" style="--accent: #b8c4cc; --hazard-x: 55%; --hazard-size: 15px;">
+        <button class="level-card" id="startL3" data-level="3" type="button" style="--accent: #b8c4cc; --hazard-x: 55%; --hazard-size: 15px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 3</span>
             <span class="level-card__risk">Kollision</span>
@@ -356,7 +368,7 @@
           </span>
         </button>
 
-        <button class="level-card" id="startL4" type="button" style="--accent: #ff8800; --hazard-x: 50%; --hazard-size: 16px;">
+        <button class="level-card" id="startL4" data-level="4" type="button" style="--accent: #ff8800; --hazard-x: 50%; --hazard-size: 16px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 4</span>
             <span class="level-card__risk">Singularity</span>

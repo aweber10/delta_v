@@ -154,6 +154,36 @@ let gameState = 'start';
 let level = 1;
 const tut = createTutorial();
 
+const PROGRESS_KEY = 'delta_v_progress';
+const TOTAL_LEVELS = 4;
+
+function loadProgress() {
+  try {
+    const data = localStorage.getItem(PROGRESS_KEY);
+    if (data) return JSON.parse(data);
+  } catch {}
+  return { completedLevels: [], unlockedLevel: 1 };
+}
+
+function saveProgress(progress) {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+}
+
+function isLevelUnlocked(levelNum) {
+  return levelNum <= loadProgress().unlockedLevel;
+}
+
+function markLevelComplete(levelNum) {
+  const progress = loadProgress();
+  if (!progress.completedLevels.includes(levelNum)) {
+    progress.completedLevels.push(levelNum);
+  }
+  if (levelNum < TOTAL_LEVELS) {
+    progress.unlockedLevel = Math.max(progress.unlockedLevel, levelNum + 1);
+  }
+  saveProgress(progress);
+}
+
 // Vorab allozierte Trajectory-Buffer (kein GC im Hot-Path)
 const TRAJ_STEPS = 80;
 const trajX = new Float32Array(TRAJ_STEPS);
@@ -269,10 +299,23 @@ async function beginGameplay() {
   syncRenderStates();
 }
 
-startL1.addEventListener('click', () => startLevel(1));
-startL2.addEventListener('click', () => startLevel(2));
-startL3.addEventListener('click', () => startLevel(3));
-startL4.addEventListener('click', () => startLevel(4));
+function updateLevelSelectUI() {
+  document.querySelectorAll('.level-card').forEach(btn => {
+    const lvl = parseInt(btn.dataset.level);
+    if (isLevelUnlocked(lvl)) {
+      btn.hidden = false;
+    } else {
+      btn.hidden = true;
+    }
+  });
+}
+
+document.querySelectorAll('.level-card').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const lvl = parseInt(btn.dataset.level);
+    if (isLevelUnlocked(lvl)) startLevel(lvl);
+  });
+});
 
 muteButton.addEventListener('click', async () => {
   await initAudio();
@@ -285,7 +328,10 @@ backToMenuButton.addEventListener('click', () => {
   levelCompleteScreen.hidden = true;
   startScreen.hidden = false;
   gameState = 'start';
+  updateLevelSelectUI();
 });
+
+updateLevelSelectUI();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -568,6 +614,7 @@ function scheduleUndock(station) {
 }
 
 function completeLevel() {
+  markLevelComplete(level);
   gameState = 'levelComplete';
   playDeliveryComplete();
   showLevelCompleteCopy(getLevelCompleteCopy(level));
