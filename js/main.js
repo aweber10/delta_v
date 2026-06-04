@@ -23,6 +23,7 @@ const levelCompleteScreen = document.getElementById('levelCompleteScreen');
 const startL1 = document.getElementById('startL1');
 const startL2 = document.getElementById('startL2');
 const startL3 = document.getElementById('startL3');
+const startL4 = document.getElementById('startL4');
 const muteButton = document.getElementById('muteButton');
 const backToMenuButton = document.getElementById('backToMenuButton');
 
@@ -125,9 +126,20 @@ const L3 = {
   ],
 };
 
+// --- Level 4: The Singularity ---
+// Schwarzes Loch in der Mitte.
+const L4 = {
+  shipStart: { x: 220, y: 1400 },
+  stationA: createStation(220, 1400, -Math.PI * 0.25),
+  stationB: createStation(2180, 200, Math.PI + Math.PI * 0.25),
+  well: createGravityWell(1200, 800, EVENT_HORIZON * 0.5, true),
+  asteroids: null,
+};
+
 L1.stations = [L1.stationA, L1.stationB];
 L2.stations = [L2.stationA, L2.stationB];
 L3.stations = [L3.stationA, L3.stationB];
+L4.stations = [L4.stationA, L4.stationB];
 
 let currentLevel = L1;
 const ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
@@ -244,7 +256,8 @@ function selectLevel(targetLevel) {
   level = targetLevel;
   if (targetLevel === 1) currentLevel = L1;
   else if (targetLevel === 2) currentLevel = L2;
-  else currentLevel = L3;
+  else if (targetLevel === 3) currentLevel = L3;
+  else currentLevel = L4;
 }
 
 async function beginGameplay() {
@@ -259,6 +272,7 @@ async function beginGameplay() {
 startL1.addEventListener('click', () => startLevel(1));
 startL2.addEventListener('click', () => startLevel(2));
 startL3.addEventListener('click', () => startLevel(3));
+startL4.addEventListener('click', () => startLevel(4));
 
 muteButton.addEventListener('click', async () => {
   await initAudio();
@@ -384,15 +398,31 @@ function updateLevelSystems(dt, now) {
 function updateGravityHazards(now) {
   const well = currentLevel.well;
   if (checkWellCollision(ship, well)) {
-    crashReset();
+    if (well.isBlackHole) {
+      spaghettifyReset();
+    } else {
+      crashReset();
+    }
     return;
   }
 
   const dist = Math.hypot(well.x - ship.x, well.y - ship.y);
-  isInDanger = dist < EVENT_HORIZON;
+  const dangerLimit = well.isBlackHole ? EVENT_HORIZON * 1.5 : EVENT_HORIZON;
+  isInDanger = dist < dangerLimit;
   if (isInDanger) {
     eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
   }
+}
+
+function spaghettifyReset() {
+  gameState = 'crashed'; // Sperrt Input
+  // Wir simulieren das Verschlucken durch schnelles Drehen und Skalieren in renderer.js
+  // Hier setzen wir nur den Timeout für den Reset
+  setTimeout(() => {
+    resetLevel();
+    gameState = 'playing';
+    last = performance.now();
+  }, 1500);
 }
 
 function updateGravityTrajectoryPrediction() {
@@ -478,7 +508,10 @@ function renderFrame(alpha = 1) {
   }
 
   renderer.drawRcsZone(ctx, renderShip, renderCam, canvas, flags);
-  if (gameState !== 'crashed') renderer.drawShip(ctx, renderShip, renderCam, canvas, flags);
+  if (gameState !== 'crashed' || (well && well.isBlackHole)) {
+    const isSpaghettifying = gameState === 'crashed' && well && well.isBlackHole;
+    renderer.drawShip(ctx, renderShip, renderCam, canvas, flags, isSpaghettifying);
+  }
   renderer.drawParticles(ctx, renderCam, canvas, particles);
   renderer.drawTargetAngle(ctx, renderShip, renderCam, canvas);
   renderer.drawVelocityVec(ctx, renderShip, renderCam, canvas);
@@ -578,10 +611,19 @@ function getLevelCompleteCopy(completedLevel) {
     };
   }
 
+  if (completedLevel === 3) {
+    return {
+      eyebrow: 'Level 3 abgeschlossen',
+      title: 'Feld durchquert',
+      mission: 'Du hast die Drift sauber gehalten und die Fracht durch das Asteroidenfeld gebracht.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
   return {
-    eyebrow: 'Level 3 abgeschlossen',
-    title: 'Feld durchquert',
-    mission: 'Du hast die Drift sauber gehalten und die Fracht durch das Asteroidenfeld gebracht.',
+    eyebrow: 'Level 4 abgeschlossen',
+    title: 'Singularität überlebt',
+    mission: 'Unglaublich. Du hast die Raumzeit-Krümmung zu deinem Vorteil genutzt.',
     nextLevelLabel: '',
   };
 }
@@ -628,7 +670,7 @@ function crashReset() {
 const nextLevelButton = document.getElementById('nextLevelButton');
 if (nextLevelButton) {
   nextLevelButton.addEventListener('click', () => {
-    const nextLevel = Math.min(level + 1, 3);
+    const nextLevel = Math.min(level + 1, 4);
     selectLevel(nextLevel);
     score = 0;
     resetLevel();

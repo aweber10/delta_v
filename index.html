@@ -106,7 +106,7 @@
 
     .level-select {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 14px;
       width: 100%;
       margin-bottom: 18px;
@@ -240,6 +240,21 @@
         22px -7px 0 -5px rgba(184, 196, 204, 0.58);
     }
 
+    .level-card__hazard--blackhole {
+      background: #000;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 
+        0 0 4px #fff,
+        0 0 12px #ffcc00,
+        0 0 25px #ff8800;
+      animation: bh-glow 3s infinite alternate ease-in-out;
+    }
+
+    @keyframes bh-glow {
+      from { box-shadow: 0 0 4px #fff, 0 0 10px #ffcc00, 0 0 20px #ff8800; }
+      to { box-shadow: 0 0 6px #fff, 0 0 18px #ffcc00, 0 0 35px #ff8800; }
+    }
+
     @media (max-width: 720px) {
       .level-select {
         grid-template-columns: 1fr;
@@ -332,7 +347,7 @@
             <span class="level-card__number">Level 3</span>
             <span class="level-card__risk">Kollision</span>
           </span>
-          <span>
+          <span class="level-card__mid">
             <span class="level-card__title">Asteroid Field</span>
             <span class="level-card__copy">Lücken lesen, Restdrift halten, Kontakt vermeiden.</span>
           </span>
@@ -340,6 +355,21 @@
             <span class="level-card__hazard level-card__hazard--asteroids" aria-hidden="true"></span>
           </span>
         </button>
+
+        <button class="level-card" id="startL4" type="button" style="--accent: #ff8800; --hazard-x: 50%; --hazard-size: 16px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 4</span>
+            <span class="level-card__risk">Singularity</span>
+          </span>
+          <span class="level-card__mid">
+            <span class="level-card__title">The Singularity</span>
+            <span class="level-card__copy">Extremes Feld. Ereignishorizont meiden.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--blackhole" aria-hidden="true"></span>
+          </span>
+        </button>
+
       </div>
 
       <div class="actions">

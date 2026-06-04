@@ -51,12 +51,22 @@ export function drawRcsZone(ctx, ship, cam, canvas, flags) {
   ctx.restore(); // restore setzt lineDash automatisch zurück
 }
 
-export function drawShip(ctx, ship, cam, canvas, flags) {
+export function drawShip(ctx, ship, cam, canvas, flags, isSpaghettifying = false) {
   const p = worldToScreen(cam, ship.x, ship.y, canvas);
   const z = cam.zoom;
   ctx.save();
   ctx.translate(p.x, p.y);
-  ctx.rotate(ship.angle);
+  
+  if (isSpaghettifying) {
+    // Spiraleffekt: Drehen und Schrumpfen
+    const time = performance.now() * 0.005;
+    const scale = Math.max(0, 1 - (time % 5) / 5); // Simpel für den Übergang
+    ctx.rotate(time * 2);
+    ctx.scale(scale, scale);
+  } else {
+    ctx.rotate(ship.angle);
+  }
+
   ctx.fillStyle = '#eee';
   ctx.beginPath();
   ctx.moveTo(SHIP_RADIUS * z, 0);
@@ -452,6 +462,10 @@ export function drawAsteroids(ctx, asteroids, cam, canvas, highlightedAsteroid =
  * Zeichnet die Gravitationsquelle mit Einflussringen und Gradient.
  */
 export function drawGravityWell(ctx, well, cam, canvas, eventHorizon) {
+  if (well.isBlackHole) {
+    drawBlackHole(ctx, well, cam, canvas, eventHorizon);
+    return;
+  }
   const p = worldToScreen(cam, well.x, well.y, canvas);
   const z = cam.zoom;
 
@@ -537,6 +551,55 @@ export function drawTrajectory(ctx, outX, outY, validSteps, cam, canvas, isInDan
   }
 
   ctx.setLineDash([]);
+  ctx.restore();
+}
+
+export function drawBlackHole(ctx, well, cam, canvas, eventHorizon) {
+  const p = worldToScreen(cam, well.x, well.y, canvas);
+  const z = cam.zoom;
+  const time = performance.now() * 0.001;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  // 1. Akkretionsscheibe (äußeres Glühen)
+  const outerRadius = 450 * z;
+  const diskGrad = ctx.createRadialGradient(0, 0, eventHorizon * z, 0, 0, outerRadius);
+  diskGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  diskGrad.addColorStop(0.1, 'rgba(255, 200, 50, 0.4)');
+  diskGrad.addColorStop(0.3, 'rgba(255, 120, 0, 0.15)');
+  diskGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  
+  ctx.fillStyle = diskGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, outerRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Photonensphäre (heller Ring am Rand)
+  ctx.strokeStyle = `rgba(255, 240, 200, ${0.4 + Math.sin(time * 2) * 0.1})`;
+  ctx.lineWidth = 4 * z;
+  ctx.beginPath();
+  ctx.arc(0, 0, eventHorizon * z * 1.1, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 3. Event Horizon (schwarzer Kern)
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(0, 0, eventHorizon * z, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Warnringe (Einflussbereich)
+  const ringAlpha = 0.2 + Math.sin(time * 1.5) * 0.05;
+  ctx.strokeStyle = `rgba(160, 100, 255, ${ringAlpha})`;
+  ctx.setLineDash([10, 15]);
+  ctx.lineWidth = 1.5;
+  
+  for (let r = 1000; r >= 400; r -= 200) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r * z, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 
