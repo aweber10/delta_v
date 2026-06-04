@@ -29,14 +29,29 @@ const backToMenuButton = document.getElementById('backToMenuButton');
 function resize() {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  const width = Math.max(1, Math.floor(rect.width * dpr));
+  const height = Math.max(1, Math.floor(rect.height * dpr));
+  if (canvas.width === width && canvas.height === height) return;
+
+  canvas.width = width;
+  canvas.height = height;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', resize);
+
+let resizeQueued = false;
+function queueResize() {
+  if (resizeQueued) return;
+  resizeQueued = true;
+  requestAnimationFrame(() => {
+    resizeQueued = false;
+    resize();
+  });
+}
+
+window.addEventListener('resize', queueResize);
+window.addEventListener('orientationchange', queueResize);
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', resize);
+  window.visualViewport.addEventListener('resize', queueResize);
 }
 resize();
 
@@ -109,6 +124,10 @@ const L3 = {
     createAsteroid(1880, 620, 30, 138),
   ],
 };
+
+L1.stations = [L1.stationA, L1.stationB];
+L2.stations = [L2.stationA, L2.stationB];
+L3.stations = [L3.stationA, L3.stationB];
 
 let currentLevel = L1;
 const ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
@@ -200,7 +219,18 @@ function updateParticles(dt) {
 const stars = [];
 for (let i=0;i<200;i++) stars.push({ x: Math.random()*2400, y: Math.random()*1600 });
 
+const FIXED_STEP_MS = 1000 / 60;
+const MAX_FRAME_MS = 250;
+const MAX_STEPS_PER_FRAME = 5;
+let accumulator = 0;
 let last = performance.now();
+
+const prevShipState = { x: ship.x, y: ship.y, angle: ship.angle };
+const currShipState = { x: ship.x, y: ship.y, angle: ship.angle };
+const prevCamState = { x: cam.x, y: cam.y, zoom: cam.zoom };
+const currCamState = { x: cam.x, y: cam.y, zoom: cam.zoom };
+const renderShip = Object.create(ship);
+const renderCam = Object.create(cam);
 
 function startLevel(targetLevel) {
   selectLevel(targetLevel);
@@ -222,6 +252,8 @@ async function beginGameplay() {
   playStart();
   gameState = 'playing';
   last = performance.now();
+  accumulator = 0;
+  syncRenderStates();
 }
 
 startL1.addEventListener('click', () => startLevel(1));
@@ -248,19 +280,78 @@ if ('serviceWorker' in navigator) {
 }
 
 function getStations() {
-  return [currentLevel.stationA, currentLevel.stationB];
+  return currentLevel.stations;
 }
 
 function loop() {
   const now = performance.now();
-  const dt = Math.min(32, now - last) / 16.6667;
+  const frameMs = Math.min(MAX_FRAME_MS, now - last);
   last = now;
+  accumulator += frameMs;
 
-  updateGame(dt, now);
-  updateCamera(cam, ship, getStations());
-  renderFrame();
+  let steps = 0;
+  while (accumulator >= FIXED_STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+    captureShipState(prevShipState, ship);
+    captureCamState(prevCamState, cam);
+
+    updateGame(1, now);
+    updateCamera(cam, ship, getStations());
+
+    captureShipState(currShipState, ship);
+    captureCamState(currCamState, cam);
+
+    accumulator -= FIXED_STEP_MS;
+    steps++;
+  }
+
+  if (steps === MAX_STEPS_PER_FRAME && accumulator >= FIXED_STEP_MS) {
+    accumulator = 0;
+    syncRenderStates();
+  }
+
+  renderFrame(accumulator / FIXED_STEP_MS);
 
   requestAnimationFrame(loop);
+}
+
+function syncRenderStates() {
+  captureShipState(prevShipState, ship);
+  captureShipState(currShipState, ship);
+  captureCamState(prevCamState, cam);
+  captureCamState(currCamState, cam);
+}
+
+function captureShipState(target, source) {
+  target.x = source.x;
+  target.y = source.y;
+  target.angle = source.angle;
+}
+
+function captureCamState(target, source) {
+  target.x = source.x;
+  target.y = source.y;
+  target.zoom = source.zoom;
+}
+
+function prepareRenderState(alpha) {
+  renderShip.x = lerp(prevShipState.x, currShipState.x, alpha);
+  renderShip.y = lerp(prevShipState.y, currShipState.y, alpha);
+  renderShip.angle = interpolateAngle(prevShipState.angle, currShipState.angle, alpha);
+
+  renderCam.x = lerp(prevCamState.x, currCamState.x, alpha);
+  renderCam.y = lerp(prevCamState.y, currCamState.y, alpha);
+  renderCam.zoom = lerp(prevCamState.zoom, currCamState.zoom, alpha);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function interpolateAngle(a, b, t) {
+  let diff = b - a;
+  if (diff > Math.PI) diff -= Math.PI * 2;
+  if (diff < -Math.PI) diff += Math.PI * 2;
+  return a + diff * t;
 }
 
 function updateGame(dt, now) {
@@ -350,45 +441,47 @@ function getDockableTargetStation() {
   return dockColor(check) === 'green' ? targetStation : null;
 }
 
-function renderFrame() {
+function renderFrame(alpha = 1) {
+  prepareRenderState(alpha);
+
   const well = currentLevel.well;
   const asteroids = currentLevel.asteroids;
   const stationA = currentLevel.stationA;
   const stationB = currentLevel.stationB;
 
   renderer.clear(ctx, canvas);
-  renderer.drawStars(ctx, stars, cam, canvas);
+  renderer.drawStars(ctx, stars, renderCam, canvas);
 
   // Level 2: Gravity Well zeichnen (vor Stationen, damit Ringe im Hintergrund)
   if (well) {
-    renderer.drawGravityWell(ctx, well, cam, canvas, EVENT_HORIZON);
+    renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
   }
 
   if (asteroids) {
-    renderer.drawAsteroids(ctx, asteroids, cam, canvas, trajHitAsteroid);
+    renderer.drawAsteroids(ctx, asteroids, renderCam, canvas, trajHitAsteroid);
   }
 
   const checkA = checkDock(ship, stationA);
   const colorA = dockColor(checkA);
-  renderer.drawStation(ctx, stationA, cam, canvas, colorA);
+  renderer.drawStation(ctx, stationA, renderCam, canvas, colorA);
   const checkB = checkDock(ship, stationB);
   const colorB = dockColor(checkB);
-  renderer.drawStation(ctx, stationB, cam, canvas, colorB);
+  renderer.drawStation(ctx, stationB, renderCam, canvas, colorB);
 
   // Level 2: Trajectory-Vorschau zeichnen
   if (well && trajValidSteps > 1) {
-    renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, cam, canvas, isInDanger);
+    renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, isInDanger);
   }
 
   if (asteroids && trajValidSteps > 1) {
-    renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, cam, canvas, trajWillHitAsteroid);
+    renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, trajWillHitAsteroid);
   }
 
-  renderer.drawRcsZone(ctx, ship, cam, canvas, flags);
-  if (gameState !== 'crashed') renderer.drawShip(ctx, ship, cam, canvas, flags);
-  renderer.drawParticles(ctx, cam, canvas, particles);
-  renderer.drawTargetAngle(ctx, ship, cam, canvas);
-  renderer.drawVelocityVec(ctx, ship, cam, canvas);
+  renderer.drawRcsZone(ctx, renderShip, renderCam, canvas, flags);
+  if (gameState !== 'crashed') renderer.drawShip(ctx, renderShip, renderCam, canvas, flags);
+  renderer.drawParticles(ctx, renderCam, canvas, particles);
+  renderer.drawTargetAngle(ctx, renderShip, renderCam, canvas);
+  renderer.drawVelocityVec(ctx, renderShip, renderCam, canvas);
 
   // Level 2: Event Horizon Vignette
   if (well && isInDanger) {
@@ -398,9 +491,9 @@ function renderFrame() {
   const targetCheck = targetStation === stationA ? checkA : checkB;
   const targetColor = targetStation === stationA ? colorA : colorB;
   renderer.drawHud(ctx, ship, canvas, targetStation, targetCheck, score, targetColor, level);
-  renderer.drawTargetArrow(ctx, ship, targetStation, cam, canvas);
+  renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
-  if (level === 1) drawTutorial(ctx, canvas, tut, ship, flags, cam);
+  if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
 }
 
 function handleDocking(ship, station) {
@@ -420,6 +513,7 @@ function dockShipAtStation(ship, station) {
   ship.vy = 0;
   ship.angularVel = 0;
   station.docked = true;
+  syncRenderStates();
   playDock();
 }
 
@@ -516,6 +610,8 @@ function resetLevel() {
   particles = [];
   cam.x = ship.x;
   cam.y = ship.y;
+  cam.targetZoom = 1;
+  syncRenderStates();
 }
 
 function crashReset() {
