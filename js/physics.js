@@ -3,6 +3,9 @@ import { applyGravity } from './gravity.js';
 
 let lastRcsTime = 0;
 const MAX_ANGULAR_VELOCITY = 0.15;
+const BRAKE_ALIGNMENT_TOLERANCE = 0.005;
+const BRAKE_ANGULAR_VELOCITY_TOLERANCE = 0.0001;
+const ZERO_SPEED_EPSILON = 1e-9;
 
 /**
  * @param {object} ship
@@ -14,6 +17,7 @@ export function updatePhysics(ship, flags, dt, gravityWell = null) {
   if (updateDockedShip(ship, dt)) return;
 
   updateRotation(ship, dt);
+  applyPendingBrakeImpulse(ship, flags);
   applyMainThrust(ship, flags, dt);
   applyRcsImpulse(ship, flags);
 
@@ -31,6 +35,7 @@ function updateDockedShip(ship, dt) {
   ship.vx = 0;
   ship.vy = 0;
   ship.angularVel = 0;
+  ship.pendingBrakeImpulse = false;
   return true;
 }
 
@@ -80,6 +85,45 @@ function applyMainThrust(ship, flags, dt) {
   ship.vx += ax;
   ship.vy += ay;
   ship.fuel = Math.max(0, ship.fuel - FUEL_MAIN * dt);
+}
+
+function applyPendingBrakeImpulse(ship, flags) {
+  if (!ship.pendingBrakeImpulse) return;
+  if (!isBrakeImpulseAligned(ship)) return;
+
+  ship.pendingBrakeImpulse = false;
+  if (ship.fuel <= 0) return;
+
+  const speed = Math.hypot(ship.vx, ship.vy);
+  if (speed <= ZERO_SPEED_EPSILON) {
+    ship.vx = 0;
+    ship.vy = 0;
+    return;
+  }
+
+  const dx = Math.cos(ship.angle);
+  const dy = Math.sin(ship.angle);
+  ship.vx += dx * speed;
+  ship.vy += dy * speed;
+
+  if (Math.hypot(ship.vx, ship.vy) <= ZERO_SPEED_EPSILON) {
+    ship.vx = 0;
+    ship.vy = 0;
+  }
+
+  ship.fuel = Math.max(0, ship.fuel - FUEL_RCS);
+  flags.rcsFlash = { dx, dy, time: performance.now() };
+  setTimeout(() => {
+    if (flags.rcsFlash && flags.rcsFlash.dx === dx && flags.rcsFlash.dy === dy) {
+      flags.rcsFlash = null;
+    }
+  }, 200 + 10);
+}
+
+function isBrakeImpulseAligned(ship) {
+  const angleDiff = Math.abs(normalizeAngle(ship.targetAngle - ship.angle));
+  return angleDiff <= BRAKE_ALIGNMENT_TOLERANCE
+    && Math.abs(ship.angularVel) <= BRAKE_ANGULAR_VELOCITY_TOLERANCE;
 }
 
 function consumeTapThrust(ship, dt) {

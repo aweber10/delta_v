@@ -153,9 +153,14 @@ let targetStation = currentLevel.stationA;
 let gameState = 'start';
 let level = 1;
 const tut = createTutorial();
+let blackHoleResetTimer = null;
+let blackHoleCollapseTimer = null;
+let blackHoleCollapse = null;
 
 const PROGRESS_KEY = 'delta_v_progress';
 const TOTAL_LEVELS = 4;
+const BLACK_HOLE_COLLAPSE_MS = 750;
+const BLACK_HOLE_BLACKOUT_MS = 1000;
 
 function loadProgress() {
   try {
@@ -291,29 +296,32 @@ function selectLevel(targetLevel) {
 }
 
 async function beginGameplay() {
-  await initAudio();
-  playStart();
   gameState = 'playing';
   last = performance.now();
   accumulator = 0;
   syncRenderStates();
+
+  try {
+    if (await initAudio()) playStart();
+  } catch {}
 }
 
 function updateLevelSelectUI() {
   document.querySelectorAll('.level-card').forEach(btn => {
     const lvl = parseInt(btn.dataset.level);
-    if (isLevelUnlocked(lvl)) {
-      btn.hidden = false;
-    } else {
-      btn.hidden = true;
-    }
+    const unlocked = isLevelUnlocked(lvl);
+    btn.hidden = false;
+    btn.disabled = !unlocked;
+    btn.setAttribute('aria-disabled', String(!unlocked));
+    btn.classList.toggle('level-card--locked', !unlocked);
   });
 }
 
 document.querySelectorAll('.level-card').forEach(btn => {
   btn.addEventListener('click', () => {
     const lvl = parseInt(btn.dataset.level);
-    if (isLevelUnlocked(lvl)) startLevel(lvl);
+    if (!isLevelUnlocked(lvl)) return;
+    startLevel(lvl);
   });
 });
 
@@ -445,7 +453,7 @@ function updateGravityHazards(now) {
   const well = currentLevel.well;
   if (checkWellCollision(ship, well)) {
     if (well.isBlackHole) {
-      spaghettifyReset();
+      blackHoleCrashReset(now);
     } else {
       crashReset();
     }
@@ -460,15 +468,41 @@ function updateGravityHazards(now) {
   }
 }
 
-function spaghettifyReset() {
-  gameState = 'crashed'; // Sperrt Input
-  // Wir simulieren das Verschlucken durch schnelles Drehen und Skalieren in renderer.js
-  // Hier setzen wir nur den Timeout für den Reset
-  setTimeout(() => {
+function blackHoleCrashReset(now) {
+  if (gameState === 'blackHoleCollapse' || gameState === 'blackout') return;
+  gameState = 'blackHoleCollapse';
+  ship.pendingBrakeImpulse = false;
+  ship.thrustHeld = false;
+  ship.tapThrustTime = 0;
+  isInDanger = false;
+  trajValidSteps = 0;
+  particles = [];
+
+  blackHoleCollapse = {
+    startTime: now,
+    startX: ship.x,
+    startY: ship.y,
+    startAngle: ship.angle,
+    targetX: currentLevel.well.x,
+    targetY: currentLevel.well.y,
+  };
+
+  if (blackHoleCollapseTimer) clearTimeout(blackHoleCollapseTimer);
+  blackHoleCollapseTimer = setTimeout(startBlackHoleBlackout, BLACK_HOLE_COLLAPSE_MS);
+}
+
+function startBlackHoleBlackout() {
+  blackHoleCollapseTimer = null;
+  blackHoleCollapse = null;
+  gameState = 'blackout';
+
+  if (blackHoleResetTimer) clearTimeout(blackHoleResetTimer);
+  blackHoleResetTimer = setTimeout(() => {
+    blackHoleResetTimer = null;
     resetLevel();
     gameState = 'playing';
     last = performance.now();
-  }, 1500);
+  }, BLACK_HOLE_BLACKOUT_MS);
 }
 
 function updateGravityTrajectoryPrediction() {
@@ -520,6 +554,11 @@ function getDockableTargetStation() {
 function renderFrame(alpha = 1) {
   prepareRenderState(alpha);
 
+  if (gameState === 'blackout') {
+    renderer.clear(ctx, canvas);
+    return;
+  }
+
   const well = currentLevel.well;
   const asteroids = currentLevel.asteroids;
   const stationA = currentLevel.stationA;
@@ -553,10 +592,23 @@ function renderFrame(alpha = 1) {
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, trajWillHitAsteroid);
   }
 
+  if (gameState === 'blackHoleCollapse' && blackHoleCollapse) {
+    const t = Math.min(1, (performance.now() - blackHoleCollapse.startTime) / BLACK_HOLE_COLLAPSE_MS);
+    const eased = t * t * (3 - 2 * t);
+    const collapseShip = {
+      ...renderShip,
+      x: lerp(blackHoleCollapse.startX, blackHoleCollapse.targetX, eased),
+      y: lerp(blackHoleCollapse.startY, blackHoleCollapse.targetY, eased),
+      angle: blackHoleCollapse.startAngle,
+    };
+    const collapseScale = Math.max(0.08, 1 - eased * 0.92);
+    renderer.drawShip(ctx, collapseShip, renderCam, canvas, flags, collapseScale);
+    return;
+  }
+
   renderer.drawRcsZone(ctx, renderShip, renderCam, canvas, flags);
-  if (gameState !== 'crashed' || (well && well.isBlackHole)) {
-    const isSpaghettifying = gameState === 'crashed' && well && well.isBlackHole;
-    renderer.drawShip(ctx, renderShip, renderCam, canvas, flags, isSpaghettifying);
+  if (gameState !== 'crashed') {
+    renderer.drawShip(ctx, renderShip, renderCam, canvas, flags);
   }
   renderer.drawParticles(ctx, renderCam, canvas, particles);
   renderer.drawTargetAngle(ctx, renderShip, renderCam, canvas);
@@ -588,9 +640,13 @@ function dockShipAtStation(ship, station) {
   ship.x = port.x;
   ship.y = port.y;
   ship.angle = station.dockAngle + Math.PI;
+  ship.targetAngle = ship.angle;
   ship.vx = 0;
   ship.vy = 0;
   ship.angularVel = 0;
+  ship.thrustHeld = false;
+  ship.tapThrustTime = 0;
+  ship.pendingBrakeImpulse = false;
   station.docked = true;
   syncRenderStates();
   playDock();
@@ -676,6 +732,15 @@ function getLevelCompleteCopy(completedLevel) {
 }
 
 function resetLevel() {
+  if (blackHoleCollapseTimer) {
+    clearTimeout(blackHoleCollapseTimer);
+    blackHoleCollapseTimer = null;
+  }
+  if (blackHoleResetTimer) {
+    clearTimeout(blackHoleResetTimer);
+    blackHoleResetTimer = null;
+  }
+  blackHoleCollapse = null;
   const start = currentLevel.shipStart;
   ship.x = start.x;
   ship.y = start.y;
@@ -689,6 +754,7 @@ function resetLevel() {
   ship.dockedTimer = 0;
   ship.thrustHeld = false;
   ship.tapThrustTime = 0;
+  ship.pendingBrakeImpulse = false;
   currentLevel.stationA.docked = false;
   currentLevel.stationB.docked = false;
   targetStation = currentLevel.stationA;
@@ -706,6 +772,9 @@ function resetLevel() {
 function crashReset() {
   spawnExplosion(ship.x, ship.y);
   gameState = 'crashed';
+  ship.pendingBrakeImpulse = false;
+  ship.thrustHeld = false;
+  ship.tapThrustTime = 0;
   setTimeout(() => {
     particles = [];
     resetLevel();

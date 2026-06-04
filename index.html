@@ -154,6 +154,60 @@
       transform: translateY(-1px);
     }
 
+    .level-card--locked {
+      cursor: not-allowed;
+      color: rgba(244, 247, 251, 0.48);
+      border-color: rgba(255, 255, 255, 0.1);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
+        rgba(5, 9, 14, 0.92);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .level-card--locked:hover,
+    .level-card--locked:focus-visible {
+      border-color: rgba(255, 255, 255, 0.1);
+      transform: none;
+    }
+
+    .level-card--locked::before {
+      background: rgba(160, 174, 190, 0.28);
+    }
+
+    .level-card--locked::after {
+      content: "Gesperrt";
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      padding: 4px 7px;
+      color: rgba(244, 247, 251, 0.66);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      text-transform: uppercase;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.36);
+    }
+
+    .level-card--locked .level-card__number,
+    .level-card--locked .level-card__risk {
+      color: rgba(185, 198, 212, 0.58);
+    }
+
+    .level-card--locked .level-card__risk {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .level-card--locked .level-card__copy {
+      color: rgba(174, 189, 204, 0.5);
+    }
+
+    .level-card--locked .level-card__route {
+      opacity: 0.42;
+    }
+
     .level-card:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 3px;
@@ -254,17 +308,65 @@
 
     .level-card__hazard--blackhole {
       background: #000;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 
-        0 0 4px #fff,
-        0 0 12px #ffcc00,
-        0 0 25px #ff8800;
-      animation: bh-glow 3s infinite alternate ease-in-out;
+      border: 1px solid rgba(255, 225, 190, 0.72);
+      box-shadow:
+        0 0 0 3px rgba(255, 42, 24, 0.44),
+        8px 0 0 -2px rgba(255, 118, 24, 0.88),
+        -9px 1px 0 -3px rgba(255, 28, 40, 0.72),
+        0 0 16px rgba(255, 48, 24, 0.86),
+        0 0 30px rgba(120, 0, 32, 0.72);
+      animation: bh-rift 4.8s infinite alternate ease-in-out;
     }
 
-    @keyframes bh-glow {
-      from { box-shadow: 0 0 4px #fff, 0 0 10px #ffcc00, 0 0 20px #ff8800; }
-      to { box-shadow: 0 0 6px #fff, 0 0 18px #ffcc00, 0 0 35px #ff8800; }
+    .level-card--locked .level-card__hazard--blackhole {
+      animation: none;
+    }
+
+    .level-card__hazard--blackhole::before,
+    .level-card__hazard--blackhole::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .level-card__hazard--blackhole::before {
+      width: 42px;
+      height: 12px;
+      border-top: 2px solid rgba(255, 226, 178, 0.78);
+      border-bottom: 4px solid rgba(255, 48, 24, 0.58);
+      transform: translate(-50%, -50%) rotate(-17deg);
+      filter: drop-shadow(0 0 8px rgba(255, 48, 24, 0.9));
+    }
+
+    .level-card__hazard--blackhole::after {
+      width: 26px;
+      height: 26px;
+      border: 1px dashed rgba(255, 40, 40, 0.62);
+      transform: translate(-50%, -50%) rotate(28deg);
+    }
+
+    @keyframes bh-rift {
+      from {
+        transform: translate(-50%, -50%) rotate(-3deg) scale(0.98);
+        box-shadow:
+          0 0 0 2px rgba(255, 42, 24, 0.36),
+          7px 0 0 -3px rgba(255, 118, 24, 0.76),
+          -8px 1px 0 -4px rgba(255, 28, 40, 0.64),
+          0 0 14px rgba(255, 48, 24, 0.74),
+          0 0 24px rgba(120, 0, 32, 0.58);
+      }
+      to {
+        transform: translate(-50%, -50%) rotate(3deg) scale(1.02);
+        box-shadow:
+          0 0 0 4px rgba(255, 42, 24, 0.54),
+          11px -1px 0 -2px rgba(255, 180, 58, 0.92),
+          -12px 2px 0 -3px rgba(255, 28, 40, 0.8),
+          0 0 22px rgba(255, 48, 24, 0.98),
+          0 0 42px rgba(120, 0, 32, 0.84);
+      }
     }
 
     @media (max-width: 720px) {
@@ -433,6 +535,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=29"></script>
+  <script type="module" src="./js/main.js?v=33"></script>
 </body>
 </html>

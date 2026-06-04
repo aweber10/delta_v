@@ -1,10 +1,16 @@
 import { RCS_PULSE_MS, RCS_ZONE_RADIUS_PX, normalizeAngle } from './constants.js';
 import { screenToWorld, worldToScreen } from './camera.js';
 
+const TAP_MAX_MS = 150;
+const DOUBLE_TAP_MAX_MS = 320;
+const DOUBLE_TAP_MAX_DISTANCE_PX = 42;
+
 export function setupMobileInput(flags, canvas, cam, ship) {
   let activeTouchId = null;
   let touchStartTime = 0;
+  let touchStartPoint = null;
   let holdTimer = null;
+  let lastTravelTap = null;
 
   canvas.addEventListener('touchstart', (ev) => {
     ev.preventDefault();
@@ -18,6 +24,7 @@ export function setupMobileInput(flags, canvas, cam, ship) {
 
     activeTouchId = touch.identifier;
     touchStartTime = performance.now();
+    touchStartPoint = point;
     holdTimer = startTravelTouch(point, ship, cam, canvas, () => activeTouchId !== null);
   });
 
@@ -27,8 +34,9 @@ export function setupMobileInput(flags, canvas, cam, ship) {
   function handleTouchEnd(ev) {
     for (let i = 0; i < ev.changedTouches.length; i++) {
       if (ev.changedTouches[i].identifier === activeTouchId) {
-        finishTravelTouch(ship, touchStartTime, holdTimer);
+        lastTravelTap = finishTravelTouch(ship, touchStartTime, touchStartPoint, holdTimer, lastTravelTap);
         activeTouchId = null;
+        touchStartPoint = null;
       }
     }
   }
@@ -59,24 +67,44 @@ function queueMobileRcsPulse(flags, point, ship, cam, canvas) {
 function startTravelTouch(point, ship, cam, canvas, isTouchActive) {
   ship.thrustHeld = false;
   ship.tapThrustTime = 0;
+  ship.pendingBrakeImpulse = false;
   ship.targetAngle = getTargetAngle(point, ship, cam, canvas);
 
   return setTimeout(() => {
     if (isTouchActive()) {
       ship.thrustHeld = true;
     }
-  }, 150);
+  }, TAP_MAX_MS);
 }
 
-function finishTravelTouch(ship, touchStartTime, holdTimer) {
-  const touchDuration = performance.now() - touchStartTime;
+function finishTravelTouch(ship, touchStartTime, touchStartPoint, holdTimer, lastTravelTap) {
+  const now = performance.now();
+  const touchDuration = now - touchStartTime;
   clearTimeout(holdTimer);
 
-  if (touchDuration < 150 && !ship.thrustHeld && isShipAligned(ship)) {
-    ship.tapThrustTime = 300;
+  if (touchDuration < TAP_MAX_MS && !ship.thrustHeld && touchStartPoint) {
+    if (isDoubleTravelTap(touchStartPoint, now, lastTravelTap)) {
+      ship.tapThrustTime = 0;
+      ship.pendingBrakeImpulse = true;
+      lastTravelTap = null;
+    } else {
+      if (isShipAligned(ship)) {
+        ship.tapThrustTime = 300;
+      }
+      lastTravelTap = { x: touchStartPoint.x, y: touchStartPoint.y, time: now };
+    }
   }
 
   ship.thrustHeld = false;
+  return lastTravelTap;
+}
+
+function isDoubleTravelTap(point, now, lastTravelTap) {
+  if (!lastTravelTap) return false;
+  if (now - lastTravelTap.time > DOUBLE_TAP_MAX_MS) return false;
+
+  const distance = Math.hypot(point.x - lastTravelTap.x, point.y - lastTravelTap.y);
+  return distance <= DOUBLE_TAP_MAX_DISTANCE_PX;
 }
 
 function getTargetAngle(point, ship, cam, canvas) {

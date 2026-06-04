@@ -14,5 +14,6 @@ export function createShip(x = 300, y = 300) {
     targetAngle: 0, // Zielwinkel für die Ausrichtung
     thrustHeld: false, // Schub durch Halten
     tapThrustTime: 0, // Kurzer Impuls nach Tap wenn aligned
+    pendingBrakeImpulse: false, // Einmaliger Komfortimpuls nach Doppel-Tap
   };
 }

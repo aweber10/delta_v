@@ -51,21 +51,13 @@ export function drawRcsZone(ctx, ship, cam, canvas, flags) {
   ctx.restore(); // restore setzt lineDash automatisch zurück
 }
 
-export function drawShip(ctx, ship, cam, canvas, flags, isSpaghettifying = false) {
+export function drawShip(ctx, ship, cam, canvas, flags, visualScale = 1) {
   const p = worldToScreen(cam, ship.x, ship.y, canvas);
   const z = cam.zoom;
   ctx.save();
   ctx.translate(p.x, p.y);
-  
-  if (isSpaghettifying) {
-    // Spiraleffekt: Drehen und Schrumpfen
-    const time = performance.now() * 0.005;
-    const scale = Math.max(0, 1 - (time % 5) / 5); // Simpel für den Übergang
-    ctx.rotate(time * 2);
-    ctx.scale(scale, scale);
-  } else {
-    ctx.rotate(ship.angle);
-  }
+  ctx.rotate(ship.angle);
+  ctx.scale(visualScale, visualScale);
 
   ctx.fillStyle = '#eee';
   ctx.beginPath();
@@ -554,51 +546,127 @@ export function drawTrajectory(ctx, outX, outY, validSteps, cam, canvas, isInDan
   ctx.restore();
 }
 
+const BLACK_HOLE_FRAGMENTS = [
+  [1.242, -1.331, 0.474, 1.296],
+  [1.455, -0.757, 0.805, 0.863],
+  [1.531, 0.391, 0.937, 0.614],
+  [1.293, 1.134, 0.617, 1.076],
+  [0.599, 1.803, 0.028, 1.36],
+  [-0.887, 1.271, -0.893, 0.74],
+  [-1.374, 0.551, -1.092, 0.133],
+  [-1.596, -0.456, -0.996, -0.595],
+  [-1.061, -1.576, -0.435, -1.183],
+  [0.168, -1.551, 0.327, -1.029],
+  [1.022, -1.408, 0.931, -0.789],
+  [1.521, -0.613, 1.097, -0.226],
+];
+
+const BLACK_HOLE_HORIZON_POINTS = [
+  [1.02, 0],
+  [1.014, 0.298],
+  [0.842, 0.541],
+  [0.642, 0.74],
+  [0.454, 0.995],
+  [0.14, 0.973],
+  [-0.14, 0.973],
+  [-0.454, 0.995],
+  [-0.642, 0.74],
+  [-0.842, 0.541],
+  [-1.014, 0.298],
+  [-1.02, 0],
+  [-0.944, -0.277],
+  [-0.874, -0.562],
+  [-0.694, -0.801],
+  [-0.393, -0.861],
+  [-0.15, -1.046],
+  [0.15, -1.046],
+  [0.393, -0.861],
+  [0.694, -0.801],
+  [0.874, -0.562],
+  [0.944, -0.277],
+  [1.02, 0],
+];
+
 export function drawBlackHole(ctx, well, cam, canvas, eventHorizon) {
   const p = worldToScreen(cam, well.x, well.y, canvas);
   const z = cam.zoom;
   const time = performance.now() * 0.001;
+  const horizon = eventHorizon * z;
+  const pulse = 0.5 + Math.sin(time * 0.9) * 0.5;
 
   ctx.save();
   ctx.translate(p.x, p.y);
 
-  // 1. Akkretionsscheibe (äußeres Glühen)
-  const outerRadius = 450 * z;
-  const diskGrad = ctx.createRadialGradient(0, 0, eventHorizon * z, 0, 0, outerRadius);
+  // Wenige statische Ringe halten den Eindruck, ohne pro Frame teuer zu rotieren.
+  ctx.strokeStyle = `rgba(170, 20, 58, ${0.12 + pulse * 0.04})`;
+  ctx.lineWidth = 1.25;
+  ctx.setLineDash([10, 18]);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 760 * z, 520 * z, -0.18, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 520 * z, 350 * z, -0.18, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const outerRadius = 390 * z;
+  const diskGrad = ctx.createRadialGradient(0, 0, horizon * 0.55, 0, 0, outerRadius);
   diskGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  diskGrad.addColorStop(0.1, 'rgba(255, 200, 50, 0.4)');
-  diskGrad.addColorStop(0.3, 'rgba(255, 120, 0, 0.15)');
+  diskGrad.addColorStop(0.16, `rgba(255, 238, 190, ${0.45 + pulse * 0.08})`);
+  diskGrad.addColorStop(0.32, 'rgba(255, 68, 22, 0.28)');
+  diskGrad.addColorStop(0.62, 'rgba(104, 8, 30, 0.12)');
   diskGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  
+
   ctx.fillStyle = diskGrad;
   ctx.beginPath();
-  ctx.arc(0, 0, outerRadius, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, outerRadius * 1.45, outerRadius * 0.34, -0.28, 0, Math.PI * 2);
   ctx.fill();
 
-  // 2. Photonensphäre (heller Ring am Rand)
-  ctx.strokeStyle = `rgba(255, 240, 200, ${0.4 + Math.sin(time * 2) * 0.1})`;
-  ctx.lineWidth = 4 * z;
+  ctx.strokeStyle = 'rgba(255, 78, 26, 0.58)';
+  ctx.lineWidth = 8 * z;
   ctx.beginPath();
-  ctx.arc(0, 0, eventHorizon * z * 1.1, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, horizon * 2.72, horizon * 1.05, -0.28, 0.22, Math.PI * 1.72);
   ctx.stroke();
 
-  // 3. Event Horizon (schwarzer Kern)
-  ctx.fillStyle = '#000';
+  ctx.strokeStyle = `rgba(255, 230, 166, ${0.62 + pulse * 0.1})`;
+  ctx.lineWidth = 3 * z;
   ctx.beginPath();
-  ctx.arc(0, 0, eventHorizon * z, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.ellipse(0, 0, horizon * 2.34, horizon * 0.82, -0.28, Math.PI * 1.05, Math.PI * 1.82);
+  ctx.stroke();
 
-  // 4. Warnringe (Einflussbereich)
-  const ringAlpha = 0.2 + Math.sin(time * 1.5) * 0.05;
-  ctx.strokeStyle = `rgba(160, 100, 255, ${ringAlpha})`;
-  ctx.setLineDash([10, 15]);
-  ctx.lineWidth = 1.5;
-  
-  for (let r = 1000; r >= 400; r -= 200) {
+  ctx.lineCap = 'round';
+  for (const [x1, y1, x2, y2] of BLACK_HOLE_FRAGMENTS) {
+    ctx.strokeStyle = 'rgba(255, 58, 28, 0.46)';
+    ctx.lineWidth = 2 * z;
     ctx.beginPath();
-    ctx.arc(0, 0, r * z, 0, Math.PI * 2);
+    ctx.moveTo(x1 * horizon, y1 * horizon);
+    ctx.lineTo(x2 * horizon, y2 * horizon);
     ctx.stroke();
   }
+
+  ctx.strokeStyle = `rgba(255, 220, 170, ${0.62 + pulse * 0.08})`;
+  ctx.lineWidth = 3.5 * z;
+  ctx.beginPath();
+  ctx.arc(0, 0, horizon * 1.08, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 32, 32, 0.82)';
+  ctx.lineWidth = 2 * z;
+  ctx.beginPath();
+  for (let i = 0; i < BLACK_HOLE_HORIZON_POINTS.length; i++) {
+    const [px, py] = BLACK_HOLE_HORIZON_POINTS[i];
+    const x = px * horizon;
+    const y = py * horizon;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // 5. Event Horizon (lichtloser Kern).
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(0, 0, horizon * 0.98, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
