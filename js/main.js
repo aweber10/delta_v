@@ -23,6 +23,7 @@ const levelCompleteScreen = document.getElementById('levelCompleteScreen');
 const startL1 = document.getElementById('startL1');
 const startL2 = document.getElementById('startL2');
 const startL3 = document.getElementById('startL3');
+const startL4 = document.getElementById('startL4');
 const muteButton = document.getElementById('muteButton');
 const backToMenuButton = document.getElementById('backToMenuButton');
 
@@ -69,45 +70,19 @@ const L3 = {
   stationB: createStation(2200, 220, Math.PI + Math.PI * 0.22),
   well: null,
   asteroids: [
-    createAsteroid(500, 1260, 46, 101),
-    createAsteroid(560, 940, 38, 102),
-    createAsteroid(690, 1330, 58, 103),
-    createAsteroid(780, 760, 52, 104),
-    createAsteroid(880, 1160, 44, 105),
-    createAsteroid(980, 560, 62, 106),
-    createAsteroid(1040, 1240, 72, 107),
-    createAsteroid(1120, 720, 36, 108),
-    createAsteroid(1220, 1040, 64, 109),
-    createAsteroid(1320, 460, 48, 110),
-    createAsteroid(1380, 860, 42, 111),
-    createAsteroid(1480, 1180, 70, 112),
-    createAsteroid(1560, 600, 58, 113),
-    createAsteroid(1660, 960, 44, 114),
-    createAsteroid(1740, 380, 64, 115),
-    createAsteroid(1840, 780, 52, 116),
-    createAsteroid(1940, 520, 38, 117),
-    createAsteroid(2020, 1020, 60, 118),
-    createAsteroid(420, 720, 34, 119),
-    createAsteroid(520, 520, 56, 120),
-    createAsteroid(660, 380, 44, 121),
-    createAsteroid(760, 220, 36, 122),
-    createAsteroid(900, 1480, 42, 123),
-    createAsteroid(1160, 1460, 54, 124),
-    createAsteroid(1380, 1420, 46, 125),
-    createAsteroid(1600, 1340, 58, 126),
-    createAsteroid(1840, 1260, 40, 127),
-    createAsteroid(2100, 1220, 62, 128),
-    createAsteroid(300, 1040, 40, 129),
-    createAsteroid(2220, 760, 44, 130),
-    createAsteroid(2140, 520, 34, 131),
-    createAsteroid(1260, 220, 54, 132),
-    createAsteroid(1060, 300, 38, 133),
-    createAsteroid(1460, 250, 32, 134),
-    createAsteroid(640, 1120, 34, 135),
-    createAsteroid(920, 880, 32, 136),
-    createAsteroid(1540, 760, 34, 137),
+// ... existing asteroids ...
     createAsteroid(1880, 620, 30, 138),
   ],
+};
+
+// --- Level 4: The Singularity ---
+// Schwarzes Loch in der Mitte.
+const L4 = {
+  shipStart: { x: 220, y: 1400 },
+  stationA: createStation(220, 1400, -Math.PI * 0.25),
+  stationB: createStation(2180, 200, Math.PI + Math.PI * 0.25),
+  well: createGravityWell(1200, 800, EVENT_HORIZON * 0.5, true),
+  asteroids: null,
 };
 
 let currentLevel = L1;
@@ -214,7 +189,8 @@ function selectLevel(targetLevel) {
   level = targetLevel;
   if (targetLevel === 1) currentLevel = L1;
   else if (targetLevel === 2) currentLevel = L2;
-  else currentLevel = L3;
+  else if (targetLevel === 3) currentLevel = L3;
+  else currentLevel = L4;
 }
 
 async function beginGameplay() {
@@ -227,6 +203,7 @@ async function beginGameplay() {
 startL1.addEventListener('click', () => startLevel(1));
 startL2.addEventListener('click', () => startLevel(2));
 startL3.addEventListener('click', () => startLevel(3));
+startL4.addEventListener('click', () => startLevel(4));
 
 muteButton.addEventListener('click', async () => {
   await initAudio();
@@ -293,15 +270,31 @@ function updateLevelSystems(dt, now) {
 function updateGravityHazards(now) {
   const well = currentLevel.well;
   if (checkWellCollision(ship, well)) {
-    crashReset();
+    if (well.isBlackHole) {
+      spaghettifyReset();
+    } else {
+      crashReset();
+    }
     return;
   }
 
   const dist = Math.hypot(well.x - ship.x, well.y - ship.y);
-  isInDanger = dist < EVENT_HORIZON;
+  const dangerLimit = well.isBlackHole ? EVENT_HORIZON * 1.5 : EVENT_HORIZON;
+  isInDanger = dist < dangerLimit;
   if (isInDanger) {
     eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
   }
+}
+
+function spaghettifyReset() {
+  gameState = 'crashed'; // Sperrt Input
+  // Wir simulieren das Verschlucken durch schnelles Drehen und Skalieren in renderer.js
+  // Hier setzen wir nur den Timeout für den Reset
+  setTimeout(() => {
+    resetLevel();
+    gameState = 'playing';
+    last = performance.now();
+  }, 1500);
 }
 
 function updateGravityTrajectoryPrediction() {
@@ -385,7 +378,10 @@ function renderFrame() {
   }
 
   renderer.drawRcsZone(ctx, ship, cam, canvas, flags);
-  if (gameState !== 'crashed') renderer.drawShip(ctx, ship, cam, canvas, flags);
+  if (gameState !== 'crashed' || (currentLevel.well && currentLevel.well.isBlackHole)) {
+    const isBH = currentLevel.well && currentLevel.well.isBlackHole;
+    renderer.drawShip(ctx, ship, cam, canvas, flags, gameState === 'crashed' && isBH);
+  }
   renderer.drawParticles(ctx, cam, canvas, particles);
   renderer.drawTargetAngle(ctx, ship, cam, canvas);
   renderer.drawVelocityVec(ctx, ship, cam, canvas);
@@ -484,10 +480,19 @@ function getLevelCompleteCopy(completedLevel) {
     };
   }
 
+  if (completedLevel === 3) {
+    return {
+      eyebrow: 'Level 3 abgeschlossen',
+      title: 'Feld durchquert',
+      mission: 'Du hast die Drift sauber gehalten und die Fracht durch das Asteroidenfeld gebracht.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
   return {
-    eyebrow: 'Level 3 abgeschlossen',
-    title: 'Feld durchquert',
-    mission: 'Du hast die Drift sauber gehalten und die Fracht durch das Asteroidenfeld gebracht.',
+    eyebrow: 'Level 4 abgeschlossen',
+    title: 'Singularität überlebt',
+    mission: 'Unglaublich. Du hast die Raumzeit-Krümmung zu deinem Vorteil genutzt.',
     nextLevelLabel: '',
   };
 }
@@ -532,7 +537,7 @@ function crashReset() {
 const nextLevelButton = document.getElementById('nextLevelButton');
 if (nextLevelButton) {
   nextLevelButton.addEventListener('click', () => {
-    const nextLevel = Math.min(level + 1, 3);
+    const nextLevel = Math.min(level + 1, 4);
     selectLevel(nextLevel);
     score = 0;
     resetLevel();

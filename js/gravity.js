@@ -3,8 +3,8 @@ import { G_STRENGTH, G_RADIUS, MIN_DIST_SQ } from './constants.js';
 /**
  * Erzeugt eine Gravitationsquelle.
  */
-export function createGravityWell(x, y, wellRadius) {
-  return { x, y, wellRadius };
+export function createGravityWell(x, y, wellRadius, isBlackHole = false) {
+  return { x, y, wellRadius, isBlackHole };
 }
 
 /**
@@ -14,10 +14,16 @@ export function applyGravity(ship, well, dt) {
   const dx = well.x - ship.x;
   const dy = well.y - ship.y;
   const distSq = dx * dx + dy * dy;
-  if (distSq > G_RADIUS * G_RADIUS) return;
+  const radiusLimit = well.isBlackHole ? G_RADIUS * 2 : G_RADIUS;
+  if (distSq > radiusLimit * radiusLimit) return;
+
   const dist = Math.sqrt(distSq);
   const effectiveDist = Math.max(distSq, MIN_DIST_SQ);
-  const force = (G_STRENGTH / effectiveDist) * dt;
+  
+  // Schwarze Löcher ziehen viel stärker an
+  const strengthMult = well.isBlackHole ? 8 : 1;
+  const force = (G_STRENGTH * strengthMult / effectiveDist) * dt;
+
   ship.vx += force * (dx / dist);
   ship.vy += force * (dy / dist);
 }
@@ -45,16 +51,18 @@ export function predictTrajectory(ship, well, steps, outX, outY) {
     const dx = well.x - px;
     const dy = well.y - py;
     const distSq = dx * dx + dy * dy;
+    const radiusLimit = well.isBlackHole ? G_RADIUS * 2 : G_RADIUS;
 
     if (distSq <= well.wellRadius * well.wellRadius) {
       for (let j = i; j < steps; j++) { outX[j] = px; outY[j] = py; }
       return i;
     }
 
-    if (distSq <= G_RADIUS * G_RADIUS) {
+    if (distSq <= radiusLimit * radiusLimit) {
       const dist = Math.sqrt(distSq);
       const effectiveDist = Math.max(distSq, MIN_DIST_SQ);
-      const force = G_STRENGTH / effectiveDist;
+      const strengthMult = well.isBlackHole ? 8 : 1;
+      const force = (G_STRENGTH * strengthMult) / effectiveDist;
       vx += force * (dx / dist);
       vy += force * (dy / dist);
     }
