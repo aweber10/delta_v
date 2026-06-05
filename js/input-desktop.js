@@ -1,4 +1,12 @@
 import { RCS_PULSE_MS } from './constants.js';
+import {
+  cancelTravelTap,
+  finishTravelTap,
+  getCanvasPoint,
+  isInsideRcsZone,
+  queuePointerRcsPulse,
+  startTravelTap,
+} from './input-pointer.js';
 
 export function createInputFlags() {
   return {
@@ -10,7 +18,13 @@ export function createInputFlags() {
   };
 }
 
-export function setupDesktopInput(flags, ship) {
+export function setupDesktopInput(flags, canvas, cam, ship) {
+  let mouseActive = false;
+  let mouseStartTime = 0;
+  let mouseStartPoint = null;
+  let holdTimer = null;
+  let lastTravelTap = null;
+
   window.addEventListener('keydown', (e) => {
     // Hauptschub
     if (e.key === 'ArrowUp') flags.thrustMain = true;
@@ -30,6 +44,43 @@ export function setupDesktopInput(flags, ship) {
 
   window.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') flags.thrustMain = false;
+  });
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+
+    const point = getCanvasPoint(canvas, e.clientX, e.clientY);
+    if (isInsideRcsZone(point, ship, cam, canvas)) {
+      queuePointerRcsPulse(flags, point, ship, cam, canvas);
+      return;
+    }
+
+    mouseActive = true;
+    mouseStartTime = performance.now();
+    mouseStartPoint = point;
+    holdTimer = startTravelTap(point, ship, cam, canvas, () => mouseActive);
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (e.button !== 0 || !mouseActive) return;
+    lastTravelTap = finishTravelTap(ship, mouseStartTime, mouseStartPoint, holdTimer, lastTravelTap);
+    mouseActive = false;
+    mouseStartPoint = null;
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    if (!mouseActive) return;
+    cancelTravelTap(ship, holdTimer);
+    mouseActive = false;
+    mouseStartPoint = null;
+  });
+
+  window.addEventListener('blur', () => {
+    if (!mouseActive) return;
+    cancelTravelTap(ship, holdTimer);
+    mouseActive = false;
+    mouseStartPoint = null;
   });
 }
 

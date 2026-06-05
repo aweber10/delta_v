@@ -19,37 +19,37 @@ export function createTutorial() {
       },
       {
         title: "1. Rotation",
-        text: "Drehe dein Schiff mit den Pfeiltasten oder durch Tippen.",
-        desktop: "Nutze [ ← ] und [ → ] zum Drehen.",
-        mobile: "Tippe links oder rechts vom Schiff."
+        text: "Richte dein Schiff auf ein Ziel aus.",
+        desktop: "Klicke außerhalb der blauen Zone oder nutze [ ← ] [ → ].",
+        mobile: "Tippe außerhalb der blauen Zone, um das Ziel auszurichten."
       },
       {
         title: "2. Hauptschub",
         text: "Beschleunige dein Schiff in Blickrichtung.",
-        desktop: "Halte [ ↑ ] für den Hauptantrieb.",
+        desktop: "Halte die Maus außen gedrückt oder nutze [ ↑ ].",
         mobile: "Halte den Finger außerhalb der blauen Zone."
       },
       {
         title: "3. Trägheit",
-        text: "Im Weltraum gibt es keinen Widerstand. Du gleitest ewig!",
+        text: "Im Weltraum gibt es keinen Widerstand. Deine Drift bleibt erhalten.",
         subtext: "Du musst aktiv in die Gegenrichtung steuern, um zu bremsen."
       },
       {
         title: "4. Bremsen",
         text: "Drehe das Schiff in die Gegenrichtung und gib einen kurzen Schub.",
-        desktop: "Nutze [ ← ] [ → ] zum Umdrehen, dann kurz [ ↑ ].",
-        mobile: "Tippe zum Umdrehen, dann kurz außen antippen."
+        desktop: "Doppelklick außen: ausrichten und Bremsimpuls setzen.",
+        mobile: "Doppel-Tap außen: ausrichten und Bremsimpuls setzen."
       },
       {
         title: "5. RCS-Feinsteuerung",
         text: "Nutze die Manövrierdüsen für präzise Seitwärtsbewegungen.",
-        desktop: "Nutze [ W A S D ] für kleine Impulse.",
+        desktop: "Klicke in die blaue Zone oder nutze [ W A S D ].",
         mobile: "Tippe kurz innerhalb der blauen Zone."
       },
       {
         title: "6. Docking",
         text: "Nähere dich langsam dem Port von Station A.",
-        subtext: "Achte auf Geschwindigkeit, Winkel und Position im HUD oben rechts."
+        subtext: "Achte auf Geschwindigkeit, Winkel und Position im HUD."
       }
     ]
   };
