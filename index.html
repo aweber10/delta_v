@@ -119,7 +119,7 @@
 
     .level-select {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 14px;
       width: 100%;
       margin-bottom: 18px;
@@ -372,11 +372,17 @@
 
     @media (max-width: 720px) {
       .level-select {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
       }
 
       .level-card {
         min-height: 132px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .level-select {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -528,6 +534,22 @@
       .mobile-only { display: inline; }
     }
 
+    /* Level 5: Planet Hazard Icon */
+    .level-card__hazard--planet {
+      background: radial-gradient(circle at 35% 35%, #5bb8f5, #1e6fa8 50%, #092e55);
+      border-color: rgba(100, 180, 255, 0.6);
+      box-shadow:
+        0 0 0 3px rgba(68, 170, 255, 0.25),
+        0 0 18px rgba(68, 170, 255, 0.35);
+    }
+
+    /* Level 5: Overlay-Stil */
+    .overlay.level5 {
+      background:
+        radial-gradient(circle at 50% 38%, rgba(30, 111, 168, 0.28), transparent 34%),
+        rgba(2, 4, 8, 0.88);
+    }
+
     /* Level 2: Gravity Well Accent */
     .overlay.level2 {
       background:
@@ -631,6 +653,20 @@
           </span>
         </button>
 
+        <button class="level-card" id="startL5" data-level="5" type="button" style="--accent: #44aaff; --hazard-x: 60%; --hazard-size: 22px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 5</span>
+            <span class="level-card__risk">Orbit</span>
+          </span>
+          <span class="level-card__mid">
+            <span class="level-card__title">Orbital Rendezvous</span>
+            <span class="level-card__copy">In den richtigen Orbit einschwenken und andocken.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--planet" aria-hidden="true"></span>
+          </span>
+        </button>
+
       </div>
 
       <div class="actions">
@@ -653,11 +689,11 @@
   </div>
 
   <!-- Campaign Complete Screen -->
-  <div class="overlay level4" id="finalCompleteScreen" hidden>
+  <div class="overlay level5" id="finalCompleteScreen" hidden>
     <section class="start-panel" aria-labelledby="finalTitle">
-      <p class="eyebrow orange">Kampagne abgeschlossen</p>
+      <p class="eyebrow" style="color: #44aaff;">Kampagne abgeschlossen</p>
       <h1 id="finalTitle">Mission erfüllt</h1>
-      <p class="mission">Alle Lieferungen sind angekommen. Du hast Drift, Gravitation und Singularität kontrolliert genug genutzt, um die Route zu schließen.</p>
+      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift bis zum Orbit-Rendezvous — du hast die Route vollständig geschlossen.</p>
       <div class="final-stats" aria-label="Missionsbilanz">
         <span class="final-stat">
           <span class="final-stat__label">Status</span>
@@ -665,12 +701,12 @@
         </span>
         <span class="final-stat">
           <span class="final-stat__label">Letzte Mission</span>
-          <span class="final-stat__value">The Singularity</span>
+          <span class="final-stat__value">Orbital Rendezvous</span>
         </span>
       </div>
       <div class="actions">
         <button id="finalMenuButton" type="button">Hauptmenü</button>
-        <button class="secondary" id="finalReplayButton" type="button">Level 4 wiederholen</button>
+        <button class="secondary" id="finalReplayButton" type="button">Level 5 wiederholen</button>
       </div>
     </section>
   </div>
@@ -690,6 +726,21 @@
     </section>
   </div>
 
+  <!-- Level 5: Start Screen -->
+  <div class="overlay level5" id="level5StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l5Title">
+      <p class="eyebrow" style="color: #44aaff;">Level 5 — Orbital Rendezvous</p>
+      <h1 id="l5Title">Delta V</h1>
+      <p class="mission">Ein Planet liegt vor dir. Eine Raumstation kreist auf einer Umlaufbahn darum. Schwenk in den richtigen Orbit ein und passe deine Geschwindigkeit an die Station an.</p>
+      <p class="mission" style="font-size: 13px; color: #44aaff; margin-top: -10px;">
+        Das Orbit-HUD zeigt die Relativgeschwindigkeit zur Station. Bringe "Rel. Speed" unter 0.4 um andocken zu können.
+      </p>
+      <div class="actions">
+        <button id="level5StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
   <!-- Level 3: Start Screen -->
   <div class="overlay level3" id="level3StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l3Title">
@@ -705,6 +756,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=35"></script>
+  <script type="module" src="./js/main.js?v=36"></script>
 </body>
 </html>

@@ -46,3 +46,12 @@ export const ASTEROID_BOUNCE_MAX_SPEED = V_DOCK_MAX;
 export const ASTEROID_BOUNCE_DAMPING = 0.55;
 export const ASTEROID_COLLISION_PADDING = SHIP_RADIUS;
 export const ASTEROID_BOUNCE_FUEL_PENALTY = 8;
+
+// --- Level 5: Orbital Rendezvous ---
+export const PLANET_RADIUS = 520;          // sichtbarer Planetenradius (world-px)
+export const PLANET_GRAVITY_STRENGTH = 180.0;  // stärker als L2-Stern
+export const PLANET_GRAVITY_RADIUS = 900;  // Einflussradius
+export const PLANET_WELL_RADIUS = 530;     // tödliche Kollisionszone (Oberfläche)
+export const ORBIT_STATION_RADIUS = 700;   // Orbithöhe der Station (world-px vom Planetenzentrum)
+export const ORBIT_STATION_SPEED = 0.00028; // rad/frame — gemächliche, spielbare Umlaufzeit
+// Docking-Toleranz für relative Geschwindigkeit: V_DOCK_MAX wird für Relativgeschwindigkeit genutzt

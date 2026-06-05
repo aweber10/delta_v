@@ -3,9 +3,9 @@ import { createCamera, updateCamera } from './camera.js';
 import { createInputFlags, setupDesktopInput } from './input-desktop.js';
 import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
-import { createStation, checkDock, dockColor, getPortPosition } from './station.js';
+import { createStation, createOrbitingStation, updateOrbitingStation, checkDock, dockColor, getPortPosition } from './station.js';
 import * as renderer from './renderer.js';
-import { FUEL_START, WELL_RADIUS, EVENT_HORIZON } from './constants.js';
+import { FUEL_START, WELL_RADIUS, EVENT_HORIZON, PLANET_RADIUS, PLANET_GRAVITY_STRENGTH, PLANET_GRAVITY_RADIUS, PLANET_WELL_RADIUS, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial } from './tutorial.js';
 import { createGravityWell, checkWellCollision, predictTrajectory } from './gravity.js';
@@ -139,10 +139,40 @@ const L4 = {
   asteroids: null,
 };
 
+// --- Level 5: Orbital Rendezvous ---
+// Der Spieler startet bei Station A (bekannt), fliegt zum Planeten in der Bildmitte-rechts,
+// und muss in einen Orbit einschwenken um an Station B (orbiting) anzudocken.
+// Weltgröße: 3600 × 2400
+const L5_PLANET_X = 2600;
+const L5_PLANET_Y = 1200;
+
+function createPlanet(x, y, radius) {
+  return { x, y, radius, rotation: 0, cloudAngle: 0 };
+}
+
+const L5 = {
+  shipStart: { x: 220, y: 1800 },
+  stationA: createStation(220, 1800, -Math.PI * 0.25),
+  stationB: createOrbitingStation(
+    L5_PLANET_X, L5_PLANET_Y,
+    ORBIT_STATION_RADIUS,
+    ORBIT_STATION_SPEED,
+    Math.PI * 1.25  // Startposition: oben-links vom Planeten
+  ),
+  planet: createPlanet(L5_PLANET_X, L5_PLANET_Y, PLANET_RADIUS),
+  well: createGravityWell(L5_PLANET_X, L5_PLANET_Y, PLANET_WELL_RADIUS, false),
+  asteroids: null,
+};
+// Überschreibe G_STRENGTH für L5 mit eigenen Werten über ein erweitertes well-Objekt
+L5.well.gravityStrength = PLANET_GRAVITY_STRENGTH;
+L5.well.gravityRadius = PLANET_GRAVITY_RADIUS;
+L5.well.isPlanet = true;
+
 L1.stations = [L1.stationA, L1.stationB];
 L2.stations = [L2.stationA, L2.stationB];
 L3.stations = [L3.stationA, L3.stationB];
 L4.stations = [L4.stationA, L4.stationB];
+L5.stations = [L5.stationA, L5.stationB];
 
 let currentLevel = L1;
 const ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
@@ -161,7 +191,7 @@ let blackHoleCollapseTimer = null;
 let blackHoleCollapse = null;
 
 const PROGRESS_KEY = 'delta_v_progress';
-const TOTAL_LEVELS = 4;
+const TOTAL_LEVELS = 5;
 const BLACK_HOLE_COLLAPSE_MS = 750;
 const BLACK_HOLE_BLACKOUT_MS = 1000;
 
@@ -265,9 +295,9 @@ function updateParticles(dt) {
   }
 }
 
-// stars
+// stars — verteilt über den gesamten möglichen Weltbereich (inkl. L5 mit 3600×2400)
 const stars = [];
-for (let i=0;i<200;i++) stars.push({ x: Math.random()*2400, y: Math.random()*1600 });
+for (let i=0;i<280;i++) stars.push({ x: Math.random()*3600, y: Math.random()*2400 });
 
 const FIXED_STEP_MS = 1000 / 60;
 const MAX_FRAME_MS = 250;
@@ -297,7 +327,8 @@ function selectLevel(targetLevel) {
   if (targetLevel === 1) currentLevel = L1;
   else if (targetLevel === 2) currentLevel = L2;
   else if (targetLevel === 3) currentLevel = L3;
-  else currentLevel = L4;
+  else if (targetLevel === 4) currentLevel = L4;
+  else currentLevel = L5;
 }
 
 async function beginGameplay() {
@@ -349,7 +380,7 @@ finalReplayButton.addEventListener('click', () => {
   finalCompleteScreen.hidden = true;
   levelCompleteScreen.hidden = true;
   startScreen.hidden = true;
-  selectLevel(4);
+  selectLevel(5);
   score = 0;
   resetLevel();
   beginGameplay();
@@ -471,6 +502,13 @@ function updateLevelSystems(dt, now) {
     updateAsteroidHazards();
     updateAsteroidTrajectoryPrediction();
   }
+
+  // Level 5: Orbiting Station bewegen + Planet rotieren
+  if (level === 5) {
+    updateOrbitingStation(currentLevel.stationB, dt);
+    // Planet dreht sich langsam
+    currentLevel.planet.rotation += 0.00012 * dt;
+  }
 }
 
 function updateGravityHazards(now) {
@@ -485,10 +523,13 @@ function updateGravityHazards(now) {
   }
 
   const dist = Math.hypot(well.x - ship.x, well.y - ship.y);
-  const dangerLimit = well.isBlackHole ? EVENT_HORIZON * 1.5 : EVENT_HORIZON;
-  isInDanger = dist < dangerLimit;
-  if (isInDanger) {
-    eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
+  // Bei Planeten (L5) keine Gefahren-Vignette — der Planet ist das Ziel, nicht ein Hindernis
+  if (!well.isPlanet) {
+    const dangerLimit = well.isBlackHole ? EVENT_HORIZON * 1.5 : EVENT_HORIZON;
+    isInDanger = dist < dangerLimit;
+    if (isInDanger) {
+      eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
+    }
   }
 }
 
@@ -591,8 +632,14 @@ function renderFrame(alpha = 1) {
   renderer.clear(ctx, canvas);
   renderer.drawStars(ctx, stars, renderCam, canvas);
 
-  // Level 2: Gravity Well zeichnen (vor Stationen, damit Ringe im Hintergrund)
-  if (well) {
+  // Level 5: Planet zeichnen (tief im Hintergrund, vor allem anderen)
+  if (currentLevel.planet) {
+    renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
+  }
+
+  // Level 2 / 5: Gravity Well zeichnen (vor Stationen, damit Ringe im Hintergrund)
+  // Bei L5 (isPlanet) keinen Well-Ring zeichnen — der Planet ist das visuelle Objekt
+  if (well && !well.isPlanet) {
     renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
   }
 
@@ -607,7 +654,7 @@ function renderFrame(alpha = 1) {
   const colorB = dockColor(checkB);
   renderer.drawStation(ctx, stationB, renderCam, canvas, colorB);
 
-  // Level 2: Trajectory-Vorschau zeichnen
+  // Level 2 / 5: Trajectory-Vorschau zeichnen
   if (well && trajValidSteps > 1) {
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, isInDanger);
   }
@@ -648,6 +695,11 @@ function renderFrame(alpha = 1) {
   renderer.drawHud(ctx, ship, canvas, targetStation, targetCheck, score, targetColor, level);
   renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
+  // Level 5: Orbit-HUD (Delta-V zur orbitierenden Station)
+  if (level === 5) {
+    renderer.drawOrbitHud(ctx, renderShip, stationB, canvas);
+  }
+
   if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
 }
 
@@ -665,12 +717,15 @@ function dockShipAtStation(ship, station) {
   ship.y = port.y;
   ship.angle = station.dockAngle + Math.PI;
   ship.targetAngle = ship.angle;
-  ship.vx = 0;
-  ship.vy = 0;
+  // Orbiting station: Schiff übernimmt Stationsgeschwindigkeit damit es mitfliegt
+  ship.vx = station.orbiting ? station.vx : 0;
+  ship.vy = station.orbiting ? station.vy : 0;
   ship.angularVel = 0;
   ship.thrustHeld = false;
   ship.tapThrustTime = 0;
   ship.pendingBrakeImpulse = false;
+  // Referenz auf Station speichern, damit updateDockedShip die Position mitführen kann
+  ship.dockedStation = station.orbiting ? station : null;
   station.docked = true;
   syncRenderStates();
   playDock();
@@ -690,6 +745,7 @@ function transferCargo() {
 function scheduleUndock(station) {
   setTimeout(() => {
     station.docked = false;
+    ship.dockedStation = null;
   }, 1500);
 }
 
@@ -698,7 +754,7 @@ function completeLevel() {
   gameState = 'levelComplete';
   playDeliveryComplete();
 
-  if (level === TOTAL_LEVELS) {
+  if (level >= TOTAL_LEVELS) {
     setTimeout(() => {
       finalCompleteScreen.hidden = false;
     }, 800);
@@ -755,6 +811,15 @@ function getLevelCompleteCopy(completedLevel) {
     };
   }
 
+  if (completedLevel === 4) {
+    return {
+      eyebrow: 'Level 4 abgeschlossen',
+      title: 'Singularität bezwungen',
+      mission: 'Du hast dem Schwarzen Loch widerstanden und die Fracht unbeschadet geliefert.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
   return null;
 }
 
@@ -779,11 +844,17 @@ function resetLevel() {
   ship.fuel = FUEL_START;
   ship.cargo = 0;
   ship.dockedTimer = 0;
+  ship.dockedStation = null;
   ship.thrustHeld = false;
   ship.tapThrustTime = 0;
   ship.pendingBrakeImpulse = false;
   currentLevel.stationA.docked = false;
   currentLevel.stationB.docked = false;
+  // Bei orbitierenden Stationen: Startposition zurücksetzen
+  if (currentLevel.stationB.orbiting) {
+    currentLevel.stationB.orbitAngle = Math.PI * 1.25;
+    updateOrbitingStation(currentLevel.stationB, 0);
+  }
   targetStation = currentLevel.stationA;
   isInDanger = false;
   trajValidSteps = 0;
@@ -813,7 +884,7 @@ function crashReset() {
 const nextLevelButton = document.getElementById('nextLevelButton');
 if (nextLevelButton) {
   nextLevelButton.addEventListener('click', () => {
-    const nextLevel = Math.min(level + 1, 4);
+    const nextLevel = Math.min(level + 1, TOTAL_LEVELS);
     selectLevel(nextLevel);
     score = 0;
     resetLevel();
@@ -845,6 +916,14 @@ const level3StartButton = document.getElementById('level3StartButton');
 if (level3StartButton) {
   level3StartButton.addEventListener('click', () => {
     document.getElementById('level3StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
+const level5StartButton = document.getElementById('level5StartButton');
+if (level5StartButton) {
+  level5StartButton.addEventListener('click', () => {
+    document.getElementById('level5StartScreen').hidden = true;
     beginGameplay();
   });
 }

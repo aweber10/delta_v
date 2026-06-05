@@ -32,8 +32,24 @@ function updateDockedShip(ship, dt) {
   if (ship.dockedTimer <= 0) return false;
 
   ship.dockedTimer -= dt * 16.6667;
-  ship.vx = 0;
-  ship.vy = 0;
+
+  if (ship.dockedStation) {
+    // Orbiting station: Schiff wird aktiv zur aktuellen Port-Position der Station geführt
+    // und übernimmt die Stationsgeschwindigkeit (für korrekten Abflug nach Undock)
+    const s = ship.dockedStation;
+    const portX = s.x + Math.cos(s.dockAngle) * 40; // ARM_LENGTH = 40
+    const portY = s.y + Math.sin(s.dockAngle) * 40;
+    ship.x = portX;
+    ship.y = portY;
+    ship.vx = s.vx;
+    ship.vy = s.vy;
+    ship.angle = s.dockAngle + Math.PI;
+    ship.targetAngle = ship.angle;
+  } else {
+    ship.vx = 0;
+    ship.vy = 0;
+  }
+
   ship.angularVel = 0;
   ship.pendingBrakeImpulse = false;
   return true;

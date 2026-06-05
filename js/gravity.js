@@ -9,20 +9,25 @@ export function createGravityWell(x, y, wellRadius, isBlackHole = false) {
 
 /**
  * Wendet die Gravitationskraft auf das Schiff an. Keine Objekte alloziert.
+ * Unterstützt well-eigene gravityStrength/gravityRadius für individuelle Konfiguration (z.B. L5-Planet).
  */
 export function applyGravity(ship, well, dt) {
   const dx = well.x - ship.x;
   const dy = well.y - ship.y;
   const distSq = dx * dx + dy * dy;
-  const radiusLimit = well.isBlackHole ? G_RADIUS * 2 : G_RADIUS;
-  if (distSq > radiusLimit * radiusLimit) return;
+
+  // Eigene Werte bevorzugen (z.B. L5-Planet), sonst globale Konstanten
+  const gStrength = well.gravityStrength !== undefined ? well.gravityStrength : G_STRENGTH;
+  const gRadius = well.gravityRadius !== undefined ? well.gravityRadius : (well.isBlackHole ? G_RADIUS * 2 : G_RADIUS);
+
+  if (distSq > gRadius * gRadius) return;
 
   const dist = Math.sqrt(distSq);
   const effectiveDist = Math.max(distSq, MIN_DIST_SQ);
-  
+
   // Schwarze Löcher ziehen viel stärker an
   const strengthMult = well.isBlackHole ? 8 : 1;
-  const force = (G_STRENGTH * strengthMult / effectiveDist) * dt;
+  const force = (gStrength * strengthMult / effectiveDist) * dt;
 
   ship.vx += force * (dx / dist);
   ship.vy += force * (dy / dist);
@@ -47,22 +52,24 @@ export function predictTrajectory(ship, well, steps, outX, outY) {
   let vx = ship.vx;
   let vy = ship.vy;
 
+  const gStrength = well.gravityStrength !== undefined ? well.gravityStrength : G_STRENGTH;
+  const gRadius = well.gravityRadius !== undefined ? well.gravityRadius : (well.isBlackHole ? G_RADIUS * 2 : G_RADIUS);
+
   for (let i = 0; i < steps; i++) {
     const dx = well.x - px;
     const dy = well.y - py;
     const distSq = dx * dx + dy * dy;
-    const radiusLimit = well.isBlackHole ? G_RADIUS * 2 : G_RADIUS;
 
     if (distSq <= well.wellRadius * well.wellRadius) {
       for (let j = i; j < steps; j++) { outX[j] = px; outY[j] = py; }
       return i;
     }
 
-    if (distSq <= radiusLimit * radiusLimit) {
+    if (distSq <= gRadius * gRadius) {
       const dist = Math.sqrt(distSq);
       const effectiveDist = Math.max(distSq, MIN_DIST_SQ);
       const strengthMult = well.isBlackHole ? 8 : 1;
-      const force = (G_STRENGTH * strengthMult) / effectiveDist;
+      const force = (gStrength * strengthMult) / effectiveDist;
       vx += force * (dx / dist);
       vy += force * (dy / dist);
     }

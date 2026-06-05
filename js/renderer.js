@@ -696,6 +696,269 @@ export function drawParticles(ctx, cam, canvas, particles) {
   ctx.restore();
 }
 
+// ---- Level 5: Planet & Orbit Rendering ----
+
+/**
+ * Feste Kontinentformen (als normalisierte Polygone, skaliert mit Planetenradius).
+ * Jeder Kontinent ist ein Array von [angle_offset, radius_factor]-Paaren.
+ * Generiert deterministisch — keine zufälligen Werte zur Laufzeit.
+ */
+const CONTINENT_SHAPES = [
+  // Nordamerika-ähnlich
+  [
+    [0.00, 0.52], [0.08, 0.61], [0.15, 0.58], [0.20, 0.67],
+    [0.28, 0.70], [0.34, 0.63], [0.38, 0.55], [0.30, 0.48],
+    [0.22, 0.44], [0.12, 0.46], [0.05, 0.50],
+  ],
+  // Europa/Afrika-ähnlich (schmaler, länglich)
+  [
+    [0.00, 0.38], [0.05, 0.45], [0.10, 0.50], [0.14, 0.55],
+    [0.18, 0.62], [0.22, 0.65], [0.26, 0.60], [0.29, 0.50],
+    [0.27, 0.40], [0.22, 0.34], [0.15, 0.32], [0.08, 0.34],
+  ],
+  // Asien/Pazifik (breit, unregelmäßig)
+  [
+    [0.00, 0.60], [0.06, 0.68], [0.14, 0.72], [0.22, 0.70],
+    [0.30, 0.74], [0.38, 0.68], [0.44, 0.62], [0.42, 0.54],
+    [0.36, 0.50], [0.28, 0.48], [0.18, 0.50], [0.10, 0.55],
+  ],
+  // Südamerika
+  [
+    [0.00, 0.42], [0.05, 0.50], [0.10, 0.54], [0.14, 0.50],
+    [0.16, 0.43], [0.13, 0.37], [0.08, 0.34], [0.03, 0.37],
+  ],
+  // Australien
+  [
+    [0.00, 0.38], [0.06, 0.44], [0.12, 0.46], [0.16, 0.42],
+    [0.18, 0.36], [0.14, 0.32], [0.08, 0.30], [0.03, 0.33],
+  ],
+];
+
+// Continent placement: [baseAngle, baseRadius, rotationOffset, scaleX, scaleY]
+const CONTINENT_PLACEMENTS = [
+  { shape: 0, angle: -2.1, dist: 0.55, rot: -0.3, sx: 1.0, sy: 0.9 },
+  { shape: 1, angle: 0.4,  dist: 0.52, rot:  0.5, sx: 0.75, sy: 1.1 },
+  { shape: 2, angle: 1.2,  dist: 0.58, rot: -0.1, sx: 1.1, sy: 0.85 },
+  { shape: 3, angle: -0.5, dist: 0.62, rot:  0.2, sx: 0.8, sy: 1.0 },
+  { shape: 4, angle: 2.8,  dist: 0.68, rot:  0.4, sx: 0.9, sy: 0.8 },
+];
+
+// Cloud shapes: [startAngle, spanAngle, radiusFactor, widthFactor]
+const CLOUD_BANDS = [
+  { a: 0.60, span: 0.28, r: 1.005, w: 0.06 },
+  { a: 1.80, span: 0.22, r: 1.008, w: 0.05 },
+  { a: 3.20, span: 0.35, r: 1.003, w: 0.07 },
+  { a: 4.50, span: 0.18, r: 1.006, w: 0.04 },
+  { a: 5.40, span: 0.26, r: 1.004, w: 0.055 },
+];
+
+/**
+ * Zeichnet einen schönen Erdplaneten mit Atmosphäre, Kontinenten und Wolken.
+ * @param {object} planet - { x, y, radius, cloudAngle }
+ */
+export function drawPlanet(ctx, planet, cam, canvas) {
+  const p = worldToScreen(cam, planet.x, planet.y, canvas);
+  const z = cam.zoom;
+  const r = planet.radius * z;
+  const time = performance.now() * 0.001;
+  const cloudPhase = planet.cloudAngle + time * 0.018; // langsame Wolkenrotation
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  // --- 1. Ozean (Basiskugel blau) ---
+  const oceanGrad = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.05, 0, 0, r);
+  oceanGrad.addColorStop(0, '#5bb8f5');   // helles Ozeanblau (Highlight)
+  oceanGrad.addColorStop(0.35, '#1e6fa8'); // mittleres Blau
+  oceanGrad.addColorStop(0.72, '#0d4a82'); // tiefes Blau
+  oceanGrad.addColorStop(1, '#092e55');   // sehr dunkles Blau am Rand
+  ctx.fillStyle = oceanGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- 2. Kontinente ---
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.998, 0, Math.PI * 2);
+  ctx.clip(); // Alles außerhalb des Planeten wird abgeschnitten
+
+  for (const placement of CONTINENT_PLACEMENTS) {
+    const shape = CONTINENT_SHAPES[placement.shape];
+    const baseAngle = placement.angle + planet.rotation * 0.4; // leichte Rotation mit Planet
+    const baseDist = placement.dist * r;
+
+    ctx.save();
+    ctx.rotate(baseAngle);
+    ctx.scale(placement.sx, placement.sy);
+
+    // Kontinentfarbe mit leichtem Gradient
+    const contGrad = ctx.createRadialGradient(
+      baseDist * 0.1, 0, 0,
+      baseDist * 0.1, 0, baseDist * 0.6
+    );
+    contGrad.addColorStop(0, '#6abf59');  // helles Grün
+    contGrad.addColorStop(0.4, '#3d8c35'); // mittleres Grün
+    contGrad.addColorStop(0.75, '#2d6b2a'); // dunkles Grün
+    contGrad.addColorStop(1, '#8a7a52');  // Küstensand
+
+    ctx.fillStyle = contGrad;
+    ctx.beginPath();
+
+    // Kontinent als Polygon zeichnen
+    for (let i = 0; i < shape.length; i++) {
+      const [angOff, radFac] = shape[i];
+      const pointAngle = angOff * Math.PI * 2 + placement.rot;
+      const pointDist = radFac * r;
+      const px = Math.cos(pointAngle) * pointDist + baseDist;
+      const py = Math.sin(pointAngle) * pointDist;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Schneekappe an den Polen (oben/unten)
+    if (placement.shape === 0 || placement.shape === 1) {
+      ctx.fillStyle = 'rgba(240, 248, 255, 0.7)';
+      ctx.beginPath();
+      ctx.arc(baseDist * 0.05, -baseDist * 0.05, r * 0.06, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // Polarkappen (Arktis / Antarktis — immer sichtbar)
+  ctx.fillStyle = 'rgba(230, 245, 255, 0.82)';
+  ctx.beginPath();
+  ctx.arc(0, -r * 0.84, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(220, 240, 255, 0.72)';
+  ctx.beginPath();
+  ctx.arc(0, r * 0.87, r * 0.14, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore(); // Ende Clip-Region
+
+  // --- 3. Wolken (rotieren leicht, halbtransparent) ---
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  for (const band of CLOUD_BANDS) {
+    const startA = band.a + cloudPhase;
+    const endA = startA + band.span;
+    const cr = band.r * r;
+    const halfW = band.w * r;
+
+    const cloudGrad = ctx.createRadialGradient(0, 0, cr - halfW, 0, 0, cr + halfW);
+    cloudGrad.addColorStop(0, 'rgba(255,255,255,0)');
+    cloudGrad.addColorStop(0.3, 'rgba(255,255,255,0.55)');
+    cloudGrad.addColorStop(0.55, 'rgba(255,255,255,0.72)');
+    cloudGrad.addColorStop(0.75, 'rgba(255,255,255,0.55)');
+    cloudGrad.addColorStop(1, 'rgba(255,255,255,0)');
+
+    ctx.fillStyle = cloudGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, cr + halfW, startA, endA);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.restore(); // Ende Wolken-Clip
+
+  // --- 4. Atmosphäre (blauer Halo-Ring außen) ---
+  const atmInner = r * 0.97;
+  const atmOuter = r * 1.18;
+  const atmGrad = ctx.createRadialGradient(0, 0, atmInner, 0, 0, atmOuter);
+  atmGrad.addColorStop(0, 'rgba(100, 180, 255, 0.55)');
+  atmGrad.addColorStop(0.4, 'rgba(60, 140, 230, 0.28)');
+  atmGrad.addColorStop(0.75, 'rgba(30, 90, 180, 0.10)');
+  atmGrad.addColorStop(1, 'rgba(10, 40, 120, 0)');
+
+  ctx.fillStyle = atmGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, atmOuter, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- 5. Terminator (Tageslicht-Schatten) ---
+  // Leichter Schatten-Halbkreis auf der dem Licht abgewandten Seite
+  const shadowGrad = ctx.createRadialGradient(r * 0.4, -r * 0.3, 0, -r * 0.1, r * 0.1, r * 1.2);
+  shadowGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(0.55, 'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(0.78, 'rgba(0,10,30,0.22)');
+  shadowGrad.addColorStop(1, 'rgba(0,5,20,0.58)');
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = shadowGrad;
+  ctx.fillRect(-r - 10, -r - 10, (r + 10) * 2, (r + 10) * 2);
+  ctx.restore();
+
+  // --- 6. Spekularer Highlight (Lichtreflex auf Ozean) ---
+  const hlGrad = ctx.createRadialGradient(-r * 0.30, -r * 0.35, 0, -r * 0.30, -r * 0.35, r * 0.35);
+  hlGrad.addColorStop(0, 'rgba(255,255,255,0.18)');
+  hlGrad.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+  hlGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hlGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Zeichnet Orbit-HUD für Level 5: Delta-V zur Station, Orbithöhe, Status.
+ */
+export function drawOrbitHud(ctx, ship, station, canvas) {
+  if (!station || !station.orbiting) return;
+
+  const relVx = ship.vx - station.vx;
+  const relVy = ship.vy - station.vy;
+  const deltaV = Math.hypot(relVx, relVy);
+
+  const dist = Math.hypot(ship.x - station.x, ship.y - station.y);
+
+  const w = canvas.clientWidth;
+  const panelX = Math.floor(w / 2) - 110;
+  const panelY = 10;
+  const panelW = 220;
+  const panelH = 58;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.52)';
+  ctx.fillRect(panelX, panelY, panelW, panelH);
+
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#8fd0ff';
+
+  // Delta-V-Farbe: grün wenn nah genug, gelb, rot
+  const dvColor = deltaV < 0.4 ? '#44ff88' : deltaV < 1.2 ? '#ffdd44' : '#ff5555';
+  ctx.fillStyle = dvColor;
+  ctx.fillText('Rel. Speed: ' + deltaV.toFixed(3) + ' px/f', panelX + 10, panelY + 20);
+
+  ctx.fillStyle = '#aac8e0';
+  ctx.fillText('Station Dist: ' + Math.floor(dist), panelX + 10, panelY + 38);
+
+  // Kleines Status-Icon
+  ctx.fillStyle = dvColor;
+  ctx.beginPath();
+  ctx.arc(panelX + panelW - 16, panelY + 28, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.font = 'bold 8px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(deltaV < 0.4 ? 'OK' : 'ΔV', panelX + panelW - 16, panelY + 31);
+  ctx.textAlign = 'left';
+}
+
 /**
  * Zeichnet die Event-Horizon-Warnung (pulsierende rote Vignette).
  */
