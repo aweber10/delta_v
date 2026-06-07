@@ -914,49 +914,201 @@ export function drawPlanet(ctx, planet, cam, canvas) {
   ctx.restore();
 }
 
+export function drawOrbitGuide(ctx, planet, ship, station, orbitRadius, cam, canvas, status) {
+  const p = worldToScreen(cam, planet.x, planet.y, canvas);
+  const r = orbitRadius * cam.zoom;
+  const shipAngle = Math.atan2(ship.y - planet.y, ship.x - planet.x);
+  const guideColor = status.orbitOk
+    ? 'rgba(85, 255, 150, 0.62)'
+    : Math.abs(status.radialSpeed) > 0.12 || Math.abs(status.tangentialError) > 0.14
+      ? 'rgba(255, 210, 80, 0.58)'
+      : 'rgba(140, 220, 255, 0.52)';
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  ctx.strokeStyle = 'rgba(110, 190, 255, 0.14)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = guideColor;
+  ctx.lineWidth = 1.25;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const inner = r - 4;
+    const outer = r + 4;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+    ctx.stroke();
+  }
+
+  drawOrbitGuideArc(ctx, r, shipAngle - 0.34, shipAngle + 0.34, guideColor);
+  drawOrbitGuideArrow(ctx, r, shipAngle + 0.44, guideColor);
+
+  if (station?.orbiting) {
+    const stationAngle = Math.atan2(station.y - planet.y, station.x - planet.x);
+    drawOrbitGuideArrow(ctx, r, stationAngle + 0.25, 'rgba(140, 220, 255, 0.42)');
+  }
+
+  ctx.restore();
+}
+
+function drawOrbitGuideArc(ctx, radius, startAngle, endAngle, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, startAngle, endAngle);
+  ctx.stroke();
+}
+
+function drawOrbitGuideArrow(ctx, radius, angle, color) {
+  const x = Math.cos(angle) * radius;
+  const y = Math.sin(angle) * radius;
+  const tangent = angle + Math.PI / 2;
+  const size = 7;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tangent);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(size, 0);
+  ctx.lineTo(-size * 0.65, size * 0.5);
+  ctx.lineTo(-size * 0.65, -size * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+export function drawOrbitTrajectoryAssist(ctx, assist, cam, canvas) {
+  if (!assist) return;
+
+  if (assist.apoapsis) {
+    drawOrbitMarker(ctx, assist.apoapsis, cam, canvas, '#8fd0ff');
+  }
+  if (assist.periapsis) {
+    drawOrbitMarker(ctx, assist.periapsis, cam, canvas, '#8fd0ff');
+  }
+  if (assist.burnHint && !assist.orbitOk) {
+    drawOrbitMarker(ctx, assist.burnHint, cam, canvas, '#ffdd66', true);
+  }
+}
+
+function drawOrbitMarker(ctx, marker, cam, canvas, color, filled = false) {
+  const p = worldToScreen(cam, marker.x, marker.y, canvas);
+  const r = filled ? 7 : 5;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = filled ? 'rgba(255, 221, 102, 0.18)' : 'rgba(0, 0, 0, 0.55)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = filled ? 'bold 9px sans-serif' : 'bold 8px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = color;
+  ctx.fillText(marker.label, p.x, p.y - r - 4);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+export function drawPlanetImpactMarker(ctx, x, y, cam, canvas) {
+  const p = worldToScreen(cam, x, y, canvas);
+  const size = 9 * cam.zoom;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 90, 70, 0.95)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(p.x - size, p.y - size);
+  ctx.lineTo(p.x + size, p.y + size);
+  ctx.moveTo(p.x + size, p.y - size);
+  ctx.lineTo(p.x - size, p.y + size);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255, 80, 60, 0.18)';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, size * 1.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /**
- * Zeichnet Orbit-HUD für Level 5: Delta-V zur Station, Orbithöhe, Status.
+ * Zeichnet Orbit-HUD für Level 5: Zielorbit zuerst, Rendezvous danach.
  */
-export function drawOrbitHud(ctx, ship, station, canvas) {
+export function drawOrbitHud(ctx, ship, station, planet, canvas, orbit) {
   if (!station || !station.orbiting) return;
 
   const relVx = ship.vx - station.vx;
   const relVy = ship.vy - station.vy;
   const deltaV = Math.hypot(relVx, relVy);
+  const dx = ship.x - planet.x;
+  const dy = ship.y - planet.y;
+  const radius = Math.hypot(dx, dy);
+  const invRadius = radius > 0 ? 1 / radius : 0;
+  const ux = dx * invRadius;
+  const uy = dy * invRadius;
+  const radialSpeed = ship.vx * ux + ship.vy * uy;
+  const tangentialSpeed = ship.vx * -uy + ship.vy * ux;
+  const radiusError = radius - orbit.orbitRadius;
+  const tangentialError = tangentialSpeed - orbit.targetSpeed;
 
-  const dist = Math.hypot(ship.x - station.x, ship.y - station.y);
+  const heightOk = Math.abs(radiusError) <= orbit.radiusTolerance;
+  const radialOk = Math.abs(radialSpeed) <= orbit.radialSpeedOk;
+  const tangentOk = Math.abs(tangentialError) <= orbit.tangentialSpeedOk;
+  const orbitOk = heightOk && radialOk && tangentOk;
 
   const w = canvas.clientWidth;
-  const panelX = Math.floor(w / 2) - 110;
+  const panelX = Math.floor(w / 2) - 138;
   const panelY = 10;
-  const panelW = 220;
-  const panelH = 58;
+  const panelW = 276;
+  const panelH = 92;
 
   ctx.fillStyle = 'rgba(0,0,0,0.52)';
   ctx.fillRect(panelX, panelY, panelW, panelH);
 
   ctx.font = '11px sans-serif';
   ctx.fillStyle = '#8fd0ff';
+  ctx.fillText('Target Orbit', panelX + 10, panelY + 18);
 
-  // Delta-V-Farbe: grün wenn nah genug, gelb, rot
-  const dvColor = deltaV < 0.4 ? '#44ff88' : deltaV < 1.2 ? '#ffdd44' : '#ff5555';
+  drawOrbitHudRow(ctx, panelX + 10, panelY + 36, 'Altitude', signed(radiusError, 0), heightOk);
+  drawOrbitHudRow(ctx, panelX + 10, panelY + 54, 'Radial', signed(radialSpeed, 3) + ' px/f', radialOk);
+  drawOrbitHudRow(ctx, panelX + 10, panelY + 72, 'Tangent', signed(tangentialError, 3) + ' px/f', tangentOk);
+
+  const dvColor = orbitOk
+    ? (deltaV < 0.4 ? '#44ff88' : deltaV < 1.2 ? '#ffdd44' : '#ff5555')
+    : '#6f8fa8';
   ctx.fillStyle = dvColor;
-  ctx.fillText('Rel. Speed: ' + deltaV.toFixed(3) + ' px/f', panelX + 10, panelY + 20);
+  ctx.fillText('Rendezvous ΔV ' + deltaV.toFixed(3), panelX + 138, panelY + 54);
 
-  ctx.fillStyle = '#aac8e0';
-  ctx.fillText('Station Dist: ' + Math.floor(dist), panelX + 10, panelY + 38);
-
-  // Kleines Status-Icon
-  ctx.fillStyle = dvColor;
+  ctx.fillStyle = orbitOk ? '#44ff88' : '#ffdd44';
   ctx.beginPath();
-  ctx.arc(panelX + panelW - 16, panelY + 28, 7, 0, Math.PI * 2);
+  ctx.arc(panelX + panelW - 16, panelY + 20, 7, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.font = 'bold 8px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(deltaV < 0.4 ? 'OK' : 'ΔV', panelX + panelW - 16, panelY + 31);
+  ctx.fillText(orbitOk ? 'OK' : 'ORB', panelX + panelW - 16, panelY + 23);
   ctx.textAlign = 'left';
+}
+
+function drawOrbitHudRow(ctx, x, y, label, value, ok) {
+  ctx.fillStyle = ok ? '#44ff88' : '#ffdd44';
+  ctx.fillText(label + ': ', x, y);
+  ctx.fillStyle = ok ? '#b8ffd0' : '#ffe58a';
+  ctx.fillText(value, x + 62, y);
+}
+
+function signed(value, digits) {
+  const rounded = value.toFixed(digits);
+  return value > 0 ? '+' + rounded : rounded;
 }
 
 /**

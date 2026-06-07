@@ -53,5 +53,8 @@ export const PLANET_GRAVITY_STRENGTH = 180.0;  // stärker als L2-Stern
 export const PLANET_GRAVITY_RADIUS = 900;  // Einflussradius
 export const PLANET_WELL_RADIUS = 530;     // tödliche Kollisionszone (Oberfläche)
 export const ORBIT_STATION_RADIUS = 700;   // Orbithöhe der Station (world-px vom Planetenzentrum)
-export const ORBIT_STATION_SPEED = 0.00028; // rad/frame — gemächliche, spielbare Umlaufzeit
+export const ORBIT_STATION_SPEED = Math.sqrt(PLANET_GRAVITY_STRENGTH / (ORBIT_STATION_RADIUS ** 3));
+export const ORBIT_TOLERANCE = 35;
+export const ORBIT_RADIAL_SPEED_OK = 0.08;
+export const ORBIT_TANGENTIAL_SPEED_OK = 0.08;
 // Docking-Toleranz für relative Geschwindigkeit: V_DOCK_MAX wird für Relativgeschwindigkeit genutzt

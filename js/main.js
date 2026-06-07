@@ -5,7 +5,7 @@ import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
 import { createStation, createOrbitingStation, updateOrbitingStation, checkDock, dockColor, getPortPosition } from './station.js';
 import * as renderer from './renderer.js';
-import { FUEL_START, WELL_RADIUS, EVENT_HORIZON, PLANET_RADIUS, PLANET_GRAVITY_STRENGTH, PLANET_GRAVITY_RADIUS, PLANET_WELL_RADIUS, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED } from './constants.js';
+import { FUEL_START, WELL_RADIUS, EVENT_HORIZON, PLANET_RADIUS, PLANET_GRAVITY_STRENGTH, PLANET_GRAVITY_RADIUS, PLANET_WELL_RADIUS, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial } from './tutorial.js';
 import { createGravityWell, checkWellCollision, predictTrajectory } from './gravity.js';
@@ -223,13 +223,19 @@ function markLevelComplete(levelNum) {
 }
 
 // Vorab allozierte Trajectory-Buffer (kein GC im Hot-Path)
-const TRAJ_STEPS = 80;
+const TRAJ_STEPS = 120;
 const trajX = new Float32Array(TRAJ_STEPS);
 const trajY = new Float32Array(TRAJ_STEPS);
 let trajValidSteps = 0;
 let trajFrameCounter = 0;
 let trajWillHitAsteroid = false;
 let trajHitAsteroid = null;
+const orbitAssist = {
+  periapsis: null,
+  apoapsis: null,
+  burnHint: null,
+  orbitOk: false,
+};
 
 // Event Horizon Pulse (für Animation)
 let eventHorizonPulse = 0;
@@ -576,6 +582,7 @@ function updateGravityTrajectoryPrediction() {
 
   trajFrameCounter = 0;
   trajValidSteps = predictTrajectory(ship, currentLevel.well, TRAJ_STEPS, trajX, trajY);
+  updateOrbitAssist();
 }
 
 function updateAsteroidHazards() {
@@ -643,6 +650,11 @@ function renderFrame(alpha = 1) {
     renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
   }
 
+  if (currentLevel.planet) {
+    const orbitStatus = getOrbitStatus(renderShip, currentLevel.planet);
+    renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, stationB, ORBIT_STATION_RADIUS, renderCam, canvas, orbitStatus);
+  }
+
   if (asteroids) {
     renderer.drawAsteroids(ctx, asteroids, renderCam, canvas, trajHitAsteroid);
   }
@@ -656,7 +668,14 @@ function renderFrame(alpha = 1) {
 
   // Level 2 / 5: Trajectory-Vorschau zeichnen
   if (well && trajValidSteps > 1) {
-    renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, isInDanger);
+    const willHitPlanet = well.isPlanet && trajValidSteps < TRAJ_STEPS;
+    renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, isInDanger || willHitPlanet);
+    if (well.isPlanet) {
+      renderer.drawOrbitTrajectoryAssist(ctx, orbitAssist, renderCam, canvas);
+    }
+    if (willHitPlanet) {
+      renderer.drawPlanetImpactMarker(ctx, trajX[trajValidSteps], trajY[trajValidSteps], renderCam, canvas);
+    }
   }
 
   if (asteroids && trajValidSteps > 1) {
@@ -697,10 +716,81 @@ function renderFrame(alpha = 1) {
 
   // Level 5: Orbit-HUD (Delta-V zur orbitierenden Station)
   if (level === 5) {
-    renderer.drawOrbitHud(ctx, renderShip, stationB, canvas);
+    renderer.drawOrbitHud(ctx, renderShip, stationB, currentLevel.planet, canvas, {
+      orbitRadius: ORBIT_STATION_RADIUS,
+      targetSpeed: ORBIT_STATION_RADIUS * ORBIT_STATION_SPEED,
+      radiusTolerance: ORBIT_TOLERANCE,
+      radialSpeedOk: ORBIT_RADIAL_SPEED_OK,
+      tangentialSpeedOk: ORBIT_TANGENTIAL_SPEED_OK,
+    });
   }
 
   if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
+}
+
+function getOrbitStatus(sourceShip, planet) {
+  const dx = sourceShip.x - planet.x;
+  const dy = sourceShip.y - planet.y;
+  const radius = Math.hypot(dx, dy);
+  if (radius <= 0) {
+    return { orbitOk: false, radialSpeed: 0, tangentialError: 0 };
+  }
+
+  const ux = dx / radius;
+  const uy = dy / radius;
+  const radialSpeed = sourceShip.vx * ux + sourceShip.vy * uy;
+  const tangentialSpeed = sourceShip.vx * -uy + sourceShip.vy * ux;
+  const radiusError = radius - ORBIT_STATION_RADIUS;
+  const tangentialError = tangentialSpeed - ORBIT_STATION_RADIUS * ORBIT_STATION_SPEED;
+  const orbitOk = Math.abs(radiusError) <= ORBIT_TOLERANCE
+    && Math.abs(radialSpeed) <= ORBIT_RADIAL_SPEED_OK
+    && Math.abs(tangentialError) <= ORBIT_TANGENTIAL_SPEED_OK;
+
+  return { orbitOk, radialSpeed, tangentialError };
+}
+
+function updateOrbitAssist() {
+  orbitAssist.periapsis = null;
+  orbitAssist.apoapsis = null;
+  orbitAssist.burnHint = null;
+  orbitAssist.orbitOk = false;
+
+  if (!currentLevel.well?.isPlanet || trajValidSteps < 4) return;
+
+  let minI = 0;
+  let maxI = 0;
+  let minR = Infinity;
+  let maxR = -Infinity;
+  for (let i = 0; i < trajValidSteps; i++) {
+    const dx = trajX[i] - currentLevel.planet.x;
+    const dy = trajY[i] - currentLevel.planet.y;
+    const r = Math.hypot(dx, dy);
+    if (r < minR) {
+      minR = r;
+      minI = i;
+    }
+    if (r > maxR) {
+      maxR = r;
+      maxI = i;
+    }
+  }
+
+  orbitAssist.periapsis = createApsisMarker(minI, 'PE');
+  orbitAssist.apoapsis = createApsisMarker(maxI, 'AP');
+
+  const orbitStatus = getOrbitStatus(ship, currentLevel.planet);
+  orbitAssist.orbitOk = orbitStatus.orbitOk;
+  if (orbitStatus.orbitOk) return;
+
+  if (Math.abs(orbitStatus.radialSpeed) > ORBIT_RADIAL_SPEED_OK * 1.5) {
+    orbitAssist.burnHint = createApsisMarker(Math.abs(minR - ORBIT_STATION_RADIUS) < Math.abs(maxR - ORBIT_STATION_RADIUS) ? minI : maxI, 'RADIAL');
+  } else {
+    orbitAssist.burnHint = createApsisMarker(minR < ORBIT_STATION_RADIUS ? maxI : minI, 'TAN');
+  }
+}
+
+function createApsisMarker(index, label) {
+  return { x: trajX[index], y: trajY[index], label };
 }
 
 function handleDocking(ship, station) {
@@ -860,6 +950,10 @@ function resetLevel() {
   trajValidSteps = 0;
   trajWillHitAsteroid = false;
   trajHitAsteroid = null;
+  orbitAssist.periapsis = null;
+  orbitAssist.apoapsis = null;
+  orbitAssist.burnHint = null;
+  orbitAssist.orbitOk = false;
   particles = [];
   cam.x = ship.x;
   cam.y = ship.y;

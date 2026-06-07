@@ -109,6 +109,49 @@
       line-height: 1.45;
     }
 
+    .orbit-briefing {
+      width: min(680px, 100%);
+      margin: -6px auto 24px;
+      text-align: left;
+    }
+
+    .orbit-briefing__flow {
+      margin: 0 0 16px;
+      padding-left: 20px;
+      color: #d7e6f4;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .orbit-briefing__flow li + li {
+      margin-top: 6px;
+    }
+
+    .orbit-briefing__instruments {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 18px;
+      margin: 0;
+      color: #afc5d8;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .orbit-briefing__instruments div {
+      min-width: 0;
+    }
+
+    .orbit-briefing__instruments dt {
+      display: inline;
+      color: #8fd0ff;
+      font-weight: 850;
+    }
+
+    .orbit-briefing__instruments dd {
+      display: inline;
+      margin: 0;
+    }
+
     .actions {
       display: flex;
       justify-content: center;
@@ -585,6 +628,19 @@
       .final-stats {
         grid-template-columns: 1fr;
       }
+
+      .orbit-briefing {
+        margin-top: -4px;
+      }
+
+      .orbit-briefing__flow {
+        font-size: 13px;
+      }
+
+      .orbit-briefing__instruments {
+        grid-template-columns: 1fr;
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -731,10 +787,23 @@
     <section class="start-panel" aria-labelledby="l5Title">
       <p class="eyebrow" style="color: #44aaff;">Level 5 — Orbital Rendezvous</p>
       <h1 id="l5Title">Delta V</h1>
-      <p class="mission">Ein Planet liegt vor dir. Eine Raumstation kreist auf einer Umlaufbahn darum. Schwenk in den richtigen Orbit ein und passe deine Geschwindigkeit an die Station an.</p>
-      <p class="mission" style="font-size: 13px; color: #44aaff; margin-top: -10px;">
-        Das Orbit-HUD zeigt die Relativgeschwindigkeit zur Station. Bringe "Rel. Speed" unter 0.4 um andocken zu können.
-      </p>
+      <p class="mission">Erst stabiler Orbit, dann Rendezvous: Nutze das Orbit-HUD, um deine Bahn an die Zielumlaufbahn anzupassen, bevor du die Station einholst.</p>
+      <div class="orbit-briefing" aria-label="Orbit-HUD Briefing">
+        <ol class="orbit-briefing__flow">
+          <li>Lass dich zum Planeten ziehen, aber meide den Einschlagmarker auf der Trajektorie.</li>
+          <li>Bringe <strong>Altitude</strong> nahe 0 und reduziere <strong>Radial</strong>, damit deine Bahn nicht weiter steigt oder fällt.</li>
+          <li>Korrigiere bei <strong>AP</strong> oder <strong>PE</strong> tangential, bis <strong>Tangent</strong> nahe 0 liegt.</li>
+          <li>Wenn die Orbitwerte grün sind, senke <strong>Rendezvous ΔV</strong> zur Station für das Andocken.</li>
+        </ol>
+        <dl class="orbit-briefing__instruments">
+          <div><dt>Altitude</dt><dd>: Abstand zur Zielbahn.</dd></div>
+          <div><dt>Radial</dt><dd>: Drift zum oder vom Planeten.</dd></div>
+          <div><dt>Tangent</dt><dd>: Abweichung von Kreisbahngeschwindigkeit.</dd></div>
+          <div><dt>AP / PE</dt><dd>: höchster und niedrigster Punkt der Vorhersage.</dd></div>
+          <div><dt>TAN</dt><dd>: tangential beschleunigen oder bremsen.</dd></div>
+          <div><dt>RADIAL</dt><dd>: radialen Drift zuerst abbauen.</dd></div>
+        </dl>
+      </div>
       <div class="actions">
         <button id="level5StartButton" type="button">Start</button>
       </div>
