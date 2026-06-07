@@ -5,7 +5,7 @@ import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
 import { createStation, createOrbitingStation, updateOrbitingStation, checkDock, dockColor, getPortPosition } from './station.js';
 import * as renderer from './renderer.js';
-import { FUEL_START, WELL_RADIUS, EVENT_HORIZON, PLANET_RADIUS, PLANET_GRAVITY_STRENGTH, PLANET_GRAVITY_RADIUS, PLANET_WELL_RADIUS, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, normalizeAngle } from './constants.js';
+import { FUEL_START, WELL_RADIUS, EVENT_HORIZON, PLANET_RADIUS, PLANET_GRAVITY_STRENGTH, PLANET_GRAVITY_RADIUS, PLANET_WELL_RADIUS, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, normalizeAngle, L6_FUEL_START, L6_PLANET_RADIUS, L6_GRAVITY_STRENGTH, L6_GRAVITY_RADIUS, L6_WELL_RADIUS, L6_MOON_RADIUS, L6_MOON_ORBIT_RADIUS, L6_MOON_ORBIT_SPEED } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial } from './tutorial.js';
 import { createGravityWell, checkWellCollision, predictTrajectory } from './gravity.js';
@@ -179,6 +179,58 @@ L3.stations = [L3.stationA, L3.stationB];
 L4.stations = [L4.stationA, L4.stationB];
 L5.stations = [L5.stationA, L5.stationB];
 
+// --- Level 6: Schwerkraftschleuder ---
+// Slingshot-Manöver um einen Gasriesen (Jupiter-artig).
+// Weltgröße: 4200 × 2800. Direktflug unmöglich (zu wenig Treibstoff).
+// Optimaler Weg: nahe am Gasriesen vorbei (links/unterhalb) → Gravitation schleudert
+// das Schiff nach rechts-oben zu Station B.
+const L6_PLANET_X = 2200;
+const L6_PLANET_Y = 1400;
+
+/**
+ * Erzeugt einen dekorativen Mond, der um eine Position kreist.
+ * @param {number} cx - Zentrum X (Welt-Koordinaten)
+ * @param {number} cy - Zentrum Y
+ * @param {number} orbitRadius - Orbitabstand
+ * @param {number} radius - Mondradius
+ * @param {number} startAngle - Startwinkel (Bogenmaß)
+ */
+function createMoon(cx, cy, orbitRadius, radius, startAngle = 0.8) {
+  return {
+    cx, cy,         // Orbitzenrum
+    orbitRadius,
+    radius,
+    angle: startAngle,
+    x: cx + Math.cos(startAngle) * orbitRadius,
+    y: cy + Math.sin(startAngle) * orbitRadius,
+  };
+}
+
+/**
+ * Aktualisiert die Mondposition anhand seines Orbitwinkels.
+ */
+function updateOrbitingMoon(moon, dt) {
+  moon.angle += L6_MOON_ORBIT_SPEED * dt;
+  moon.x = moon.cx + Math.cos(moon.angle) * moon.orbitRadius;
+  moon.y = moon.cy + Math.sin(moon.angle) * moon.orbitRadius;
+}
+
+const L6 = {
+  shipStart: { x: 300, y: 2500 },
+  stationA: createStation(300, 2500, -Math.PI * 0.18),
+  stationB: createStation(3900, 300, Math.PI + Math.PI * 0.18),
+  planet: createPlanet(L6_PLANET_X, L6_PLANET_Y, L6_PLANET_RADIUS),
+  moon: createMoon(L6_PLANET_X, L6_PLANET_Y, L6_MOON_ORBIT_RADIUS, L6_MOON_RADIUS),
+  well: createGravityWell(L6_PLANET_X, L6_PLANET_Y, L6_WELL_RADIUS, false),
+  asteroids: null,
+  fuelStart: L6_FUEL_START,
+};
+L6.well.gravityStrength = L6_GRAVITY_STRENGTH;
+L6.well.gravityRadius = L6_GRAVITY_RADIUS;
+L6.well.isPlanet = true;
+L6.well.isGasPlanet = true;  // Unterscheidet Gasriese von Erdplanet (für Renderer)
+L6.stations = [L6.stationA, L6.stationB];
+
 let currentLevel = L1;
 const ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
 const cam = createCamera(ship.x, ship.y);
@@ -213,7 +265,7 @@ let blackHoleCollapseTimer = null;
 let blackHoleCollapse = null;
 
 const PROGRESS_KEY = 'delta_v_progress';
-const TOTAL_LEVELS = 5;
+const TOTAL_LEVELS = 6;
 const BLACK_HOLE_COLLAPSE_MS = 750;
 const BLACK_HOLE_BLACKOUT_MS = 1000;
 
@@ -325,7 +377,7 @@ function updateParticles(dt) {
 
 // stars — verteilt über den gesamten möglichen Weltbereich (inkl. L5 mit 3600×2400)
 const stars = [];
-for (let i=0;i<280;i++) stars.push({ x: Math.random()*3600, y: Math.random()*2400 });
+for (let i=0;i<320;i++) stars.push({ x: Math.random()*4200, y: Math.random()*2800 });
 
 const FIXED_STEP_MS = 1000 / 60;
 const MAX_FRAME_MS = 250;
@@ -357,7 +409,8 @@ function selectLevel(targetLevel) {
   else if (targetLevel === 2) currentLevel = L2;
   else if (targetLevel === 3) currentLevel = L3;
   else if (targetLevel === 4) currentLevel = L4;
-  else currentLevel = L5;
+  else if (targetLevel === 5) currentLevel = L5;
+  else currentLevel = L6;
 }
 
 async function beginGameplay() {
@@ -423,7 +476,7 @@ finalReplayButton.addEventListener('click', () => {
   finalCompleteScreen.hidden = true;
   levelCompleteScreen.hidden = true;
   startScreen.hidden = true;
-  selectLevel(5);
+  selectLevel(TOTAL_LEVELS);
   score = 0;
   resetLevel();
   beginGameplay();
@@ -616,6 +669,12 @@ function updateLevelSystems(dt, now) {
     // Planet dreht sich langsam
     currentLevel.planet.rotation += 0.00012 * dt;
   }
+
+  // Level 6: Mond animieren + Gasriese rotieren
+  if (level === 6) {
+    updateOrbitingMoon(currentLevel.moon, dt);
+    currentLevel.planet.rotation += 0.00008 * dt;
+  }
 }
 
 function updateGravityHazards(now) {
@@ -740,9 +799,17 @@ function renderFrame(alpha = 1) {
   renderer.clear(ctx, canvas);
   renderer.drawStars(ctx, stars, renderCam, canvas);
 
-  // Level 5: Planet zeichnen (tief im Hintergrund, vor allem anderen)
-  if (currentLevel.planet) {
+  // Level 5: Erdplanet zeichnen
+  if (level === 5 && currentLevel.planet) {
     renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
+  }
+
+  // Level 6: Gasriese + Mond zeichnen
+  if (level === 6 && currentLevel.planet) {
+    renderer.drawGasPlanet(ctx, currentLevel.planet, renderCam, canvas);
+    if (currentLevel.moon) {
+      renderer.drawMoon(ctx, currentLevel.moon, renderCam, canvas);
+    }
   }
 
   // Level 2 / 5: Gravity Well zeichnen (vor Stationen, damit Ringe im Hintergrund)
@@ -751,7 +818,7 @@ function renderFrame(alpha = 1) {
     renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
   }
 
-  if (currentLevel.planet) {
+  if (level === 5 && currentLevel.planet) {
     const orbitStatus = getOrbitStatus(renderShip, currentLevel.planet);
     renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, stationB, ORBIT_STATION_RADIUS, renderCam, canvas, orbitStatus);
   }
@@ -826,6 +893,12 @@ function renderFrame(alpha = 1) {
     });
   }
 
+  // Level 6: Slingshot-HUD
+  if (level === 6) {
+    const slingshotStatus = getSlingshotStatus(ship, currentLevel.well, trajX, trajY, trajValidSteps);
+    renderer.drawSlingshotHud(ctx, ship, currentLevel.well, canvas, slingshotStatus);
+  }
+
   if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
 }
 
@@ -848,6 +921,43 @@ function getOrbitStatus(sourceShip, planet) {
     && Math.abs(tangentialError) <= ORBIT_TANGENTIAL_SPEED_OK;
 
   return { orbitOk, radialSpeed, tangentialError };
+}
+
+/**
+ * Berechnet Slingshot-Statusdaten für das L6-HUD:
+ * - closestApproach: kürzeste Distanz zur Planetenoberfläche entlang der Trajektorie
+ * - speedAtClosest: Geschwindigkeit an diesem Punkt
+ * - approachAngle: Winkel des Schiffs relativ zum Planeten (ob der Kurs links/rechts angreift)
+ */
+function getSlingshotStatus(sourceShip, well, trajXArr, trajYArr, validSteps) {
+  let closestDist = Infinity;
+  let closestStep = 0;
+
+  for (let i = 0; i < validSteps; i++) {
+    const dx = trajXArr[i] - well.x;
+    const dy = trajYArr[i] - well.y;
+    const d = Math.sqrt(dx * dx + dy * dy) - well.wellRadius;
+    if (d < closestDist) {
+      closestDist = d;
+      closestStep = i;
+    }
+  }
+
+  // Winkel vom Planeten zum Schiff (zeigt ob der Spieler links/rechts ansetzt)
+  const shipDx = sourceShip.x - well.x;
+  const shipDy = sourceShip.y - well.y;
+  const approachAngle = Math.atan2(shipDy, shipDx);
+
+  // Geschwindigkeit des Schiffs
+  const speed = Math.hypot(sourceShip.vx, sourceShip.vy);
+
+  return {
+    closestApproach: closestDist,
+    closestStep,
+    approachAngle,
+    speed,
+    hasTrajectory: validSteps > 2,
+  };
 }
 
 function updateDemoAutopilot(dt, now) {
@@ -1219,6 +1329,15 @@ function getLevelCompleteCopy(completedLevel) {
     };
   }
 
+  if (completedLevel === 5) {
+    return {
+      eyebrow: 'Level 5 abgeschlossen',
+      title: 'Orbit erreicht',
+      mission: 'Stabiler Orbit eingeschlagen, Station eingeholt. Die Fracht ist angekommen.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
   return null;
 }
 
@@ -1240,7 +1359,7 @@ function resetLevel() {
   ship.angle = 0;
   ship.angularVel = 0;
   ship.targetAngle = 0;
-  ship.fuel = FUEL_START;
+  ship.fuel = currentLevel.fuelStart ?? FUEL_START;
   ship.cargo = 0;
   ship.dockedTimer = 0;
   ship.dockedStation = null;
@@ -1332,6 +1451,14 @@ const level5StartButton = document.getElementById('level5StartButton');
 if (level5StartButton) {
   level5StartButton.addEventListener('click', () => {
     document.getElementById('level5StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
+const level6StartButton = document.getElementById('level6StartButton');
+if (level6StartButton) {
+  level6StartButton.addEventListener('click', () => {
+    document.getElementById('level6StartScreen').hidden = true;
     beginGameplay();
   });
 }

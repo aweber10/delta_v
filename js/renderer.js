@@ -1128,3 +1128,341 @@ export function drawEventHorizonWarning(ctx, canvas, pulse) {
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 }
+
+// ---------------------------------------------------------------------------
+// Level 6: Gasriese (Jupiter-artig)
+// ---------------------------------------------------------------------------
+
+// Wolkenbänder: [yFactor, widthFactor, color, alpha]
+// yFactor = Mitte des Bandes relativ zu r (−1 = Pol, +1 = Südpol)
+const GAS_CLOUD_BANDS = [
+  { y: -0.72, w: 0.10, color: '#c0956a', alpha: 0.82 },
+  { y: -0.48, w: 0.14, color: '#e8c98a', alpha: 0.78 },
+  { y: -0.22, w: 0.18, color: '#b87040', alpha: 0.85 },
+  { y:  0.05, w: 0.20, color: '#f0dfa0', alpha: 0.72 },
+  { y:  0.30, w: 0.16, color: '#c06030', alpha: 0.80 },
+  { y:  0.55, w: 0.13, color: '#deb880', alpha: 0.74 },
+  { y:  0.78, w: 0.09, color: '#a05828', alpha: 0.70 },
+];
+
+/**
+ * Zeichnet einen Jupiter-artigen Gasriesen mit rotierenden Wolkenbändern
+ * und einem markanten roten Sturmoval.
+ * @param {object} planet - { x, y, radius, rotation, cloudAngle }
+ */
+export function drawGasPlanet(ctx, planet, cam, canvas) {
+  const p = worldToScreen(cam, planet.x, planet.y, canvas);
+  const z = cam.zoom;
+  const r = planet.radius * z;
+  const time = performance.now() * 0.001;
+  const bandPhase = planet.cloudAngle + time * 0.012; // langsame Wolkenrotation
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  // Clip auf Planetenkreis
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // --- 1. Basiskugel (orangebraun) ---
+  const baseGrad = ctx.createRadialGradient(-r * 0.28, -r * 0.30, r * 0.05, 0, 0, r);
+  baseGrad.addColorStop(0,    '#e8c080');  // helles Orange-Creme (Highlight)
+  baseGrad.addColorStop(0.30, '#c97840');  // mittleres Orange-Braun
+  baseGrad.addColorStop(0.65, '#8b4520');  // dunkles Braun
+  baseGrad.addColorStop(1,    '#4a200a');  // sehr dunkles Braun am Rand
+  ctx.fillStyle = baseGrad;
+  ctx.fillRect(-r - 2, -r - 2, (r + 2) * 2, (r + 2) * 2);
+
+  // --- 2. Horizontale Wolkenbänder ---
+  // Jedes Band ist ein horizontaler Streifen, der sich leicht verschiebt
+  for (let bi = 0; bi < GAS_CLOUD_BANDS.length; bi++) {
+    const band = GAS_CLOUD_BANDS[bi];
+    // Leichter horizontaler Versatz pro Band (simuliert Differentialrotation)
+    const xOffset = Math.sin(bandPhase * (0.7 + bi * 0.18) + bi * 1.3) * r * 0.04;
+    const bandY = band.y * r;
+    const halfW = band.w * r;
+
+    ctx.save();
+    ctx.translate(xOffset, 0);
+
+    // Band als horizontaler Rechteck-Streifen (innerhalb des Clips)
+    ctx.fillStyle = band.color;
+    ctx.globalAlpha = band.alpha;
+    ctx.fillRect(-r - 4, bandY - halfW, (r + 4) * 2, halfW * 2);
+
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- 3. Welligkeit der Bänder (turbulente Kanten) ---
+  ctx.save();
+  for (let bi = 0; bi < GAS_CLOUD_BANDS.length; bi++) {
+    const band = GAS_CLOUD_BANDS[bi];
+    const bandY = band.y * r;
+    const halfW = band.w * r;
+
+    // Wellige Oberkante mit Bezier-ähnlichem Sinus-Verlauf
+    const waveAmp = r * 0.025;
+    const waveFreq = 3.5 + bi * 0.4;
+    const phase = bandPhase * (0.6 + bi * 0.2) + bi * 0.8;
+
+    ctx.beginPath();
+    ctx.moveTo(-r, bandY - halfW);
+    for (let xi = -r; xi <= r; xi += 8) {
+      const yw = bandY - halfW + Math.sin((xi / r) * Math.PI * waveFreq + phase) * waveAmp;
+      ctx.lineTo(xi, yw);
+    }
+    ctx.lineTo(r, bandY + halfW * 0.3);
+    ctx.lineTo(-r, bandY + halfW * 0.3);
+    ctx.closePath();
+
+    // Leicht hellere Kante
+    const edgeColor = bi % 2 === 0 ? 'rgba(255,220,150,0.22)' : 'rgba(80,30,10,0.18)';
+    ctx.fillStyle = edgeColor;
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // --- 4. Großer Roter Fleck (Sturm-Oval) ---
+  const spotPhase = bandPhase * 0.55;
+  const spotX = Math.sin(spotPhase) * r * 0.18;  // bewegt sich leicht horizontal
+  const spotY = r * 0.10;                          // leicht unterhalb Äquator
+  const spotRx = r * 0.22;
+  const spotRy = r * 0.11;
+
+  ctx.save();
+  const spotGrad = ctx.createRadialGradient(spotX - spotRx * 0.2, spotY - spotRy * 0.2, spotRy * 0.1, spotX, spotY, spotRx);
+  spotGrad.addColorStop(0,    'rgba(240, 100, 60, 0.95)');
+  spotGrad.addColorStop(0.35, 'rgba(190,  55, 30, 0.90)');
+  spotGrad.addColorStop(0.70, 'rgba(140,  28, 18, 0.80)');
+  spotGrad.addColorStop(1,    'rgba( 80,  10,  5, 0)');
+  ctx.fillStyle = spotGrad;
+  ctx.beginPath();
+  ctx.ellipse(spotX, spotY, spotRx, spotRy, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Heller Innenkern des Flecks
+  const spotCore = ctx.createRadialGradient(spotX - spotRx * 0.15, spotY - spotRy * 0.15, 0, spotX, spotY, spotRx * 0.45);
+  spotCore.addColorStop(0, 'rgba(255,160,100,0.6)');
+  spotCore.addColorStop(1, 'rgba(255,100, 60,0)');
+  ctx.fillStyle = spotCore;
+  ctx.beginPath();
+  ctx.ellipse(spotX, spotY, spotRx * 0.45, spotRy * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore(); // Ende Clip
+
+  // --- 5. Atmosphären-Halo (orange/gelb) ---
+  const atmInner = r * 0.97;
+  const atmOuter = r * 1.16;
+  const atmGrad = ctx.createRadialGradient(0, 0, atmInner, 0, 0, atmOuter);
+  atmGrad.addColorStop(0,    'rgba(230, 150,  60, 0.50)');
+  atmGrad.addColorStop(0.35, 'rgba(200, 110,  30, 0.26)');
+  atmGrad.addColorStop(0.72, 'rgba(150,  70,  10, 0.09)');
+  atmGrad.addColorStop(1,    'rgba(100,  40,   0, 0)');
+  const atmCtx = ctx;
+  atmCtx.save();
+  atmCtx.translate(p.x, p.y);
+  atmCtx.fillStyle = atmGrad;
+  atmCtx.beginPath();
+  atmCtx.arc(0, 0, atmOuter, 0, Math.PI * 2);
+  atmCtx.fill();
+
+  // --- 6. Terminator-Schatten ---
+  const shadowGrad = atmCtx.createRadialGradient(r * 0.38, -r * 0.28, 0, -r * 0.1, r * 0.1, r * 1.2);
+  shadowGrad.addColorStop(0,    'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(0.52, 'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(0.76, 'rgba(0,5,15,0.25)');
+  shadowGrad.addColorStop(1,    'rgba(0,3,10,0.60)');
+  atmCtx.beginPath();
+  atmCtx.arc(0, 0, r, 0, Math.PI * 2);
+  atmCtx.fillStyle = shadowGrad;
+  atmCtx.fill();
+
+  // --- 7. Spekularer Highlight ---
+  const hlGrad = atmCtx.createRadialGradient(-r * 0.28, -r * 0.32, 0, -r * 0.28, -r * 0.32, r * 0.32);
+  hlGrad.addColorStop(0, 'rgba(255,230,180,0.20)');
+  hlGrad.addColorStop(0.5, 'rgba(255,210,140,0.06)');
+  hlGrad.addColorStop(1,    'rgba(255,200,100,0)');
+  atmCtx.fillStyle = hlGrad;
+  atmCtx.beginPath();
+  atmCtx.arc(0, 0, r, 0, Math.PI * 2);
+  atmCtx.fill();
+
+  atmCtx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Level 6: Mond (grau, kraterpockig)
+// ---------------------------------------------------------------------------
+
+// Vorberechnete Kraterpositionen: [xFac, yFac, rFac, shadowDir]
+// xFac/yFac relativ zu Mondradius, rFac = Kraterradius / Mondradius
+const MOON_CRATERS = [
+  { xf: -0.30, yf: -0.22, rf: 0.18, bright: 0.55 },
+  { xf:  0.38, yf:  0.15, rf: 0.14, bright: 0.50 },
+  { xf: -0.10, yf:  0.40, rf: 0.11, bright: 0.60 },
+  { xf:  0.20, yf: -0.38, rf: 0.16, bright: 0.48 },
+  { xf: -0.42, yf:  0.32, rf: 0.09, bright: 0.62 },
+  { xf:  0.05, yf:  0.10, rf: 0.07, bright: 0.45 },
+];
+
+/**
+ * Zeichnet einen realistisch wirkenden grauen Mond mit Kratern.
+ * @param {object} moon - { x, y, radius, ... }
+ */
+export function drawMoon(ctx, moon, cam, canvas) {
+  const p = worldToScreen(cam, moon.x, moon.y, canvas);
+  const z = cam.zoom;
+  const r = moon.radius * z;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  // --- 1. Mondbasis (grauer Radial-Gradient) ---
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  const baseGrad = ctx.createRadialGradient(-r * 0.25, -r * 0.28, r * 0.04, 0, 0, r);
+  baseGrad.addColorStop(0,    '#d8d8d8');  // helles Grau (Highlight)
+  baseGrad.addColorStop(0.30, '#aaaaaa');  // mittleres Grau
+  baseGrad.addColorStop(0.65, '#707070');  // dunkles Grau
+  baseGrad.addColorStop(1,    '#3c3c3c');  // sehr dunkler Rand
+  ctx.fillStyle = baseGrad;
+  ctx.fillRect(-r - 1, -r - 1, (r + 1) * 2, (r + 1) * 2);
+
+  // --- 2. Krater ---
+  for (const cr of MOON_CRATERS) {
+    const cx = cr.xf * r;
+    const cy = cr.yf * r;
+    const cr_r = cr.rf * r;
+
+    // Äußerer dunkler Ring (Kraterwand)
+    const rimGrad = ctx.createRadialGradient(cx, cy, cr_r * 0.55, cx, cy, cr_r);
+    rimGrad.addColorStop(0,   `rgba(40,40,40,0.55)`);
+    rimGrad.addColorStop(0.7, `rgba(30,30,30,0.35)`);
+    rimGrad.addColorStop(1,   `rgba(20,20,20,0)`);
+    ctx.fillStyle = rimGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cr_r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Innenboden: leicht heller als Umgebung
+    const floorGrad = ctx.createRadialGradient(
+      cx - cr_r * 0.22, cy - cr_r * 0.18, 0,
+      cx, cy, cr_r * 0.58
+    );
+    floorGrad.addColorStop(0,   `rgba(180,180,180,${cr.bright * 0.5})`);
+    floorGrad.addColorStop(0.6, `rgba(130,130,130,${cr.bright * 0.25})`);
+    floorGrad.addColorStop(1,   `rgba(100,100,100,0)`);
+    ctx.fillStyle = floorGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cr_r * 0.58, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore(); // Ende Clip
+
+  // --- 3. Terminator-Schatten ---
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  const shadowGrad = ctx.createRadialGradient(r * 0.35, -r * 0.25, 0, -r * 0.08, r * 0.08, r * 1.15);
+  shadowGrad.addColorStop(0,    'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(0.50, 'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(0.75, 'rgba(0,0,10,0.28)');
+  shadowGrad.addColorStop(1,    'rgba(0,0, 8,0.62)');
+  ctx.fillStyle = shadowGrad;
+  ctx.fillRect(-r - 1, -r - 1, (r + 1) * 2, (r + 1) * 2);
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Level 6: Slingshot-HUD
+// ---------------------------------------------------------------------------
+
+/**
+ * Sanftes Slingshot-Assist-HUD:
+ * - Closest Approach (Abstand zur Planetenoberfläche an dem nächsten Trajektoriepunkt)
+ * - Geschwindigkeitsanzeige
+ * - Farbcodierter Status (grün = sicherer Abstand, gelb = eng, rot = zu nah / Kollision)
+ * @param {object} status - { closestApproach, speed, hasTrajectory }
+ */
+export function drawSlingshotHud(ctx, ship, well, canvas, status) {
+  const w = canvas.clientWidth;
+  const panelX = Math.floor(w / 2) - 130;
+  const panelY = 10;
+  const panelW = 260;
+  const panelH = 76;
+
+  ctx.save();
+
+  // Panel-Hintergrund
+  ctx.fillStyle = 'rgba(0,0,0,0.52)';
+  ctx.fillRect(panelX, panelY, panelW, panelH);
+
+  // Titel
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#ffb860';
+  ctx.fillText('Schwerkraftschleuder', panelX + 10, panelY + 18);
+
+  if (!status.hasTrajectory) {
+    ctx.fillStyle = '#6f8fa8';
+    ctx.fillText('Trajektorie berechnen ...', panelX + 10, panelY + 42);
+    ctx.restore();
+    return;
+  }
+
+  // Closest Approach: Farbcodierung
+  const ca = status.closestApproach;
+  let caColor, caLabel;
+  if (ca < 0) {
+    caColor = '#ff4444';
+    caLabel = 'KOLLISION';
+  } else if (ca < 80) {
+    caColor = '#ff8844';
+    caLabel = Math.round(ca) + ' px — zu nah!';
+  } else if (ca < 200) {
+    caColor = '#ffdd44';
+    caLabel = Math.round(ca) + ' px — eng';
+  } else if (ca < 500) {
+    caColor = '#88ff88';
+    caLabel = Math.round(ca) + ' px — gut';
+  } else {
+    caColor = '#6f8fa8';
+    caLabel = Math.round(ca) + ' px — zu weit';
+  }
+
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#8fd0ff';
+  ctx.fillText('Closest Approach:', panelX + 10, panelY + 40);
+  ctx.fillStyle = caColor;
+  ctx.fillText(caLabel, panelX + 10, panelY + 58);
+
+  // Geschwindigkeit rechts
+  const speed = status.speed;
+  const speedColor = speed > 2.5 ? '#88ff88' : speed > 1.2 ? '#ffdd44' : '#ff7744';
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#8fd0ff';
+  ctx.textAlign = 'right';
+  ctx.fillText('Geschw.:', panelX + panelW - 10, panelY + 40);
+  ctx.fillStyle = speedColor;
+  ctx.fillText(speed.toFixed(2) + ' px/f', panelX + panelW - 10, panelY + 58);
+  ctx.textAlign = 'left';
+
+  // Status-Dot oben rechts
+  const dotColor = ca < 0 ? '#ff4444' : ca < 80 ? '#ff8844' : ca < 200 ? '#ffdd44' : ca < 500 ? '#44ff88' : '#6f8fa8';
+  ctx.fillStyle = dotColor;
+  ctx.beginPath();
+  ctx.arc(panelX + panelW - 16, panelY + 18, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}

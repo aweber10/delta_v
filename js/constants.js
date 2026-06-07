@@ -58,3 +58,13 @@ export const ORBIT_TOLERANCE = 35;
 export const ORBIT_RADIAL_SPEED_OK = 0.08;
 export const ORBIT_TANGENTIAL_SPEED_OK = 0.08;
 // Docking-Toleranz für relative Geschwindigkeit: V_DOCK_MAX wird für Relativgeschwindigkeit genutzt
+
+// --- Level 6: Schwerkraftschleuder (Slingshot) ---
+export const L6_FUEL_START = 180;           // Knappes Treibstoff-Budget — Direktflug unmöglich
+export const L6_PLANET_RADIUS = 480;        // Gasriese (Jupiter-artig)
+export const L6_GRAVITY_STRENGTH = 220.0;   // Stark genug für spürbaren Slingshot-Boost
+export const L6_GRAVITY_RADIUS = 1100;      // Großer Einflussbereich
+export const L6_WELL_RADIUS = 492;          // Kollisionszone (leicht über Planetenradius)
+export const L6_MOON_RADIUS = 72;           // Mond-Radius (rein visuell)
+export const L6_MOON_ORBIT_RADIUS = 700;    // Mondabstand vom Gasriesen-Zentrum
+export const L6_MOON_ORBIT_SPEED = 0.00055; // Mondrotationsgeschwindigkeit (rad/frame)

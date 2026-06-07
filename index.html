@@ -222,7 +222,7 @@
 
     .level-select {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 14px;
       width: 100%;
       margin-bottom: 18px;
@@ -473,6 +473,12 @@
       }
     }
 
+    @media (max-width: 900px) {
+      .level-select {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
     @media (max-width: 720px) {
       .level-select {
         grid-template-columns: repeat(2, 1fr);
@@ -676,6 +682,42 @@
         rgba(2, 4, 8, 0.9);
     }
 
+    /* Level 6: Gasriesen-Hazard-Icon (Jupiter-orange) */
+    .level-card__hazard--gasplanet {
+      background: radial-gradient(circle at 35% 35%, #f0d090, #c97840 45%, #4a200a);
+      border-color: rgba(255, 160, 60, 0.65);
+      box-shadow:
+        0 0 0 3px rgba(255, 140, 30, 0.22),
+        0 0 18px rgba(220, 100, 20, 0.38);
+      overflow: hidden;
+    }
+
+    /* Andeutung von Wolkenbändern im Icon */
+    .level-card__hazard--gasplanet::before {
+      content: "";
+      position: absolute;
+      left: 0; right: 0;
+      top: 38%; height: 14%;
+      background: rgba(180, 90, 30, 0.55);
+      border-radius: 50%;
+    }
+
+    .level-card__hazard--gasplanet::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0;
+      top: 62%; height: 10%;
+      background: rgba(255, 200, 100, 0.40);
+      border-radius: 50%;
+    }
+
+    /* Level 6: Overlay */
+    .overlay.level6 {
+      background:
+        radial-gradient(circle at 50% 38%, rgba(200, 110, 30, 0.26), transparent 34%),
+        rgba(2, 4, 8, 0.88);
+    }
+
     @media (max-width: 720px) {
       .actions {
         width: 100%;
@@ -789,6 +831,20 @@
           </span>
         </button>
 
+        <button class="level-card" id="startL6" data-level="6" type="button" style="--accent: #ff9030; --hazard-x: 56%; --hazard-size: 26px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 6</span>
+            <span class="level-card__risk">Slingshot</span>
+          </span>
+          <span class="level-card__mid">
+            <span class="level-card__title">Schwerkraftschleuder</span>
+            <span class="level-card__copy">Zu wenig Treibstoff für den Direktflug — nutze den Gasriesen als Katapult.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--gasplanet" aria-hidden="true"></span>
+          </span>
+        </button>
+
       </div>
 
       <div class="demo-strip">
@@ -822,11 +878,11 @@
   </div>
 
   <!-- Campaign Complete Screen -->
-  <div class="overlay level5" id="finalCompleteScreen" hidden>
+  <div class="overlay level6" id="finalCompleteScreen" hidden>
     <section class="start-panel" aria-labelledby="finalTitle">
-      <p class="eyebrow" style="color: #44aaff;">Kampagne abgeschlossen</p>
+      <p class="eyebrow" style="color: #ff9030;">Kampagne abgeschlossen</p>
       <h1 id="finalTitle">Mission erfüllt</h1>
-      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift bis zum Orbit-Rendezvous — du hast die Route vollständig geschlossen.</p>
+      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift über das Schwarze Loch bis zum Slingshot-Manöver — du hast die gesamte Route gemeistert.</p>
       <div class="final-stats" aria-label="Missionsbilanz">
         <span class="final-stat">
           <span class="final-stat__label">Status</span>
@@ -834,12 +890,12 @@
         </span>
         <span class="final-stat">
           <span class="final-stat__label">Letzte Mission</span>
-          <span class="final-stat__value">Orbital Rendezvous</span>
+          <span class="final-stat__value">Schwerkraftschleuder</span>
         </span>
       </div>
       <div class="actions">
         <button id="finalMenuButton" type="button">Hauptmenü</button>
-        <button class="secondary" id="finalReplayButton" type="button">Level 5 wiederholen</button>
+        <button class="secondary" id="finalReplayButton" type="button">Level 6 wiederholen</button>
       </div>
     </section>
   </div>
@@ -883,6 +939,32 @@
       </div>
       <div class="actions">
         <button id="level5StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 6: Start Screen -->
+  <div class="overlay level6" id="level6StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l6Title">
+      <p class="eyebrow" style="color: #ff9030;">Level 6 — Schwerkraftschleuder</p>
+      <h1 id="l6Title">Delta V</h1>
+      <p class="mission">Der Treibstoff reicht nicht für den Direktflug. Nutze die Schwerkraft des Gasriesen: Flieg nahe an ihm vorbei — er schleudert dich auf Kurs.</p>
+      <div class="orbit-briefing" aria-label="Slingshot Briefing">
+        <ol class="orbit-briefing__flow">
+          <li>Steuere auf den Gasriesen zu, aber <strong>nicht frontal</strong> — ziel auf seinen Rand.</li>
+          <li>Je näher dein Closest Approach (HUD: <strong>grün = gut</strong>), desto mehr Boost bekommst du.</li>
+          <li>Das Manöver beschleunigt dich automatisch — du brauchst danach kaum noch Schub.</li>
+          <li>Passe den Kurs nach dem Swing-by mit kleinen Korrekturen an Station B an.</li>
+        </ol>
+        <dl class="orbit-briefing__instruments">
+          <div><dt>Closest Approach</dt><dd>: Nächste Distanz zur Planetenoberfläche.</dd></div>
+          <div><dt>Grün (gut)</dt><dd>: 200–500 px — optimaler Slingshot-Korridor.</dd></div>
+          <div><dt>Gelb (eng)</dt><dd>: 80–200 px — riskant, aber maximalster Boost.</dd></div>
+          <div><dt>Rot</dt><dd>: unter 80 px — Kollisionsgefahr!</dd></div>
+        </dl>
+      </div>
+      <div class="actions">
+        <button id="level6StartButton" type="button">Start</button>
       </div>
     </section>
   </div>
