@@ -152,6 +152,66 @@
       margin: 0;
     }
 
+    .demo-strip {
+      width: min(760px, 100%);
+      margin: 0 auto 18px;
+      padding-top: 2px;
+    }
+
+    .demo-strip button {
+      min-width: min(100%, 280px);
+    }
+
+    .demo-hud {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 5;
+      width: min(320px, calc(100vw - 32px));
+      padding: 12px 14px;
+      color: #d8eaff;
+      text-align: left;
+      background: rgba(0, 8, 18, 0.72);
+      border: 1px solid rgba(120, 200, 255, 0.28);
+      box-shadow: 0 0 22px rgba(68, 170, 255, 0.14);
+    }
+
+    .demo-hud[hidden] {
+      display: none;
+    }
+
+    .demo-hud__title {
+      display: block;
+      color: #8fd0ff;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .demo-hud__phase {
+      display: block;
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .demo-hud__copy {
+      display: block;
+      margin-top: 4px;
+      color: #a9bdd0;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .demo-hud button {
+      margin-top: 10px;
+      padding: 8px 12px;
+      min-width: 0;
+      font-size: 11px;
+    }
+
     .actions {
       display: flex;
       justify-content: center;
@@ -641,6 +701,12 @@
         grid-template-columns: 1fr;
         font-size: 12px;
       }
+
+      .demo-hud {
+        left: 12px;
+        bottom: 12px;
+        width: calc(100vw - 24px);
+      }
     }
   </style>
 </head>
@@ -725,11 +791,22 @@
 
       </div>
 
+      <div class="demo-strip">
+        <button class="secondary" id="demoL5Button" type="button">Demo: Orbital Rendezvous</button>
+      </div>
+
       <div class="actions">
         <button class="secondary" id="muteButton" type="button" aria-pressed="false">Ton an</button>
       </div>
     </section>
   </div>
+
+  <aside class="demo-hud" id="demoHud" hidden aria-live="polite">
+    <span class="demo-hud__title">Demo-Modus</span>
+    <span class="demo-hud__phase" id="demoPhase">Transfer zum Planeten</span>
+    <span class="demo-hud__copy" id="demoCopy">Das Schiff stabilisiert zuerst den Orbit, bevor es die Station einholt.</span>
+    <button class="secondary" id="demoExitButton" type="button">Demo beenden</button>
+  </aside>
 
   <!-- Level Complete Screen -->
   <div class="overlay" id="levelCompleteScreen" hidden>
@@ -825,6 +902,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=36"></script>
+  <script type="module" src="./js/main.js?v=39"></script>
 </body>
 </html>

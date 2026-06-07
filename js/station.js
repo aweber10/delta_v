@@ -29,8 +29,8 @@ export function createOrbitingStation(cx, cy, orbitRadius, orbitSpeed, startAngl
     orbitAngle: angle,
     x: cx + Math.cos(angle) * orbitRadius,
     y: cy + Math.sin(angle) * orbitRadius,
-    // Docking-Arm zeigt radial nach außen; das Schiff nähert sich von außen zum Port.
-    dockAngle: angle + Math.PI,
+    // Docking-Arm sitzt seitlich am Orbit und zeigt tangential zur Flugbahn.
+    dockAngle: angle + Math.PI / 2,
     loading: false,
     docked: false,
     orbiting: true,
@@ -58,8 +58,8 @@ export function updateOrbitingStation(station, dt) {
   station.x = newX;
   station.y = newY;
 
-  // Docking-Arm zeigt radial nach außen; das Schiff nähert sich aus Richtung des Arms.
-  station.dockAngle = station.orbitAngle + Math.PI;
+  // Docking-Arm bleibt seitlich am Orbit, tangential zur Flugbahn.
+  station.dockAngle = station.orbitAngle + Math.PI / 2;
 }
 
 export function getPortPosition(station) {
@@ -104,4 +104,3 @@ export function dockColor(check) {
   // Alles andere: Rot
   return 'red';
 }
-
