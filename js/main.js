@@ -7,7 +7,7 @@ import { createStation, createOrbitingStation, updateOrbitingStation, checkDock,
 import * as renderer from './renderer.js';
 import { FUEL_START, WELL_RADIUS, EVENT_HORIZON, PLANET_RADIUS, PLANET_GRAVITY_STRENGTH, PLANET_GRAVITY_RADIUS, PLANET_WELL_RADIUS, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, normalizeAngle, L6_FUEL_START, L6_PLANET_RADIUS, L6_GRAVITY_STRENGTH, L6_GRAVITY_RADIUS, L6_WELL_RADIUS, L6_MOON_RADIUS, L6_MOON_ORBIT_RADIUS, L6_MOON_ORBIT_SPEED } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
-import { createTutorial, updateTutorial, drawTutorial } from './tutorial.js';
+import { createTutorial, updateTutorial, drawTutorial, setTutorialNearStation, setTutorialStationVisible, setTutorialArrowTarget } from './tutorial.js';
 import { createGravityWell, checkWellCollision, predictTrajectory } from './gravity.js';
 import {
   checkAsteroidCollision,
@@ -651,6 +651,23 @@ function updateGame(dt, now) {
 function updateLevelSystems(dt, now) {
   if (level === 1) {
     updateTutorial(tut, ship, flags, dt);
+
+    // Tutorial-Kontext: Stationsnähe, Sichtbarkeit und Pfeilziel aktualisieren
+    const distA = Math.hypot(ship.x - currentLevel.stationA.x, ship.y - currentLevel.stationA.y);
+    const distB = Math.hypot(ship.x - currentLevel.stationB.x, ship.y - currentLevel.stationB.y);
+    setTutorialNearStation(tut, distA < 400 || distB < 400);
+
+    // Station "in Sichtweite" = würde auf dem Bildschirm erscheinen (gleiche Logik wie drawTargetArrow)
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const tsDx = targetStation.x - ship.x;
+    const tsDy = targetStation.y - ship.y;
+    const tsScreenX = w / 2 + tsDx * cam.zoom;
+    const tsScreenY = h / 2 + tsDy * cam.zoom;
+    const stationOnScreen = tsScreenX > 40 && tsScreenX < w - 40 &&
+                            tsScreenY > 40 && tsScreenY < h - 40;
+    setTutorialStationVisible(tut, stationOnScreen);
+    setTutorialArrowTarget(tut, targetStation);
   }
 
   if (currentLevel.well) {
