@@ -222,7 +222,7 @@
 
     .level-select {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 14px;
       width: 100%;
       margin-bottom: 18px;
@@ -470,12 +470,6 @@
           -12px 2px 0 -3px rgba(255, 28, 40, 0.8),
           0 0 22px rgba(255, 48, 24, 0.98),
           0 0 42px rgba(120, 0, 32, 0.84);
-      }
-    }
-
-    @media (max-width: 900px) {
-      .level-select {
-        grid-template-columns: repeat(3, 1fr);
       }
     }
 
@@ -817,23 +811,9 @@
           </span>
         </button>
 
-        <button class="level-card" id="startL5" data-level="5" type="button" style="--accent: #44aaff; --hazard-x: 60%; --hazard-size: 22px;">
+        <button class="level-card" id="startL5" data-level="5" type="button" style="--accent: #ff9030; --hazard-x: 56%; --hazard-size: 26px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 5</span>
-            <span class="level-card__risk">Orbit</span>
-          </span>
-          <span class="level-card__mid">
-            <span class="level-card__title">Orbital Rendezvous</span>
-            <span class="level-card__copy">In den richtigen Orbit einschwenken und andocken.</span>
-          </span>
-          <span class="level-card__route">
-            <span class="level-card__hazard level-card__hazard--planet" aria-hidden="true"></span>
-          </span>
-        </button>
-
-        <button class="level-card" id="startL6" data-level="6" type="button" style="--accent: #ff9030; --hazard-x: 56%; --hazard-size: 26px;">
-          <span class="level-card__top">
-            <span class="level-card__number">Level 6</span>
             <span class="level-card__risk">Slingshot</span>
           </span>
           <span class="level-card__mid">
@@ -842,6 +822,20 @@
           </span>
           <span class="level-card__route">
             <span class="level-card__hazard level-card__hazard--gasplanet" aria-hidden="true"></span>
+          </span>
+        </button>
+
+        <button class="level-card" id="startL6" data-level="6" type="button" style="--accent: #44aaff; --hazard-x: 60%; --hazard-size: 22px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 6</span>
+            <span class="level-card__risk">Orbit</span>
+          </span>
+          <span class="level-card__mid">
+            <span class="level-card__title">Orbital Rendezvous</span>
+            <span class="level-card__copy">In den richtigen Orbit einschwenken und andocken.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--planet" aria-hidden="true"></span>
           </span>
         </button>
 
@@ -882,7 +876,7 @@
     <section class="start-panel" aria-labelledby="finalTitle">
       <p class="eyebrow" style="color: #ff9030;">Kampagne abgeschlossen</p>
       <h1 id="finalTitle">Mission erfüllt</h1>
-      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift über das Schwarze Loch bis zum Slingshot-Manöver — du hast die gesamte Route gemeistert.</p>
+      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift über Schwarzes Loch und Schwerkraftschleuder bis zum Orbit-Rendezvous — du hast die gesamte Route gemeistert.</p>
       <div class="final-stats" aria-label="Missionsbilanz">
         <span class="final-stat">
           <span class="final-stat__label">Status</span>
@@ -890,7 +884,7 @@
         </span>
         <span class="final-stat">
           <span class="final-stat__label">Letzte Mission</span>
-          <span class="final-stat__value">Schwerkraftschleuder</span>
+          <span class="final-stat__value">Orbital Rendezvous</span>
         </span>
       </div>
       <div class="actions">
@@ -915,11 +909,37 @@
     </section>
   </div>
 
-  <!-- Level 5: Start Screen -->
-  <div class="overlay level5" id="level5StartScreen" hidden>
+  <!-- Level 5: Start Screen (Slingshot) -->
+  <div class="overlay level6" id="level5StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l5Title">
-      <p class="eyebrow" style="color: #44aaff;">Level 5 — Orbital Rendezvous</p>
+      <p class="eyebrow" style="color: #ff9030;">Level 5 — Schwerkraftschleuder</p>
       <h1 id="l5Title">Delta V</h1>
+      <p class="mission">Der Treibstoff reicht nicht für den Direktflug. Nutze die Schwerkraft des Gasriesen: Flieg nahe an ihm vorbei — er schleudert dich auf Kurs.</p>
+      <div class="orbit-briefing" aria-label="Slingshot Briefing">
+        <ol class="orbit-briefing__flow">
+          <li>Steuere auf den Gasriesen zu, aber <strong>nicht frontal</strong> — ziel auf seinen Rand.</li>
+          <li>Je näher dein Closest Approach (HUD: <strong>grün = gut</strong>), desto mehr Boost bekommst du.</li>
+          <li>Das Manöver beschleunigt dich automatisch — du brauchst danach kaum noch Schub.</li>
+          <li>Passe den Kurs nach dem Swing-by mit kleinen Korrekturen an Station B an.</li>
+        </ol>
+        <dl class="orbit-briefing__instruments">
+          <div><dt>Closest Approach</dt><dd>: Nächste Distanz zur Planetenoberfläche.</dd></div>
+          <div><dt>Grün (gut)</dt><dd>: 200–500 px — optimaler Slingshot-Korridor.</dd></div>
+          <div><dt>Gelb (eng)</dt><dd>: 80–200 px — riskant, aber maximaler Boost.</dd></div>
+          <div><dt>Rot</dt><dd>: unter 80 px — Kollisionsgefahr!</dd></div>
+        </dl>
+      </div>
+      <div class="actions">
+        <button id="level5StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 6: Start Screen (Orbital Rendezvous) -->
+  <div class="overlay level5" id="level6StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l6Title">
+      <p class="eyebrow" style="color: #44aaff;">Level 6 — Orbital Rendezvous</p>
+      <h1 id="l6Title">Delta V</h1>
       <p class="mission">Erst stabiler Orbit, dann Rendezvous: Nutze das Orbit-HUD, um deine Bahn an die Zielumlaufbahn anzupassen, bevor du die Station einholst.</p>
       <div class="orbit-briefing" aria-label="Orbit-HUD Briefing">
         <ol class="orbit-briefing__flow">
@@ -935,32 +955,6 @@
           <div><dt>AP / PE</dt><dd>: höchster und niedrigster Punkt der Vorhersage.</dd></div>
           <div><dt>TAN</dt><dd>: tangential beschleunigen oder bremsen.</dd></div>
           <div><dt>RADIAL</dt><dd>: radialen Drift zuerst abbauen.</dd></div>
-        </dl>
-      </div>
-      <div class="actions">
-        <button id="level5StartButton" type="button">Start</button>
-      </div>
-    </section>
-  </div>
-
-  <!-- Level 6: Start Screen -->
-  <div class="overlay level6" id="level6StartScreen" hidden>
-    <section class="start-panel" aria-labelledby="l6Title">
-      <p class="eyebrow" style="color: #ff9030;">Level 6 — Schwerkraftschleuder</p>
-      <h1 id="l6Title">Delta V</h1>
-      <p class="mission">Der Treibstoff reicht nicht für den Direktflug. Nutze die Schwerkraft des Gasriesen: Flieg nahe an ihm vorbei — er schleudert dich auf Kurs.</p>
-      <div class="orbit-briefing" aria-label="Slingshot Briefing">
-        <ol class="orbit-briefing__flow">
-          <li>Steuere auf den Gasriesen zu, aber <strong>nicht frontal</strong> — ziel auf seinen Rand.</li>
-          <li>Je näher dein Closest Approach (HUD: <strong>grün = gut</strong>), desto mehr Boost bekommst du.</li>
-          <li>Das Manöver beschleunigt dich automatisch — du brauchst danach kaum noch Schub.</li>
-          <li>Passe den Kurs nach dem Swing-by mit kleinen Korrekturen an Station B an.</li>
-        </ol>
-        <dl class="orbit-briefing__instruments">
-          <div><dt>Closest Approach</dt><dd>: Nächste Distanz zur Planetenoberfläche.</dd></div>
-          <div><dt>Grün (gut)</dt><dd>: 200–500 px — optimaler Slingshot-Korridor.</dd></div>
-          <div><dt>Gelb (eng)</dt><dd>: 80–200 px — riskant, aber maximalster Boost.</dd></div>
-          <div><dt>Rot</dt><dd>: unter 80 px — Kollisionsgefahr!</dd></div>
         </dl>
       </div>
       <div class="actions">
@@ -984,6 +978,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=39"></script>
+  <script type="module" src="./js/main.js?v=37"></script>
 </body>
 </html>
