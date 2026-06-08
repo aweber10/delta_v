@@ -409,8 +409,8 @@ function selectLevel(targetLevel) {
   else if (targetLevel === 2) currentLevel = L2;
   else if (targetLevel === 3) currentLevel = L3;
   else if (targetLevel === 4) currentLevel = L4;
-  else if (targetLevel === 5) currentLevel = L5;
-  else currentLevel = L6;
+  else if (targetLevel === 5) currentLevel = L6;  // Slingshot ist jetzt L5
+  else currentLevel = L5;                          // Orbital Rendezvous ist jetzt L6
 }
 
 async function beginGameplay() {
@@ -492,7 +492,7 @@ function showMainMenu() {
 }
 
 function startDemoLevel5() {
-  selectLevel(5);
+  selectLevel(6);
   score = 0;
   resetLevel();
   ship.cargo = 1;
@@ -663,17 +663,16 @@ function updateLevelSystems(dt, now) {
     updateAsteroidTrajectoryPrediction();
   }
 
-  // Level 5: Orbiting Station bewegen + Planet rotieren
+  // Level 5: Mond animieren + Gasriese rotieren (Slingshot)
   if (level === 5) {
-    updateOrbitingStation(currentLevel.stationB, dt);
-    // Planet dreht sich langsam
-    currentLevel.planet.rotation += 0.00012 * dt;
-  }
-
-  // Level 6: Mond animieren + Gasriese rotieren
-  if (level === 6) {
     updateOrbitingMoon(currentLevel.moon, dt);
     currentLevel.planet.rotation += 0.00008 * dt;
+  }
+
+  // Level 6: Orbiting Station bewegen + Planet rotieren (Orbital Rendezvous)
+  if (level === 6) {
+    updateOrbitingStation(currentLevel.stationB, dt);
+    currentLevel.planet.rotation += 0.00012 * dt;
   }
 }
 
@@ -799,17 +798,17 @@ function renderFrame(alpha = 1) {
   renderer.clear(ctx, canvas);
   renderer.drawStars(ctx, stars, renderCam, canvas);
 
-  // Level 5: Erdplanet zeichnen
+  // Level 5: Gasriese + Mond zeichnen (Slingshot)
   if (level === 5 && currentLevel.planet) {
-    renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
-  }
-
-  // Level 6: Gasriese + Mond zeichnen
-  if (level === 6 && currentLevel.planet) {
     renderer.drawGasPlanet(ctx, currentLevel.planet, renderCam, canvas);
     if (currentLevel.moon) {
       renderer.drawMoon(ctx, currentLevel.moon, renderCam, canvas);
     }
+  }
+
+  // Level 6: Erdplanet zeichnen (Orbital Rendezvous)
+  if (level === 6 && currentLevel.planet) {
+    renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
   }
 
   // Level 2 / 5: Gravity Well zeichnen (vor Stationen, damit Ringe im Hintergrund)
@@ -818,7 +817,7 @@ function renderFrame(alpha = 1) {
     renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
   }
 
-  if (level === 5 && currentLevel.planet) {
+  if (level === 6 && currentLevel.planet) {
     const orbitStatus = getOrbitStatus(renderShip, currentLevel.planet);
     renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, stationB, ORBIT_STATION_RADIUS, renderCam, canvas, orbitStatus);
   }
@@ -882,8 +881,14 @@ function renderFrame(alpha = 1) {
   renderer.drawHud(ctx, ship, canvas, targetStation, targetCheck, score, targetColor, level);
   renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
-  // Level 5: Orbit-HUD (Delta-V zur orbitierenden Station)
+  // Level 5: Slingshot-HUD
   if (level === 5) {
+    const slingshotStatus = getSlingshotStatus(ship, currentLevel.well, trajX, trajY, trajValidSteps);
+    renderer.drawSlingshotHud(ctx, ship, currentLevel.well, canvas, slingshotStatus);
+  }
+
+  // Level 6: Orbit-HUD (Delta-V zur orbitierenden Station)
+  if (level === 6) {
     renderer.drawOrbitHud(ctx, renderShip, stationB, currentLevel.planet, canvas, {
       orbitRadius: ORBIT_STATION_RADIUS,
       targetSpeed: ORBIT_STATION_RADIUS * ORBIT_STATION_SPEED,
@@ -891,12 +896,6 @@ function renderFrame(alpha = 1) {
       radialSpeedOk: ORBIT_RADIAL_SPEED_OK,
       tangentialSpeedOk: ORBIT_TANGENTIAL_SPEED_OK,
     });
-  }
-
-  // Level 6: Slingshot-HUD
-  if (level === 6) {
-    const slingshotStatus = getSlingshotStatus(ship, currentLevel.well, trajX, trajY, trajValidSteps);
-    renderer.drawSlingshotHud(ctx, ship, currentLevel.well, canvas, slingshotStatus);
   }
 
   if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
@@ -961,7 +960,7 @@ function getSlingshotStatus(sourceShip, well, trajXArr, trajYArr, validSteps) {
 }
 
 function updateDemoAutopilot(dt, now) {
-  if (level !== 5 || !currentLevel.planet) return;
+  if (level !== 6 || !currentLevel.planet) return;
 
   demoMode.phaseFrames += 1;
   flags.rcsPulse = null;
@@ -1332,8 +1331,8 @@ function getLevelCompleteCopy(completedLevel) {
   if (completedLevel === 5) {
     return {
       eyebrow: 'Level 5 abgeschlossen',
-      title: 'Orbit erreicht',
-      mission: 'Stabiler Orbit eingeschlagen, Station eingeholt. Die Fracht ist angekommen.',
+      title: 'Schwerkraftschleuder gemeistert',
+      mission: 'Das Manöver hat geklappt — der Gasriese hat dich auf Kurs geschleudert.',
       nextLevelLabel: 'Nächstes Level',
     };
   }
