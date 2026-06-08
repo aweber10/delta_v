@@ -1205,7 +1205,7 @@ function handleDocking(ship, station) {
 function dockShipAtStation(ship, station) {
   const port = getPortPosition(station);
   ship.dockedTimer = 1500;
-  ship.fuel = FUEL_START;
+  ship.fuel = currentLevel.fuelStart ?? FUEL_START;
   ship.x = port.x;
   ship.y = port.y;
   ship.angle = station.dockAngle + Math.PI;
