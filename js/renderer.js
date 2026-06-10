@@ -448,6 +448,240 @@ export function drawAsteroids(ctx, asteroids, cam, canvas, highlightedAsteroid =
   ctx.restore();
 }
 
+// ---- Level 5: Debris Field Rendering ----
+
+/**
+ * Zeichnet ein technisches Schrottfeld aus geometrischen Wrackteilen.
+ * Jedes Objekt nutzt den selben Kollisionskreis wie Asteroiden, sieht aber
+ * erkennbar nach Weltraummüll aus (Satelliten, Tanks, Platten, Trümmer).
+ * Der subtype wird deterministisch aus dem Seed abgeleitet.
+ */
+export function drawDebrisField(ctx, asteroids, cam, canvas, highlightedAsteroid = null) {
+  ctx.save();
+
+  for (const asteroid of asteroids) {
+    const p = worldToScreen(cam, asteroid.x, asteroid.y, canvas);
+    const z = cam.zoom;
+    const r = asteroid.radius * z;
+    const isHighlighted = asteroid === highlightedAsteroid;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    // Deterministische Rotation aus Seed
+    const rotAngle = (asteroid.seed * 137.508) % (Math.PI * 2);
+    ctx.rotate(rotAngle);
+
+    // Kollisionswarnung-Ring (identisch zu drawAsteroids)
+    if (isHighlighted) {
+      ctx.strokeStyle = 'rgba(255, 70, 70, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.arc(0, 0, (asteroid.radius + SHIP_RADIUS) * z, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Subtype aus Seed: 0=sat, 1=tank, 2=panel, 3=chunk
+    const subtype = asteroid.seed % 4;
+
+    if (subtype === 0) {
+      // --- Satellitenbus: Zentrales Rechteck + Solarpanel-Stummel ---
+      const bw = r * 1.1;
+      const bh = r * 0.7;
+      const panelW = r * 0.9;
+      const panelH = r * 0.22;
+
+      // Rumpf
+      const bodyGrad = ctx.createLinearGradient(-bw * 0.5, -bh * 0.5, bw * 0.5, bh * 0.5);
+      bodyGrad.addColorStop(0, '#8a9aaa');
+      bodyGrad.addColorStop(0.4, '#5a6a76');
+      bodyGrad.addColorStop(1, '#2a3038');
+      ctx.fillStyle = bodyGrad;
+      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(160,180,200,0.55)';
+      ctx.lineWidth = isHighlighted ? 2 : 1;
+      ctx.beginPath();
+      ctx.rect(-bw * 0.5, -bh * 0.5, bw, bh);
+      ctx.fill();
+      ctx.stroke();
+
+      // Verbrannte Stellen (dunkel)
+      ctx.fillStyle = 'rgba(20, 10, 0, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(bw * 0.18, -bh * 0.1, r * 0.22, r * 0.14, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Solarpanels links + rechts
+      const panelGrad = ctx.createLinearGradient(0, -panelH * 0.5, 0, panelH * 0.5);
+      panelGrad.addColorStop(0, '#2a4a6a');
+      panelGrad.addColorStop(0.5, '#1a3050');
+      panelGrad.addColorStop(1, '#0a1828');
+      ctx.fillStyle = panelGrad;
+      ctx.strokeStyle = 'rgba(80, 140, 200, 0.5)';
+      ctx.lineWidth = 0.8;
+      // Links
+      ctx.beginPath();
+      ctx.rect(-bw * 0.5 - panelW, -panelH * 0.5, panelW, panelH);
+      ctx.fill();
+      ctx.stroke();
+      // Rechts
+      ctx.beginPath();
+      ctx.rect(bw * 0.5, -panelH * 0.5, panelW, panelH);
+      ctx.fill();
+      ctx.stroke();
+      // Panel-Gitterlinien
+      ctx.strokeStyle = 'rgba(60, 110, 170, 0.6)';
+      ctx.lineWidth = 0.5;
+      for (let i = 1; i < 3; i++) {
+        const lx = -bw * 0.5 - panelW + panelW * (i / 3);
+        ctx.beginPath(); ctx.moveTo(lx, -panelH * 0.5); ctx.lineTo(lx, panelH * 0.5); ctx.stroke();
+        const rx = bw * 0.5 + panelW * (i / 3);
+        ctx.beginPath(); ctx.moveTo(rx, -panelH * 0.5); ctx.lineTo(rx, panelH * 0.5); ctx.stroke();
+      }
+
+      // Reflektion oben links
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.beginPath();
+      ctx.rect(-bw * 0.5 + 1, -bh * 0.5 + 1, bw * 0.4, bh * 0.28);
+      ctx.fill();
+
+    } else if (subtype === 1) {
+      // --- Drucktank: Kugel mit Schweißnähten ---
+      const tankGrad = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.05, 0, 0, r);
+      tankGrad.addColorStop(0, '#b0a090');
+      tankGrad.addColorStop(0.35, '#7a6858');
+      tankGrad.addColorStop(0.7, '#4a3a2c');
+      tankGrad.addColorStop(1, '#1e1410');
+      ctx.fillStyle = tankGrad;
+      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(180,160,130,0.5)';
+      ctx.lineWidth = isHighlighted ? 2 : 1.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Schweißnähte (2 Ringe, 1 Meridian)
+      ctx.strokeStyle = isHighlighted ? 'rgba(255,120,120,0.6)' : 'rgba(100, 85, 65, 0.8)';
+      ctx.lineWidth = Math.max(1, r * 0.08);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.98, r * 0.38, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -r);
+      ctx.lineTo(0, r);
+      ctx.stroke();
+
+      // Rostflecken
+      ctx.fillStyle = 'rgba(160, 80, 20, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(r * 0.3, r * 0.25, r * 0.28, r * 0.18, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Reflektion
+      ctx.fillStyle = 'rgba(255, 240, 220, 0.18)';
+      ctx.beginPath();
+      ctx.arc(-r * 0.26, -r * 0.28, r * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (subtype === 2) {
+      // --- Metallplatte: Flaches Viereck, scharfkantig ---
+      const pw = r * 1.6;
+      const ph = r * 0.55;
+      // Leichte Verzerrung für zerstörten Look
+      const skew = ((asteroid.seed * 73) % 20 - 10) / 100;
+
+      const plateGrad = ctx.createLinearGradient(-pw * 0.5, 0, pw * 0.5, ph);
+      plateGrad.addColorStop(0, '#9aa4ac');
+      plateGrad.addColorStop(0.3, '#6a7478');
+      plateGrad.addColorStop(0.7, '#3a4044');
+      plateGrad.addColorStop(1, '#1a2024');
+      ctx.fillStyle = plateGrad;
+      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(160,175,185,0.5)';
+      ctx.lineWidth = isHighlighted ? 2 : 1;
+      ctx.beginPath();
+      ctx.moveTo(-pw * 0.5, -ph * 0.5 + skew * pw);
+      ctx.lineTo(pw * 0.5, -ph * 0.5 - skew * pw);
+      ctx.lineTo(pw * 0.5 - r * 0.08, ph * 0.5 - skew * pw);  // abgeknicktes Ende
+      ctx.lineTo(-pw * 0.5 + r * 0.06, ph * 0.5 + skew * pw);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Nieten-Reihe
+      ctx.fillStyle = 'rgba(200, 215, 225, 0.6)';
+      const nivetCount = 5;
+      for (let i = 0; i < nivetCount; i++) {
+        const nx = -pw * 0.4 + (pw * 0.8 / (nivetCount - 1)) * i;
+        ctx.beginPath();
+        ctx.arc(nx, -ph * 0.22, Math.max(1, r * 0.055), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Verbiegung / Knick (dunkle Diagonale)
+      ctx.strokeStyle = 'rgba(10, 15, 20, 0.6)';
+      ctx.lineWidth = Math.max(1, r * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(pw * 0.15, -ph * 0.5);
+      ctx.lineTo(pw * 0.28, ph * 0.5);
+      ctx.stroke();
+
+      // Reflektion
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath();
+      ctx.rect(-pw * 0.45, -ph * 0.45, pw * 0.35, ph * 0.35);
+      ctx.fill();
+
+    } else {
+      // --- Trümmerstück: Scharfkantiges, unregelmäßiges Polygon ---
+      const numPts = 6 + (asteroid.seed % 3);  // 6–8 Ecken
+      const pts = [];
+      for (let i = 0; i < numPts; i++) {
+        const baseAngle = (i / numPts) * Math.PI * 2;
+        // Scharfe, unregelmäßige Variation (mehr Jitter als Asteroiden)
+        const jitterSeed = (asteroid.seed * 17 + i * 31) % 100;
+        const scale = 0.55 + (jitterSeed / 100) * 0.55;
+        pts.push({ angle: baseAngle, scale });
+      }
+
+      const chunkGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.05, 0, 0, r);
+      chunkGrad.addColorStop(0, '#a09080');
+      chunkGrad.addColorStop(0.4, '#605040');
+      chunkGrad.addColorStop(0.75, '#382820');
+      chunkGrad.addColorStop(1, '#181008');
+      ctx.fillStyle = chunkGrad;
+      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(175,155,130,0.5)';
+      ctx.lineWidth = isHighlighted ? 2 : 1.2;
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        const px = Math.cos(pts[i].angle) * r * pts[i].scale;
+        const py = Math.sin(pts[i].angle) * r * pts[i].scale;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Roststreifen
+      ctx.fillStyle = 'rgba(180, 70, 10, 0.28)';
+      ctx.beginPath();
+      ctx.ellipse(r * 0.1, r * 0.15, r * 0.35, r * 0.15, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Reflektion
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.13)';
+      ctx.beginPath();
+      ctx.arc(-r * 0.18, -r * 0.22, Math.max(2, r * 0.14), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
 // ---- Level 2: Gravity Well Rendering ----
 
 /**

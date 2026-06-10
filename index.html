@@ -410,6 +410,21 @@
         22px -7px 0 -5px rgba(184, 196, 204, 0.58);
     }
 
+    /* Debris: Satellitenbus-Silhouette (Rechteck + Panel-Stummel) */
+    .level-card__hazard--debris {
+      width: 14px;
+      height: 8px;
+      border-radius: 2px;
+      background: rgba(160, 120, 70, 0.75);
+      border: 1px solid rgba(200, 160, 100, 0.6);
+      transform: translate(-50%, -50%) rotate(-18deg);
+      box-shadow:
+        -14px 0px 0 -2px rgba(40, 70, 110, 0.8),   /* linkes Solarpanel */
+        14px 0px 0 -2px rgba(40, 70, 110, 0.8),    /* rechtes Solarpanel */
+        18px 12px 0 -5px rgba(160, 120, 70, 0.55), /* Trümmerstück */
+        -10px -14px 0 -4px rgba(160, 120, 70, 0.45); /* weiteres Stück */
+    }
+
     .level-card__hazard--blackhole {
       background: #000;
       border: 1px solid rgba(255, 225, 190, 0.72);
@@ -811,9 +826,23 @@
           </span>
         </button>
 
-        <button class="level-card" id="startL5" data-level="5" type="button" style="--accent: #ff9030; --hazard-x: 56%; --hazard-size: 26px;">
+        <button class="level-card" id="startL5" data-level="5" type="button" style="--accent: #c0905a; --hazard-x: 54%; --hazard-size: 14px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 5</span>
+            <span class="level-card__risk">Kollision</span>
+          </span>
+          <span class="level-card__mid">
+            <span class="level-card__title">Debris Field</span>
+            <span class="level-card__copy">Schrottfeld im Orbit — Wrackteile, Tanks, Trümmer. Enge Gassen, kein Ausweichen.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--debris" aria-hidden="true"></span>
+          </span>
+        </button>
+
+        <button class="level-card" id="startL6" data-level="6" type="button" style="--accent: #ff9030; --hazard-x: 56%; --hazard-size: 26px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 6</span>
             <span class="level-card__risk">Slingshot</span>
           </span>
           <span class="level-card__mid">
@@ -825,9 +854,9 @@
           </span>
         </button>
 
-        <button class="level-card" id="startL6" data-level="6" type="button" style="--accent: #44aaff; --hazard-x: 60%; --hazard-size: 22px;">
+        <button class="level-card" id="startL7" data-level="7" type="button" style="--accent: #44aaff; --hazard-x: 60%; --hazard-size: 22px;">
           <span class="level-card__top">
-            <span class="level-card__number">Level 6</span>
+            <span class="level-card__number">Level 7</span>
             <span class="level-card__risk">Orbit</span>
           </span>
           <span class="level-card__mid">
@@ -909,11 +938,26 @@
     </section>
   </div>
 
-  <!-- Level 5: Start Screen (Slingshot) -->
-  <div class="overlay level6" id="level5StartScreen" hidden>
+  <!-- Level 5: Start Screen (Debris Field) -->
+  <div class="overlay level3" id="level5StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l5Title">
-      <p class="eyebrow" style="color: #ff9030;">Level 5 — Schwerkraftschleuder</p>
+      <p class="eyebrow" style="color: #c0905a;">Level 5 — Debris Field</p>
       <h1 id="l5Title">Delta V</h1>
+      <p class="mission">Ein Schrottfeld blockiert die Route — zerstörte Satelliten, Drucktanks, Wrackteile. Die Gassen sind enger als im Asteroidenfeld.</p>
+      <p class="mission" style="font-size: 13px; color: #c0905a; margin-top: -10px;">
+        Rote Flugbahn: deine aktuelle Drift schneidet ein Wrackteil.
+      </p>
+      <div class="actions">
+        <button id="level5StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 6: Start Screen (Slingshot) -->
+  <div class="overlay level6" id="level6StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l6Title">
+      <p class="eyebrow" style="color: #ff9030;">Level 6 — Schwerkraftschleuder</p>
+      <h1 id="l6Title">Delta V</h1>
       <p class="mission">Der Treibstoff reicht nicht für den Direktflug. Nutze die Schwerkraft des Gasriesen: Flieg nahe an ihm vorbei — er schleudert dich auf Kurs.</p>
       <div class="orbit-briefing" aria-label="Slingshot Briefing">
         <ol class="orbit-briefing__flow">
@@ -930,16 +974,16 @@
         </dl>
       </div>
       <div class="actions">
-        <button id="level5StartButton" type="button">Start</button>
+        <button id="level6StartButton" type="button">Start</button>
       </div>
     </section>
   </div>
 
-  <!-- Level 6: Start Screen (Orbital Rendezvous) -->
-  <div class="overlay level5" id="level6StartScreen" hidden>
-    <section class="start-panel" aria-labelledby="l6Title">
-      <p class="eyebrow" style="color: #44aaff;">Level 6 — Orbital Rendezvous</p>
-      <h1 id="l6Title">Delta V</h1>
+  <!-- Level 7: Start Screen (Orbital Rendezvous) -->
+  <div class="overlay level5" id="level7StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l7Title">
+      <p class="eyebrow" style="color: #44aaff;">Level 7 — Orbital Rendezvous</p>
+      <h1 id="l7Title">Delta V</h1>
       <p class="mission">Erst stabiler Orbit, dann Rendezvous: Nutze das Orbit-HUD, um deine Bahn an die Zielumlaufbahn anzupassen, bevor du die Station einholst.</p>
       <div class="orbit-briefing" aria-label="Orbit-HUD Briefing">
         <ol class="orbit-briefing__flow">
@@ -958,7 +1002,7 @@
         </dl>
       </div>
       <div class="actions">
-        <button id="level6StartButton" type="button">Start</button>
+        <button id="level7StartButton" type="button">Start</button>
       </div>
     </section>
   </div>

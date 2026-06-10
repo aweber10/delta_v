@@ -144,7 +144,106 @@ const L4 = {
   asteroids: null,
 };
 
-// --- Level 5: Orbital Rendezvous ---
+// --- Level 5: Debris Field ---
+const L_DEBRIS = {
+  shipStart: { x: 780, y: 1280 },
+  stationA: createStation(780, 1280, -Math.PI * 0.22),
+  stationB: createStation(1180, 900, Math.PI + Math.PI * 0.22),
+  well: null,
+  debrisField: true,
+  asteroids: [
+    // Unterer Eingangsbereich (dicht)
+    createAsteroid(420, 1260, 42, 201),
+    createAsteroid(500, 1150, 36, 202),
+    createAsteroid(580, 1310, 52, 203),
+    createAsteroid(480, 1050, 44, 204),
+    createAsteroid(350, 1100, 38, 205),
+    // Linke Flanke
+    createAsteroid(320, 900, 34, 206),
+    createAsteroid(430, 820, 48, 207),
+    createAsteroid(550, 950, 40, 208),
+    createAsteroid(370, 720, 56, 209),
+    // Falsche Gasse (links-mitte) — enger Durchgang der in Sackgasse führt
+    createAsteroid(650, 1180, 62, 210),
+    createAsteroid(720, 1080, 44, 211),
+    createAsteroid(660, 960, 50, 212),
+    createAsteroid(750, 860, 38, 213),
+    createAsteroid(820, 980, 58, 214),
+    // Mittleres Cluster (Herzstück des Felds)
+    createAsteroid(900, 1160, 68, 215),
+    createAsteroid(980, 1040, 42, 216),
+    createAsteroid(1060, 1200, 54, 217),
+    createAsteroid(1040, 880, 46, 218),
+    createAsteroid(1150, 1060, 60, 219),
+    createAsteroid(1240, 1180, 36, 220),
+    createAsteroid(960, 720, 48, 221),
+    createAsteroid(1100, 780, 40, 222),
+    // Rechte Mittelzone (Hauptkorridor verläuft oben drüber)
+    createAsteroid(1300, 980, 52, 223),
+    createAsteroid(1380, 860, 44, 224),
+    createAsteroid(1460, 1020, 64, 225),
+    createAsteroid(1560, 900, 38, 226),
+    createAsteroid(1320, 1180, 46, 227),
+    createAsteroid(1500, 1140, 56, 228),
+    // Obere Zone (Hauptkorridor — schmale Lücken)
+    createAsteroid(700, 580, 42, 229),
+    createAsteroid(820, 460, 36, 230),
+    createAsteroid(940, 560, 50, 231),
+    createAsteroid(1060, 440, 44, 232),
+    createAsteroid(1180, 540, 58, 233),
+    createAsteroid(1300, 420, 34, 234),
+    createAsteroid(1420, 520, 48, 235),
+    createAsteroid(1540, 400, 40, 236),
+    createAsteroid(1660, 500, 54, 237),
+    createAsteroid(1780, 380, 36, 238),
+    // Oberer Ausgang (Eingang zu Station B)
+    createAsteroid(1880, 540, 44, 239),
+    createAsteroid(1960, 420, 52, 240),
+    createAsteroid(2020, 320, 38, 241),
+    createAsteroid(2100, 440, 46, 242),
+    // Rechte untere Flanke
+    createAsteroid(1680, 760, 42, 243),
+    createAsteroid(1800, 680, 34, 244),
+    createAsteroid(1940, 780, 58, 245),
+    createAsteroid(2060, 660, 40, 246),
+    createAsteroid(2150, 560, 36, 247),
+    // Randstreuung
+    createAsteroid(280,1300,32,248),
+    createAsteroid(600,1430,38,249),
+    createAsteroid(1640,1240,30,250),
+    // --- Ergänzungen: Randverschlüsse (Option B) ---
+    // Oberer Rand (Y≈200‑280)
+    createAsteroid(400, 230, 40, 251),
+    createAsteroid(560, 200, 36, 252),
+    createAsteroid(720, 250, 44, 253),
+    createAsteroid(880, 210, 38, 254),
+    createAsteroid(1040,240, 48, 255),
+    createAsteroid(1200,200, 42, 256),
+    createAsteroid(1360,230, 36, 257),
+    createAsteroid(1520,210, 44, 258),
+    createAsteroid(1700,240, 40, 259),
+    createAsteroid(1860,200, 46, 260),
+    // Rechter Rand unten (X>1900, Y≈900‑1450)
+    createAsteroid(2080, 900, 42, 261),
+    createAsteroid(2160,1040, 38, 262),
+    createAsteroid(2040,1160, 50, 263),
+    createAsteroid(2140,1290, 44, 264),
+    createAsteroid(2060,1420, 40, 265),
+    // Unterer Rand (Y>1200, X≈800‑2000)
+    createAsteroid( 800,1410, 44, 266),
+    createAsteroid( 980,1370, 38, 267),
+    createAsteroid(1200,1400, 48, 268),
+    createAsteroid(1400,1380, 42, 269),
+    createAsteroid(1600,1420, 36, 270),
+    createAsteroid(1800,1390, 46, 271),
+    createAsteroid(1960,1350, 40, 272),
+    // Linker Rand Lücke (Y≈946‑1050)
+    createAsteroid(330,1000,44,273),
+  ],
+};
+L_DEBRIS.stations = [L_DEBRIS.stationA, L_DEBRIS.stationB];
+
+// --- Level 6 (ehem. 5): Orbital Rendezvous ---
 // Der Spieler startet bei Station A (bekannt), fliegt zum Planeten in der Bildmitte-rechts,
 // und muss in einen Orbit einschwenken um an Station B (orbiting) anzudocken.
 // Weltgröße: 3600 × 2400
@@ -179,7 +278,7 @@ L3.stations = [L3.stationA, L3.stationB];
 L4.stations = [L4.stationA, L4.stationB];
 L5.stations = [L5.stationA, L5.stationB];
 
-// --- Level 6: Schwerkraftschleuder ---
+// --- Level 7 (ehem. 6): Schwerkraftschleuder ---
 // Slingshot-Manöver um einen Gasriesen (Jupiter-artig).
 // Weltgröße: 4200 × 2800. Direktflug unmöglich (zu wenig Treibstoff).
 // Optimaler Weg: nahe am Gasriesen vorbei (links/unterhalb) → Gravitation schleudert
@@ -265,7 +364,7 @@ let blackHoleCollapseTimer = null;
 let blackHoleCollapse = null;
 
 const PROGRESS_KEY = 'delta_v_progress';
-const TOTAL_LEVELS = 6;
+const TOTAL_LEVELS = 7;
 const BLACK_HOLE_COLLAPSE_MS = 750;
 const BLACK_HOLE_BLACKOUT_MS = 1000;
 
@@ -409,8 +508,9 @@ function selectLevel(targetLevel) {
   else if (targetLevel === 2) currentLevel = L2;
   else if (targetLevel === 3) currentLevel = L3;
   else if (targetLevel === 4) currentLevel = L4;
-  else if (targetLevel === 5) currentLevel = L6;  // Slingshot ist jetzt L5
-  else currentLevel = L5;                          // Orbital Rendezvous ist jetzt L6
+  else if (targetLevel === 5) currentLevel = L_DEBRIS;  // Debris Field
+  else if (targetLevel === 6) currentLevel = L6;        // Schwerkraftschleuder (Slingshot)
+  else currentLevel = L5;                               // Orbital Rendezvous ist jetzt Level 7
 }
 
 async function beginGameplay() {
@@ -492,7 +592,7 @@ function showMainMenu() {
 }
 
 function startDemoLevel5() {
-  selectLevel(6);
+  selectLevel(7);
   score = 0;
   resetLevel();
   ship.cargo = 1;
@@ -680,14 +780,14 @@ function updateLevelSystems(dt, now) {
     updateAsteroidTrajectoryPrediction();
   }
 
-  // Level 5: Mond animieren + Gasriese rotieren (Slingshot)
-  if (level === 5) {
+  // Level 6: Mond animieren + Gasriese rotieren (Slingshot)
+  if (level === 6) {
     updateOrbitingMoon(currentLevel.moon, dt);
     currentLevel.planet.rotation += 0.00008 * dt;
   }
 
-  // Level 6: Orbiting Station bewegen + Planet rotieren (Orbital Rendezvous)
-  if (level === 6) {
+  // Level 7: Orbiting Station bewegen + Planet rotieren (Orbital Rendezvous)
+  if (level === 7) {
     updateOrbitingStation(currentLevel.stationB, dt);
     currentLevel.planet.rotation += 0.00012 * dt;
   }
@@ -815,16 +915,16 @@ function renderFrame(alpha = 1) {
   renderer.clear(ctx, canvas);
   renderer.drawStars(ctx, stars, renderCam, canvas);
 
-  // Level 5: Gasriese + Mond zeichnen (Slingshot)
-  if (level === 5 && currentLevel.planet) {
+  // Level 6: Gasriese + Mond zeichnen (Slingshot)
+  if (level === 6 && currentLevel.planet) {
     renderer.drawGasPlanet(ctx, currentLevel.planet, renderCam, canvas);
     if (currentLevel.moon) {
       renderer.drawMoon(ctx, currentLevel.moon, renderCam, canvas);
     }
   }
 
-  // Level 6: Erdplanet zeichnen (Orbital Rendezvous)
-  if (level === 6 && currentLevel.planet) {
+  // Level 7: Erdplanet zeichnen (Orbital Rendezvous)
+  if (level === 7 && currentLevel.planet) {
     renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
   }
 
@@ -834,13 +934,17 @@ function renderFrame(alpha = 1) {
     renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
   }
 
-  if (level === 6 && currentLevel.planet) {
+  if (level === 7 && currentLevel.planet) {
     const orbitStatus = getOrbitStatus(renderShip, currentLevel.planet);
     renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, stationB, ORBIT_STATION_RADIUS, renderCam, canvas, orbitStatus);
   }
 
-  if (asteroids) {
+  if (asteroids && !currentLevel.debrisField) {
     renderer.drawAsteroids(ctx, asteroids, renderCam, canvas, trajHitAsteroid);
+  }
+
+  if (asteroids && currentLevel.debrisField) {
+    renderer.drawDebrisField(ctx, asteroids, renderCam, canvas, trajHitAsteroid);
   }
 
   const checkA = checkDock(ship, stationA);
@@ -898,14 +1002,14 @@ function renderFrame(alpha = 1) {
   renderer.drawHud(ctx, ship, canvas, targetStation, targetCheck, score, targetColor, level);
   renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
-  // Level 5: Slingshot-HUD
-  if (level === 5) {
+  // Level 6: Slingshot-HUD
+  if (level === 6) {
     const slingshotStatus = getSlingshotStatus(ship, currentLevel.well, trajX, trajY, trajValidSteps);
     renderer.drawSlingshotHud(ctx, ship, currentLevel.well, canvas, slingshotStatus);
   }
 
-  // Level 6: Orbit-HUD (Delta-V zur orbitierenden Station)
-  if (level === 6) {
+  // Level 7: Orbit-HUD (Delta-V zur orbitierenden Station)
+  if (level === 7) {
     renderer.drawOrbitHud(ctx, renderShip, stationB, currentLevel.planet, canvas, {
       orbitRadius: ORBIT_STATION_RADIUS,
       targetSpeed: ORBIT_STATION_RADIUS * ORBIT_STATION_SPEED,
@@ -1348,6 +1452,15 @@ function getLevelCompleteCopy(completedLevel) {
   if (completedLevel === 5) {
     return {
       eyebrow: 'Level 5 abgeschlossen',
+      title: 'Schrottfeld durchquert',
+      mission: 'Präzise Arbeit — du hast das Feld aus Weltraummüll unbeschadet hinter dir gelassen.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
+  if (completedLevel === 6) {
+    return {
+      eyebrow: 'Level 6 abgeschlossen',
       title: 'Schwerkraftschleuder gemeistert',
       mission: 'Das Manöver hat geklappt — der Gasriese hat dich auf Kurs geschleudert.',
       nextLevelLabel: 'Nächstes Level',
@@ -1475,6 +1588,14 @@ const level6StartButton = document.getElementById('level6StartButton');
 if (level6StartButton) {
   level6StartButton.addEventListener('click', () => {
     document.getElementById('level6StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
+const level7StartButton = document.getElementById('level7StartButton');
+if (level7StartButton) {
+  level7StartButton.addEventListener('click', () => {
+    document.getElementById('level7StartScreen').hidden = true;
     beginGameplay();
   });
 }
