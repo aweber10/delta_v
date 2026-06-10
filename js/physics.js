@@ -1,4 +1,4 @@
-import { THRUST_MAIN, THRUST_RCS, ROT_DAMP, ROT_ACCEL, FUEL_MAIN, FUEL_RCS, RCS_PULSE_MS, normalizeAngle, DOCK_MAGNET_RADIUS, DOCK_MAGNET_STRENGTH } from './constants.js';
+import { THRUST_MAIN, THRUST_RCS, ROT_DAMP, ROT_ACCEL, FUEL_MAIN, FUEL_RCS, RCS_PULSE_MS, normalizeAngle } from './constants.js';
 import { getPortPosition, checkDock } from './station.js';
 import { applyGravity } from './gravity.js';
 
@@ -21,8 +21,6 @@ export function updatePhysics(ship, flags, dt, gravityWell = null) {
   applyPendingBrakeImpulse(ship, flags);
   applyMainThrust(ship, flags, dt);
   applyRcsImpulse(ship, flags);
-  // Magnetische Anziehung zum Docking-Port, wenn das Schiff nah genug ist
-  applyDockMagnet(ship);
 
   if (gravityWell) {
     applyGravity(ship, gravityWell, dt);
@@ -153,8 +151,6 @@ function consumeTapThrust(ship, dt) {
 }
 
 function applyRcsImpulse(ship, flags) {
-  // Existing RCS handling
-
   const now = performance.now();
   if (!flags.rcsPulse || ship.fuel <= 0) return;
   if (now - lastRcsTime <= RCS_PULSE_MS) return;
@@ -163,30 +159,6 @@ function applyRcsImpulse(ship, flags) {
   ship.vy += flags.rcsPulse.dy * THRUST_RCS;
   ship.fuel = Math.max(0, ship.fuel - FUEL_RCS);
   lastRcsTime = now;
-}
-
-/**
- * Magnetischer Anziehungseffekt zum Docking-Port, wenn das Schiff nahe genug ist
- * und bereits die Geschwindigkeits‑ und Winkelvoraussetzungen erfüllt hat.
- */
-function applyDockMagnet(ship) {
-  // Verwende die globale Zielstation (targetStation) – ist immer definiert
-  if (typeof targetStation === 'undefined' || !targetStation) return;
-  const check = checkDock(ship, targetStation);
-  // Nur aktiv, wenn Geschwindigkeit und Winkel bereits passen, aber noch nicht im eigentlichen Docking‑Radius
-  if (!check.speedOk || !check.angleOk) return;
-  if (check.dist > DOCK_MAGNET_RADIUS || check.dist <= DOCK_RADIUS) return;
-
-  const port = getPortPosition(targetStation);
-  const dx = port.x - ship.x;
-  const dy = port.y - ship.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 1) return;
-
-  // Stärke proportional zur relativen Distanz (weiter = schwächer)
-  const strength = DOCK_MAGNET_STRENGTH * (dist / DOCK_MAGNET_RADIUS);
-  ship.vx += (dx / dist) * strength;
-  ship.vy += (dy / dist) * strength;
 }
 
 function integratePosition(ship, dt) {

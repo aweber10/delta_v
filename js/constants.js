@@ -8,9 +8,6 @@ export const ROT_DAMP = 0.96; // damping of angular velocity
 export const V_DOCK_MAX = 0.4; // px/frame
 export const ANGLE_DOCK_TOL = (20 * Math.PI) / 180; // radians
 export const DOCK_RADIUS = 30; // px
-// New magnetic docking radius (soft attraction)
-export const DOCK_MAGNET_RADIUS = 80; // px – distance where magnetic pull starts
-export const DOCK_MAGNET_STRENGTH = 0.012; // acceleration factor for magnetic pull (px/frame²)
 export const FUEL_START = 300; // increased from 100 to allow more time for docking
 export const FUEL_MAIN = 1.0; // per frame
 export const FUEL_RCS = 0.15; // per pulse

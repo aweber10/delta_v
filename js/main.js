@@ -339,149 +339,8 @@ setupMobileInput(flags, canvas, cam, ship);
 
 let score = 0;
 let targetStation = currentLevel.stationA;
-let gameState = 'start';
-let level = 1;
-const demoMode = {
-  active: false,
-  phase: 'idle',
-  phaseFrames: 0,
-  stableOrbitFrames: 0,
-  startedAt: 0,
-  message: '',
-};
-
-const DEMO_PHASE_COPY = {
-  transfer: 'Anflug zum Planeten. Der Autopilot zielt auf den linken Rand der Zielumlaufbahn.',
-  circularize: 'Orbit einschwenken: Altitude, Radial und Tangent werden stabilisiert.',
-  holdOrbit: 'Stabiler Orbit erreicht. Die Demo hält die Bahn kurz, bevor sie zur Station phast.',
-  phaseToStation: 'Der Abstand zur Station wird jetzt über einen leicht versetzten Orbit verringert.',
-  rendezvous: 'Finaler Anflug: Relativgeschwindigkeit zur Station abbauen und Dockingwinkel treffen.',
-  complete: 'Demo abgeschlossen: stabiler Orbit, Phasing und Rendezvous demonstriert.',
-};
-const tut = createTutorial();
-let blackHoleResetTimer = null;
-let blackHoleCollapseTimer = null;
-let blackHoleCollapse = null;
-
-const PROGRESS_KEY = 'delta_v_progress';
-const TOTAL_LEVELS = 7;
-const BLACK_HOLE_COLLAPSE_MS = 750;
-const BLACK_HOLE_BLACKOUT_MS = 1000;
-
-function loadProgress() {
-  try {
-    const data = localStorage.getItem(PROGRESS_KEY);
-    if (data) return JSON.parse(data);
-  } catch {}
-  return { completedLevels: [], unlockedLevel: 1 };
-}
-
-function saveProgress(progress) {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-}
-
-function isLevelUnlocked(levelNum) {
-  return levelNum <= loadProgress().unlockedLevel;
-}
-
-function markLevelComplete(levelNum) {
-  const progress = loadProgress();
-  if (!progress.completedLevels.includes(levelNum)) {
-    progress.completedLevels.push(levelNum);
-  }
-  if (levelNum < TOTAL_LEVELS) {
-    progress.unlockedLevel = Math.max(progress.unlockedLevel, levelNum + 1);
-  }
-  saveProgress(progress);
-}
-
-// Vorab allozierte Trajectory-Buffer (kein GC im Hot-Path)
-const TRAJ_STEPS = 120;
-const trajX = new Float32Array(TRAJ_STEPS);
-const trajY = new Float32Array(TRAJ_STEPS);
-let trajValidSteps = 0;
-let trajFrameCounter = 0;
-let trajWillHitAsteroid = false;
-let trajHitAsteroid = null;
-const orbitAssist = {
-  periapsis: null,
-  apoapsis: null,
-  burnHint: null,
-  orbitOk: false,
-};
-
-// Event Horizon Pulse (für Animation)
-let eventHorizonPulse = 0;
-let isInDanger = false;
-
-// Explosionspartikel
-let particles = [];
-
-function spawnExplosion(x, y) {
-  const COUNT = 55;
-  for (let i = 0; i < COUNT; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const type = Math.random();
-
-    let speed, size, maxLife, color;
-    if (type < 0.25) {
-      // Heißer Kern: klein, weiß/gelb, schnell, kurze Lebenszeit
-      speed = 2.5 + Math.random() * 3.5;
-      size = 2 + Math.random() * 2;
-      maxLife = 18 + Math.random() * 14;
-      color = Math.random() < 0.5 ? '#ffffff' : '#ffee88';
-    } else if (type < 0.65) {
-      // Flammenpartikel: mittel, orange/rot
-      speed = 1.2 + Math.random() * 2.5;
-      size = 3 + Math.random() * 3.5;
-      maxLife = 28 + Math.random() * 22;
-      const colors = ['#ff8800', '#ff5500', '#ffaa00', '#ff3300'];
-      color = colors[Math.floor(Math.random() * colors.length)];
-    } else {
-      // Trümmer: größer, dunkelrot/grau, langsam, länger
-      speed = 0.4 + Math.random() * 1.4;
-      size = 4 + Math.random() * 4;
-      maxLife = 40 + Math.random() * 30;
-      const colors = ['#aa2200', '#882200', '#664444', '#553333'];
-      color = colors[Math.floor(Math.random() * colors.length)];
-    }
-
-    particles.push({
-      x,
-      y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: maxLife,
-      maxLife,
-      size,
-      color,
-    });
-  }
-}
-
-function updateParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.life -= dt;
-    if (p.life <= 0) {
-      particles.splice(i, 1);
-      continue;
-    }
-    p.vx *= 0.98;
-    p.vy *= 0.98;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-  }
-}
-
-// stars — verteilt über den gesamten möglichen Weltbereich (inkl. L5 mit 3600×2400)
-const stars = [];
-for (let i=0;i<320;i++) stars.push({ x: Math.random()*4200, y: Math.random()*2800 });
-
-const FIXED_STEP_MS = 1000 / 60;
-const MAX_FRAME_MS = 250;
-const MAX_STEPS_PER_FRAME = 5;
-let accumulator = 0;
+let gameState = 'start'; // start, playing, crashed, levelComplete, blackHoleCollapse, blackout, dockingApproach
+let dockingApproach = null;
 let last = performance.now();
 
 const prevShipState = { x: ship.x, y: ship.y, angle: ship.angle };
@@ -736,6 +595,11 @@ function interpolateAngle(a, b, t) {
 function updateGame(dt, now) {
   updateParticles(dt);
 
+  if (gameState === 'dockingApproach') {
+    updateDockingApproach(dt);
+    return;
+  }
+
   if (gameState !== 'playing') return;
 
   if (demoMode.active) {
@@ -890,8 +754,48 @@ function updateDocking() {
   const station = getDockableTargetStation();
   if (!station) return;
 
-  handleDocking(ship, station);
-  targetStation = station === currentLevel.stationA ? currentLevel.stationB : currentLevel.stationA;
+  // Starte weichen Andock-Anflug statt sofortigem Teleport
+  dockingApproach = {
+    station,
+    timer: 0,
+    duration: 10, // Frames
+    startX: ship.x,
+    startY: ship.y,
+    startAngle: ship.angle
+  };
+  gameState = 'dockingApproach';
+}
+
+function updateDockingApproach(dt) {
+  if (!dockingApproach) return;
+  
+  dockingApproach.timer += dt;
+  const t = Math.min(1, dockingApproach.timer / dockingApproach.duration);
+  const easedT = t * (2 - t); // Ease-out
+
+  const station = dockingApproach.station;
+  // Bei Orbit-Stationen bewegt sich der Port während des Anflugs weiter
+  if (station.orbiting) {
+    updateOrbitingStation(station, dt);
+  }
+  const port = getPortPosition(station);
+  const targetAngle = normalizeAngle(station.dockAngle + Math.PI);
+
+  ship.x = lerp(dockingApproach.startX, port.x, easedT);
+  ship.y = lerp(dockingApproach.startY, port.y, easedT);
+  ship.angle = interpolateAngle(dockingApproach.startAngle, targetAngle, easedT);
+  ship.targetAngle = ship.angle;
+  ship.vx = 0;
+  ship.vy = 0;
+  ship.angularVel = 0;
+
+  if (t >= 1) {
+    gameState = 'playing';
+    const st = dockingApproach.station;
+    dockingApproach = null;
+    handleDocking(ship, st);
+    targetStation = st === currentLevel.stationA ? currentLevel.stationB : currentLevel.stationA;
+  }
 }
 
 function getDockableTargetStation() {
@@ -1503,6 +1407,7 @@ function resetLevel() {
     updateOrbitingStation(currentLevel.stationB, 0);
   }
   targetStation = currentLevel.stationA;
+  dockingApproach = null;
   isInDanger = false;
   trajValidSteps = 0;
   trajWillHitAsteroid = false;
