@@ -900,7 +900,7 @@ function updateDocking() {
   dockingApproach = {
     station,
     timer: 0,
-    duration: 10, // Frames
+    duration: 25, // Physik-Ticks (~0.4s bei 60fps)
     startX: ship.x,
     startY: ship.y,
     startAngle: ship.angle
