@@ -148,7 +148,7 @@ const L4 = {
 const L_DEBRIS = {
   shipStart: { x: 780, y: 1280 },
   stationA: createStation(780, 1280, -Math.PI * 0.22),
-  stationB: createStation(1180, 900, Math.PI + Math.PI * 0.22),
+  stationB: createStation(1560, 700, Math.PI + Math.PI * 0.22),
   well: null,
   debrisField: true,
   asteroids: [
