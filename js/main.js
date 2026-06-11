@@ -3,18 +3,20 @@ import { createCamera, updateCamera } from './camera.js';
 import { createInputFlags, setupDesktopInput } from './input-desktop.js';
 import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
-import { createStation, createOrbitingStation, updateOrbitingStation, checkDock, dockColor, getPortPosition } from './station.js';
+import { updateOrbitingStation, checkDock, dockColor, getPortPosition } from './station.js';
 import * as renderer from './renderer.js';
-import { FUEL_START, WELL_RADIUS, EVENT_HORIZON, PLANET_RADIUS, PLANET_GRAVITY_STRENGTH, PLANET_GRAVITY_RADIUS, PLANET_WELL_RADIUS, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, normalizeAngle, L6_FUEL_START, L6_PLANET_RADIUS, L6_GRAVITY_STRENGTH, L6_GRAVITY_RADIUS, L6_WELL_RADIUS, L6_MOON_RADIUS, L6_MOON_ORBIT_RADIUS, L6_MOON_ORBIT_SPEED } from './constants.js';
+import { FUEL_START, EVENT_HORIZON, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, normalizeAngle } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial, setTutorialNearStation, setTutorialStationVisible, setTutorialArrowTarget } from './tutorial.js';
-import { createGravityWell, checkWellCollision, predictTrajectory } from './gravity.js';
+import { checkWellCollision, predictTrajectory } from './gravity.js';
 import {
   checkAsteroidCollision,
-  createAsteroid,
   predictAsteroidTrajectory,
   resolveAsteroidCollision,
 } from './asteroids.js';
+import { getLevelByNumber, updateOrbitingMoon } from './levels.js';
+import { isLevelUnlocked, markLevelComplete, TOTAL_LEVELS } from './progress.js';
+import { DEMO_PHASE_COPY, updateDemoAutopilot as runDemoAutopilot } from './demo-autopilot.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -64,273 +66,7 @@ if (window.visualViewport) {
 }
 resize();
 
-// --- Level 1 ---
-const L1 = {
-  shipStart: { x: 200, y: 200 },
-  stationA: createStation(200, 1200, 0),
-  stationB: createStation(1800, 300, Math.PI),
-  well: null,
-  asteroids: null,
-};
-
-// --- Level 2: Gravity Well ---
-// Layout: 2400 × 1600 world space
-// Station A links unten, Station B rechts oben.
-// Gravitationsquelle mittig, leicht nach unten versetzt → direkte Linie streift den Rand.
-const L2 = {
-  shipStart: { x: 220, y: 1400 },
-  stationA: createStation(220, 1400, -Math.PI * 0.25),   // Arm zeigt nach oben-rechts
-  stationB: createStation(2180, 200, Math.PI + Math.PI * 0.25), // Arm zeigt nach unten-links
-  well: createGravityWell(1200, 900, WELL_RADIUS),
-  asteroids: null,
-};
-
-// --- Level 3: Asteroid Field ---
-// Statisches, handplatziertes Feld mit freiem diagonalen Korridor.
-const L3 = {
-  shipStart: { x: 220, y: 1380 },
-  stationA: createStation(220, 1380, -Math.PI * 0.22),
-  stationB: createStation(2200, 220, Math.PI + Math.PI * 0.22),
-  well: null,
-  asteroids: [
-    createAsteroid(500, 1260, 46, 101),
-    createAsteroid(560, 940, 38, 102),
-    createAsteroid(690, 1330, 58, 103),
-    createAsteroid(780, 760, 52, 104),
-    createAsteroid(880, 1160, 44, 105),
-    createAsteroid(980, 560, 62, 106),
-    createAsteroid(1040, 1240, 72, 107),
-    createAsteroid(1120, 720, 36, 108),
-    createAsteroid(1220, 1040, 64, 109),
-    createAsteroid(1320, 460, 48, 110),
-    createAsteroid(1380, 860, 42, 111),
-    createAsteroid(1480, 1180, 70, 112),
-    createAsteroid(1560, 600, 58, 113),
-    createAsteroid(1660, 960, 44, 114),
-    createAsteroid(1740, 380, 64, 115),
-    createAsteroid(1840, 780, 52, 116),
-    createAsteroid(1940, 520, 38, 117),
-    createAsteroid(2020, 1020, 60, 118),
-    createAsteroid(420, 720, 34, 119),
-    createAsteroid(520, 520, 56, 120),
-    createAsteroid(660, 380, 44, 121),
-    createAsteroid(760, 220, 36, 122),
-    createAsteroid(900, 1480, 42, 123),
-    createAsteroid(1160, 1460, 54, 124),
-    createAsteroid(1380, 1420, 46, 125),
-    createAsteroid(1600, 1340, 58, 126),
-    createAsteroid(1840, 1260, 40, 127),
-    createAsteroid(2100, 1220, 62, 128),
-    createAsteroid(300, 1040, 40, 129),
-    createAsteroid(2220, 760, 44, 130),
-    createAsteroid(2140, 520, 34, 131),
-    createAsteroid(1260, 220, 54, 132),
-    createAsteroid(1060, 300, 38, 133),
-    createAsteroid(1460, 250, 32, 134),
-    createAsteroid(640, 1120, 34, 135),
-    createAsteroid(920, 880, 32, 136),
-    createAsteroid(1540, 760, 34, 137),
-    createAsteroid(1880, 620, 30, 138),
-  ],
-};
-
-// --- Level 4: The Singularity ---
-// Schwarzes Loch in der Mitte.
-const L4 = {
-  shipStart: { x: 220, y: 1400 },
-  stationA: createStation(220, 1400, -Math.PI * 0.25),
-  stationB: createStation(2180, 200, Math.PI + Math.PI * 0.25),
-  well: createGravityWell(1200, 800, EVENT_HORIZON * 0.5, true),
-  asteroids: null,
-};
-
-// --- Level 5: Debris Field ---
-const L_DEBRIS = {
-  shipStart: { x: 780, y: 1280 },
-  stationA: createStation(780, 1280, -Math.PI * 0.22),
-  stationB: createStation(1560, 700, Math.PI + Math.PI * 0.22),
-  well: null,
-  debrisField: true,
-  asteroids: [
-    // Unterer Eingangsbereich (dicht)
-    createAsteroid(420, 1260, 42, 201),
-    createAsteroid(500, 1150, 36, 202),
-    createAsteroid(580, 1310, 52, 203),
-    createAsteroid(480, 1050, 44, 204),
-    createAsteroid(350, 1100, 38, 205),
-    // Linke Flanke
-    createAsteroid(320, 900, 34, 206),
-    createAsteroid(430, 820, 48, 207),
-    createAsteroid(550, 950, 40, 208),
-    createAsteroid(370, 720, 56, 209),
-    // Falsche Gasse (links-mitte) — enger Durchgang der in Sackgasse führt
-    createAsteroid(650, 1180, 62, 210),
-    createAsteroid(720, 1080, 44, 211),
-    createAsteroid(660, 960, 50, 212),
-    createAsteroid(750, 860, 38, 213),
-    createAsteroid(820, 980, 58, 214),
-    // Mittleres Cluster (Herzstück des Felds)
-    createAsteroid(900, 1160, 68, 215),
-    createAsteroid(980, 1040, 42, 216),
-    createAsteroid(1060, 1200, 54, 217),
-    createAsteroid(1040, 880, 46, 218),
-    createAsteroid(1150, 1060, 60, 219),
-    createAsteroid(1240, 1180, 36, 220),
-    createAsteroid(960, 720, 48, 221),
-    createAsteroid(1100, 780, 40, 222),
-    // Rechte Mittelzone (Hauptkorridor verläuft oben drüber)
-    createAsteroid(1300, 980, 52, 223),
-    createAsteroid(1380, 860, 44, 224),
-    createAsteroid(1460, 1020, 64, 225),
-    createAsteroid(1560, 900, 38, 226),
-    createAsteroid(1320, 1180, 46, 227),
-    createAsteroid(1500, 1140, 56, 228),
-    // Obere Zone (Hauptkorridor — schmale Lücken)
-    createAsteroid(700, 580, 42, 229),
-    createAsteroid(820, 460, 36, 230),
-    createAsteroid(940, 560, 50, 231),
-    createAsteroid(1060, 440, 44, 232),
-    createAsteroid(1180, 540, 58, 233),
-    createAsteroid(1300, 420, 34, 234),
-    createAsteroid(1420, 520, 48, 235),
-    createAsteroid(1540, 400, 40, 236),
-    createAsteroid(1660, 500, 54, 237),
-    createAsteroid(1780, 380, 36, 238),
-    // Oberer Ausgang (Eingang zu Station B)
-    createAsteroid(1880, 540, 44, 239),
-    createAsteroid(1960, 420, 52, 240),
-    createAsteroid(2020, 320, 38, 241),
-    createAsteroid(2100, 440, 46, 242),
-    // Rechte untere Flanke
-    createAsteroid(1680, 760, 42, 243),
-    createAsteroid(1800, 680, 34, 244),
-    createAsteroid(1940, 780, 58, 245),
-    createAsteroid(2060, 660, 40, 246),
-    createAsteroid(2150, 560, 36, 247),
-    // Randstreuung
-    createAsteroid(280,1300,32,248),
-    createAsteroid(600,1430,38,249),
-    createAsteroid(1640,1240,30,250),
-    // --- Ergänzungen: Randverschlüsse (Option B) ---
-    // Oberer Rand (Y≈200‑280)
-    createAsteroid(400, 230, 40, 251),
-    createAsteroid(560, 200, 36, 252),
-    createAsteroid(720, 250, 44, 253),
-    createAsteroid(880, 210, 38, 254),
-    createAsteroid(1040,240, 48, 255),
-    createAsteroid(1200,200, 42, 256),
-    createAsteroid(1360,230, 36, 257),
-    createAsteroid(1520,210, 44, 258),
-    createAsteroid(1700,240, 40, 259),
-    createAsteroid(1860,200, 46, 260),
-    // Rechter Rand unten (X>1900, Y≈900‑1450)
-    createAsteroid(2080, 900, 42, 261),
-    createAsteroid(2160,1040, 38, 262),
-    createAsteroid(2040,1160, 50, 263),
-    createAsteroid(2140,1290, 44, 264),
-    createAsteroid(2060,1420, 40, 265),
-    // Unterer Rand (Y>1200, X≈800‑2000)
-    createAsteroid( 800,1410, 44, 266),
-    createAsteroid( 980,1370, 38, 267),
-    createAsteroid(1200,1400, 48, 268),
-    createAsteroid(1400,1380, 42, 269),
-    createAsteroid(1600,1420, 36, 270),
-    createAsteroid(1800,1390, 46, 271),
-    createAsteroid(1960,1350, 40, 272),
-    // Linker Rand Lücke (Y≈946‑1050)
-    createAsteroid(330,1000,44,273),
-  ],
-};
-L_DEBRIS.stations = [L_DEBRIS.stationA, L_DEBRIS.stationB];
-
-// --- Level 6 (ehem. 5): Orbital Rendezvous ---
-// Der Spieler startet bei Station A (bekannt), fliegt zum Planeten in der Bildmitte-rechts,
-// und muss in einen Orbit einschwenken um an Station B (orbiting) anzudocken.
-// Weltgröße: 3600 × 2400
-const L5_PLANET_X = 2600;
-const L5_PLANET_Y = 1200;
-
-function createPlanet(x, y, radius) {
-  return { x, y, radius, rotation: 0, cloudAngle: 0 };
-}
-
-const L5 = {
-  shipStart: { x: 220, y: 1800 },
-  stationA: createStation(220, 1800, -Math.PI * 0.25),
-  stationB: createOrbitingStation(
-    L5_PLANET_X, L5_PLANET_Y,
-    ORBIT_STATION_RADIUS,
-    ORBIT_STATION_SPEED,
-    Math.PI * 1.25  // Startposition: oben-links vom Planeten
-  ),
-  planet: createPlanet(L5_PLANET_X, L5_PLANET_Y, PLANET_RADIUS),
-  well: createGravityWell(L5_PLANET_X, L5_PLANET_Y, PLANET_WELL_RADIUS, false),
-  asteroids: null,
-};
-// Überschreibe G_STRENGTH für L5 mit eigenen Werten über ein erweitertes well-Objekt
-L5.well.gravityStrength = PLANET_GRAVITY_STRENGTH;
-L5.well.gravityRadius = PLANET_GRAVITY_RADIUS;
-L5.well.isPlanet = true;
-
-L1.stations = [L1.stationA, L1.stationB];
-L2.stations = [L2.stationA, L2.stationB];
-L3.stations = [L3.stationA, L3.stationB];
-L4.stations = [L4.stationA, L4.stationB];
-L5.stations = [L5.stationA, L5.stationB];
-
-// --- Level 7 (ehem. 6): Schwerkraftschleuder ---
-// Slingshot-Manöver um einen Gasriesen (Jupiter-artig).
-// Weltgröße: 4200 × 2800. Direktflug unmöglich (zu wenig Treibstoff).
-// Optimaler Weg: nahe am Gasriesen vorbei (links/unterhalb) → Gravitation schleudert
-// das Schiff nach rechts-oben zu Station B.
-const L6_PLANET_X = 2200;
-const L6_PLANET_Y = 1400;
-
-/**
- * Erzeugt einen dekorativen Mond, der um eine Position kreist.
- * @param {number} cx - Zentrum X (Welt-Koordinaten)
- * @param {number} cy - Zentrum Y
- * @param {number} orbitRadius - Orbitabstand
- * @param {number} radius - Mondradius
- * @param {number} startAngle - Startwinkel (Bogenmaß)
- */
-function createMoon(cx, cy, orbitRadius, radius, startAngle = 0.8) {
-  return {
-    cx, cy,         // Orbitzenrum
-    orbitRadius,
-    radius,
-    angle: startAngle,
-    x: cx + Math.cos(startAngle) * orbitRadius,
-    y: cy + Math.sin(startAngle) * orbitRadius,
-  };
-}
-
-/**
- * Aktualisiert die Mondposition anhand seines Orbitwinkels.
- */
-function updateOrbitingMoon(moon, dt) {
-  moon.angle += L6_MOON_ORBIT_SPEED * dt;
-  moon.x = moon.cx + Math.cos(moon.angle) * moon.orbitRadius;
-  moon.y = moon.cy + Math.sin(moon.angle) * moon.orbitRadius;
-}
-
-const L6 = {
-  shipStart: { x: 300, y: 2500 },
-  stationA: createStation(300, 2500, -Math.PI * 0.18),
-  stationB: createStation(3900, 300, Math.PI + Math.PI * 0.18),
-  planet: createPlanet(L6_PLANET_X, L6_PLANET_Y, L6_PLANET_RADIUS),
-  moon: createMoon(L6_PLANET_X, L6_PLANET_Y, L6_MOON_ORBIT_RADIUS, L6_MOON_RADIUS),
-  well: createGravityWell(L6_PLANET_X, L6_PLANET_Y, L6_WELL_RADIUS, false),
-  asteroids: null,
-  fuelStart: L6_FUEL_START,
-};
-L6.well.gravityStrength = L6_GRAVITY_STRENGTH;
-L6.well.gravityRadius = L6_GRAVITY_RADIUS;
-L6.well.isPlanet = true;
-L6.well.isGasPlanet = true;  // Unterscheidet Gasriese von Erdplanet (für Renderer)
-L6.stations = [L6.stationA, L6.stationB];
-
-let currentLevel = L1;
+let currentLevel = getLevelByNumber(1);
 const ship = createShip(currentLevel.shipStart.x, currentLevel.shipStart.y);
 const cam = createCamera(ship.x, ship.y);
 const flags = createInputFlags();
@@ -351,50 +87,13 @@ const demoMode = {
   message: '',
 };
 
-const DEMO_PHASE_COPY = {
-  transfer: 'Anflug zum Planeten. Der Autopilot zielt auf den linken Rand der Zielumlaufbahn.',
-  circularize: 'Orbit einschwenken: Altitude, Radial und Tangent werden stabilisiert.',
-  holdOrbit: 'Stabiler Orbit erreicht. Die Demo hält die Bahn kurz, bevor sie zur Station phast.',
-  phaseToStation: 'Der Abstand zur Station wird jetzt über einen leicht versetzten Orbit verringert.',
-  rendezvous: 'Finaler Anflug: Relativgeschwindigkeit zur Station abbauen und Dockingwinkel treffen.',
-  complete: 'Demo abgeschlossen: stabiler Orbit, Phasing und Rendezvous demonstriert.',
-};
 const tut = createTutorial();
 let blackHoleResetTimer = null;
 let blackHoleCollapseTimer = null;
 let blackHoleCollapse = null;
 
-const PROGRESS_KEY = 'delta_v_progress';
-const TOTAL_LEVELS = 7;
 const BLACK_HOLE_COLLAPSE_MS = 750;
 const BLACK_HOLE_BLACKOUT_MS = 1000;
-
-function loadProgress() {
-  try {
-    const data = localStorage.getItem(PROGRESS_KEY);
-    if (data) return JSON.parse(data);
-  } catch {}
-  return { completedLevels: [], unlockedLevel: 1 };
-}
-
-function saveProgress(progress) {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-}
-
-function isLevelUnlocked(levelNum) {
-  return levelNum <= loadProgress().unlockedLevel;
-}
-
-function markLevelComplete(levelNum) {
-  const progress = loadProgress();
-  if (!progress.completedLevels.includes(levelNum)) {
-    progress.completedLevels.push(levelNum);
-  }
-  if (levelNum < TOTAL_LEVELS) {
-    progress.unlockedLevel = Math.max(progress.unlockedLevel, levelNum + 1);
-  }
-  saveProgress(progress);
-}
 
 // Vorab allozierte Trajectory-Buffer (kein GC im Hot-Path)
 const TRAJ_STEPS = 120;
@@ -505,13 +204,7 @@ function startLevel(targetLevel) {
 
 function selectLevel(targetLevel) {
   level = targetLevel;
-  if (targetLevel === 1) currentLevel = L1;
-  else if (targetLevel === 2) currentLevel = L2;
-  else if (targetLevel === 3) currentLevel = L3;
-  else if (targetLevel === 4) currentLevel = L4;
-  else if (targetLevel === 5) currentLevel = L_DEBRIS;  // Debris Field
-  else if (targetLevel === 6) currentLevel = L6;        // Schwerkraftschleuder (Slingshot)
-  else currentLevel = L5;                               // Orbital Rendezvous ist jetzt Level 7
+  currentLevel = getLevelByNumber(targetLevel);
 }
 
 async function beginGameplay() {
@@ -745,7 +438,15 @@ function updateGame(dt, now) {
   if (gameState !== 'playing') return;
 
   if (demoMode.active) {
-    updateDemoAutopilot(dt, now);
+    runDemoAutopilot({
+      level,
+      currentLevel,
+      ship,
+      flags,
+      demoMode,
+      setDemoPhase,
+      updateDemoHud,
+    });
   }
 
   updatePhysics(ship, flags, dt, currentLevel.well);
@@ -958,10 +659,23 @@ function renderFrame(alpha = 1) {
   const stationA = currentLevel.stationA;
   const stationB = currentLevel.stationB;
 
+  drawWorldBackground(well, asteroids, stationB);
+  const stationRenderState = drawStations(stationA, stationB);
+  drawTrajectoryPreview(well, asteroids);
+
+  if (gameState === 'blackHoleCollapse' && blackHoleCollapse) {
+    drawBlackHoleCollapse();
+    return;
+  }
+
+  drawShipAndMotion();
+  drawHudAndOverlays(well, stationB, stationRenderState);
+}
+
+function drawWorldBackground(well, asteroids, stationB) {
   renderer.clear(ctx, canvas);
   renderer.drawStars(ctx, stars, renderCam, canvas);
 
-  // Level 6: Gasriese + Mond zeichnen (Slingshot)
   if (level === 6 && currentLevel.planet) {
     renderer.drawGasPlanet(ctx, currentLevel.planet, renderCam, canvas);
     if (currentLevel.moon) {
@@ -969,13 +683,10 @@ function renderFrame(alpha = 1) {
     }
   }
 
-  // Level 7: Erdplanet zeichnen (Orbital Rendezvous)
   if (level === 7 && currentLevel.planet) {
     renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
   }
 
-  // Level 2 / 5: Gravity Well zeichnen (vor Stationen, damit Ringe im Hintergrund)
-  // Bei L5 (isPlanet) keinen Well-Ring zeichnen — der Planet ist das visuelle Objekt
   if (well && !well.isPlanet) {
     renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
   }
@@ -992,15 +703,21 @@ function renderFrame(alpha = 1) {
   if (asteroids && currentLevel.debrisField) {
     renderer.drawDebrisField(ctx, asteroids, renderCam, canvas, trajHitAsteroid);
   }
+}
 
+function drawStations(stationA, stationB) {
   const checkA = checkDock(ship, stationA);
   const colorA = dockColor(checkA);
   renderer.drawStation(ctx, stationA, renderCam, canvas, colorA);
+
   const checkB = checkDock(ship, stationB);
   const colorB = dockColor(checkB);
   renderer.drawStation(ctx, stationB, renderCam, canvas, colorB);
 
-  // Level 2 / 5: Trajectory-Vorschau zeichnen
+  return { checkA, colorA, checkB, colorB };
+}
+
+function drawTrajectoryPreview(well, asteroids) {
   if (well && trajValidSteps > 1) {
     const willHitPlanet = well.isPlanet && trajValidSteps < TRAJ_STEPS;
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, isInDanger || willHitPlanet);
@@ -1015,21 +732,22 @@ function renderFrame(alpha = 1) {
   if (asteroids && trajValidSteps > 1) {
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, trajWillHitAsteroid);
   }
+}
 
-  if (gameState === 'blackHoleCollapse' && blackHoleCollapse) {
-    const t = Math.min(1, (performance.now() - blackHoleCollapse.startTime) / BLACK_HOLE_COLLAPSE_MS);
-    const eased = t * t * (3 - 2 * t);
-    const collapseShip = {
-      ...renderShip,
-      x: lerp(blackHoleCollapse.startX, blackHoleCollapse.targetX, eased),
-      y: lerp(blackHoleCollapse.startY, blackHoleCollapse.targetY, eased),
-      angle: blackHoleCollapse.startAngle,
-    };
-    const collapseScale = Math.max(0.08, 1 - eased * 0.92);
-    renderer.drawShip(ctx, collapseShip, renderCam, canvas, flags, collapseScale);
-    return;
-  }
+function drawBlackHoleCollapse() {
+  const t = Math.min(1, (performance.now() - blackHoleCollapse.startTime) / BLACK_HOLE_COLLAPSE_MS);
+  const eased = t * t * (3 - 2 * t);
+  const collapseShip = {
+    ...renderShip,
+    x: lerp(blackHoleCollapse.startX, blackHoleCollapse.targetX, eased),
+    y: lerp(blackHoleCollapse.startY, blackHoleCollapse.targetY, eased),
+    angle: blackHoleCollapse.startAngle,
+  };
+  const collapseScale = Math.max(0.08, 1 - eased * 0.92);
+  renderer.drawShip(ctx, collapseShip, renderCam, canvas, flags, collapseScale);
+}
 
+function drawShipAndMotion() {
   renderer.drawRcsZone(ctx, renderShip, renderCam, canvas, flags);
   if (gameState !== 'crashed') {
     renderer.drawShip(ctx, renderShip, renderCam, canvas, flags);
@@ -1037,24 +755,23 @@ function renderFrame(alpha = 1) {
   renderer.drawParticles(ctx, renderCam, canvas, particles);
   renderer.drawTargetAngle(ctx, renderShip, renderCam, canvas);
   renderer.drawVelocityVec(ctx, renderShip, renderCam, canvas);
+}
 
-  // Level 2: Event Horizon Vignette
+function drawHudAndOverlays(well, stationB, stationRenderState) {
   if (well && isInDanger) {
     renderer.drawEventHorizonWarning(ctx, canvas, eventHorizonPulse);
   }
 
-  const targetCheck = targetStation === stationA ? checkA : checkB;
-  const targetColor = targetStation === stationA ? colorA : colorB;
+  const targetCheck = targetStation === currentLevel.stationA ? stationRenderState.checkA : stationRenderState.checkB;
+  const targetColor = targetStation === currentLevel.stationA ? stationRenderState.colorA : stationRenderState.colorB;
   renderer.drawHud(ctx, ship, canvas, targetStation, targetCheck, score, targetColor, level);
   renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
-  // Level 6: Slingshot-HUD
   if (level === 6) {
     const slingshotStatus = getSlingshotStatus(ship, currentLevel.well, trajX, trajY, trajValidSteps);
     renderer.drawSlingshotHud(ctx, ship, currentLevel.well, canvas, slingshotStatus);
   }
 
-  // Level 7: Orbit-HUD (Delta-V zur orbitierenden Station)
   if (level === 7) {
     renderer.drawOrbitHud(ctx, renderShip, stationB, currentLevel.planet, canvas, {
       orbitRadius: ORBIT_STATION_RADIUS,
@@ -1124,198 +841,6 @@ function getSlingshotStatus(sourceShip, well, trajXArr, trajYArr, validSteps) {
     speed,
     hasTrajectory: validSteps > 2,
   };
-}
-
-function updateDemoAutopilot(dt, now) {
-  if (level !== 6 || !currentLevel.planet) return;
-
-  demoMode.phaseFrames += 1;
-  flags.rcsPulse = null;
-  ship.pendingBrakeImpulse = false;
-  ship.thrustHeld = false;
-
-  const planet = currentLevel.planet;
-  const station = currentLevel.stationB;
-  const metrics = getDemoOrbitMetrics(ship, planet, ORBIT_STATION_RADIUS);
-  const stationAngle = Math.atan2(station.y - planet.y, station.x - planet.x);
-  const phaseAngle = normalizeAngle(stationAngle - metrics.angle);
-  const stationDist = Math.hypot(ship.x - station.x, ship.y - station.y);
-
-  if (demoMode.phase === 'transfer') {
-    demoMode.message = DEMO_PHASE_COPY.transfer;
-    flyDemoTransfer(metrics, planet);
-    if (metrics.radius < ORBIT_STATION_RADIUS + 150) {
-      setDemoPhase('circularize');
-    }
-  } else if (demoMode.phase === 'circularize') {
-    demoMode.message = DEMO_PHASE_COPY.circularize;
-    flyDemoOrbit(metrics, ORBIT_STATION_RADIUS);
-    if (isDemoOrbitStable(metrics, ORBIT_STATION_RADIUS)) {
-      demoMode.stableOrbitFrames += 1;
-    } else {
-      demoMode.stableOrbitFrames = 0;
-    }
-    if (demoMode.stableOrbitFrames > 120) {
-      setDemoPhase('holdOrbit');
-    }
-  } else if (demoMode.phase === 'holdOrbit') {
-    demoMode.message = DEMO_PHASE_COPY.holdOrbit;
-    flyDemoOrbit(metrics, ORBIT_STATION_RADIUS);
-    if (demoMode.phaseFrames > 180) {
-      setDemoPhase('phaseToStation');
-    }
-  } else if (demoMode.phase === 'phaseToStation') {
-    demoMode.message = DEMO_PHASE_COPY.phaseToStation;
-    const phaseRadius = phaseAngle > 0 ? ORBIT_STATION_RADIUS - 125 : ORBIT_STATION_RADIUS + 105;
-    flyDemoOrbit(metrics, phaseRadius);
-    if ((Math.abs(phaseAngle) < 0.55 && stationDist < 420) || stationDist < 220) {
-      setDemoPhase('rendezvous');
-    }
-  } else if (demoMode.phase === 'rendezvous') {
-    demoMode.message = DEMO_PHASE_COPY.rendezvous;
-    flyDemoRendezvous(station);
-  } else {
-    flags.thrustMain = false;
-  }
-
-  updateDemoHud();
-}
-
-function setDemoPhase(phase) {
-  demoMode.phase = phase;
-  demoMode.phaseFrames = 0;
-  demoMode.message = DEMO_PHASE_COPY[phase] || '';
-  if (phase === 'circularize') demoMode.stableOrbitFrames = 0;
-}
-
-function getDemoOrbitMetrics(sourceShip, planet, targetRadius) {
-  const dx = sourceShip.x - planet.x;
-  const dy = sourceShip.y - planet.y;
-  const radius = Math.max(1, Math.hypot(dx, dy));
-  const ux = dx / radius;
-  const uy = dy / radius;
-  const progradeX = -uy;
-  const progradeY = ux;
-  const radialSpeed = sourceShip.vx * ux + sourceShip.vy * uy;
-  const tangentialSpeed = sourceShip.vx * progradeX + sourceShip.vy * progradeY;
-  const targetSpeed = Math.sqrt(PLANET_GRAVITY_STRENGTH / targetRadius);
-
-  return {
-    dx,
-    dy,
-    radius,
-    ux,
-    uy,
-    progradeX,
-    progradeY,
-    radialSpeed,
-    tangentialSpeed,
-    targetSpeed,
-    angle: Math.atan2(dy, dx),
-  };
-}
-
-function flyDemoTransfer(metrics, planet) {
-  const insertionAngle = Math.PI;
-  const insertionRadius = ORBIT_STATION_RADIUS + 20;
-  const target = {
-    x: planet.x + Math.cos(insertionAngle) * insertionRadius,
-    y: planet.y + Math.sin(insertionAngle) * insertionRadius,
-  };
-  const toX = target.x - ship.x;
-  const toY = target.y - ship.y;
-  const dist = Math.max(1, Math.hypot(toX, toY));
-  const approachSpeed = Math.min(4.2, Math.max(0.55, dist / 90));
-  const blend = demoClamp((900 - dist) / 700, 0, 1);
-  const progradeX = 0;
-  const progradeY = -1;
-  const desiredVx = (toX / dist) * approachSpeed * (1 - blend) + progradeX * metrics.targetSpeed * blend;
-  const desiredVy = (toY / dist) * approachSpeed * (1 - blend) + progradeY * metrics.targetSpeed * blend;
-  steerDemoToVelocity(desiredVx, desiredVy, 0.075);
-}
-
-function flyDemoOrbit(metrics, targetRadius) {
-  const targetSpeed = Math.sqrt(PLANET_GRAVITY_STRENGTH / targetRadius);
-  const radiusError = metrics.radius - targetRadius;
-  const radialTarget = demoClamp(-radiusError * 0.008, -0.65, 0.65);
-  const tangentTarget = targetSpeed + demoClamp(-radiusError * 0.0008, -0.08, 0.08);
-  const desiredVx = metrics.progradeX * tangentTarget + metrics.ux * radialTarget;
-  const desiredVy = metrics.progradeY * tangentTarget + metrics.uy * radialTarget;
-  steerDemoToVelocity(desiredVx, desiredVy, 0.058);
-}
-
-function flyDemoRendezvous(station) {
-  const port = getPortPosition(station);
-  const dx = port.x - ship.x;
-  const dy = port.y - ship.y;
-  const dist = Math.max(1, Math.hypot(dx, dy));
-  const metrics = getDemoOrbitMetrics(ship, currentLevel.planet, ORBIT_STATION_RADIUS);
-  const radiusError = metrics.radius - ORBIT_STATION_RADIUS;
-  const approachSpeed = Math.min(0.14, dist / 240);
-  const radialGuard = metrics.radius < ORBIT_STATION_RADIUS - 48
-    ? 0.42
-    : demoClamp(-radiusError * 0.018, -0.22, 0.38);
-
-  if (metrics.radius < ORBIT_STATION_RADIUS - 70) {
-    const safeSpeed = Math.sqrt(PLANET_GRAVITY_STRENGTH / ORBIT_STATION_RADIUS);
-    steerDemoToVelocity(
-      metrics.progradeX * safeSpeed + metrics.ux * 0.46,
-      metrics.progradeY * safeSpeed + metrics.uy * 0.46,
-      0.06
-    );
-    return;
-  }
-
-  const desiredVx = station.vx + (dx / dist) * approachSpeed + metrics.ux * radialGuard;
-  const desiredVy = station.vy + (dy / dist) * approachSpeed + metrics.uy * radialGuard;
-  const relSpeed = Math.hypot(ship.vx - station.vx, ship.vy - station.vy);
-
-  if (dist < 140 && relSpeed < 0.75 && Math.abs(radiusError) < 85) {
-    ship.targetAngle = station.dockAngle + Math.PI;
-    flags.thrustMain = false;
-    applyDemoRcsToVelocity(desiredVx, desiredVy);
-    return;
-  }
-
-  steerDemoToVelocity(desiredVx, desiredVy, 0.05);
-}
-
-function applyDemoRcsToVelocity(desiredVx, desiredVy) {
-  const errX = desiredVx - ship.vx;
-  const errY = desiredVy - ship.vy;
-  const err = Math.hypot(errX, errY);
-  if (err < 0.018) {
-    flags.rcsPulse = null;
-    return;
-  }
-
-  flags.rcsPulse = { dx: errX / err, dy: errY / err };
-}
-
-function steerDemoToVelocity(desiredVx, desiredVy, gain) {
-  const ax = (desiredVx - ship.vx) * gain;
-  const ay = (desiredVy - ship.vy) * gain;
-  const accel = Math.hypot(ax, ay);
-  if (accel < 0.008) {
-    flags.thrustMain = false;
-    return;
-  }
-
-  const targetAngle = Math.atan2(ay, ax);
-  ship.targetAngle = targetAngle;
-  const angleError = Math.abs(normalizeAngle(targetAngle - ship.angle));
-  flags.thrustMain = angleError < 0.42;
-}
-
-function isDemoOrbitStable(metrics, targetRadius) {
-  const targetSpeed = Math.sqrt(PLANET_GRAVITY_STRENGTH / targetRadius);
-  return Math.abs(metrics.radius - targetRadius) < ORBIT_TOLERANCE
-    && Math.abs(metrics.radialSpeed) < ORBIT_RADIAL_SPEED_OK
-    && Math.abs(metrics.tangentialSpeed - targetSpeed) < ORBIT_TANGENTIAL_SPEED_OK;
-}
-
-function demoClamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function updateOrbitAssist() {

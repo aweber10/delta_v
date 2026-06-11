@@ -1,18 +1,22 @@
-const CACHE_NAME = 'delta-v-v46';
+const CACHE_NAME = 'delta-v-v47';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icons/icon.svg',
+  './js/asteroids.js',
   './js/audio.js',
   './js/camera.js',
   './js/constants.js',
+  './js/demo-autopilot.js',
   './js/hud.js',
   './js/input-desktop.js',
   './js/input-mobile.js',
   './js/input-pointer.js',
+  './js/levels.js',
   './js/main.js',
   './js/physics.js',
+  './js/progress.js',
   './js/renderer.js',
   './js/ship.js',
   './js/gravity.js',
