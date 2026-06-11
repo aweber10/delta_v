@@ -1,5 +1,5 @@
 import { SHIP_RADIUS, ARM_LENGTH, FUEL_START, normalizeAngle, RCS_ZONE_RADIUS_PX } from './constants.js';
-import { worldToScreen } from './camera.js';
+import { worldToScreen, isWorldPointOnScreen } from './camera.js';
 
 export function clear(ctx, canvas) {
   ctx.fillStyle = '#000';
@@ -108,12 +108,20 @@ export function drawShip(ctx, ship, cam, canvas, flags, visualScale = 1) {
 
 export function drawStation(ctx, station, cam, canvas, color = 'red') {
   const p = worldToScreen(cam, station.x, station.y, canvas);
+  const z = cam.zoom;
+
   ctx.save();
   ctx.translate(p.x, p.y);
 
-  const z = cam.zoom;
+  drawStationBody(ctx, z);
+  drawSolarPanels(ctx, z);
+  drawDockingArm(ctx, station, z, color);
 
-  // --- ISS-style body ---
+  ctx.restore();
+}
+
+/** Zeichnet den Hauptkörper der Station (ISS-style Module). */
+function drawStationBody(ctx, z) {
   // Central connecting truss (thin long bar)
   ctx.fillStyle = '#888';
   ctx.fillRect(-50 * z, -3 * z, 100 * z, 6 * z);
@@ -133,8 +141,10 @@ export function drawStation(ctx, station, cam, canvas, color = 'red') {
   ctx.strokeRect(-14 * z, -10 * z, 28 * z, 20 * z);
   ctx.strokeRect(-36 * z, -7 * z, 18 * z, 14 * z);
   ctx.strokeRect(18 * z, -7 * z, 18 * z, 14 * z);
+}
 
-  // --- Solar panels (ISS-style: 2 pairs, above and below truss) ---
+/** Zeichnet alle 4 Solarmodul-Paare mit Verbindungsstreben. */
+function drawSolarPanels(ctx, z) {
   // Struts connecting truss to panels
   ctx.strokeStyle = '#666';
   ctx.lineWidth = 1.5 * z;
@@ -147,46 +157,57 @@ export function drawStation(ctx, station, cam, canvas, color = 'red') {
   ctx.fillStyle = '#1a3a5c';
   ctx.strokeStyle = '#2a5a8c';
   ctx.lineWidth = 0.5 * z;
-  // top-left pair
-  ctx.fillRect(-62 * z, -26 * z, 44 * z, 8 * z);
-  ctx.strokeRect(-62 * z, -26 * z, 44 * z, 8 * z);
-  ctx.fillRect(-62 * z, -15 * z, 44 * z, 8 * z);
-  ctx.strokeRect(-62 * z, -15 * z, 44 * z, 8 * z);
-  // top-right pair
-  ctx.fillRect(18 * z, -26 * z, 44 * z, 8 * z);
-  ctx.strokeRect(18 * z, -26 * z, 44 * z, 8 * z);
-  ctx.fillRect(18 * z, -15 * z, 44 * z, 8 * z);
-  ctx.strokeRect(18 * z, -15 * z, 44 * z, 8 * z);
-  // bottom-left pair
-  ctx.fillRect(-62 * z, 7 * z, 44 * z, 8 * z);
-  ctx.strokeRect(-62 * z, 7 * z, 44 * z, 8 * z);
-  ctx.fillRect(-62 * z, 18 * z, 44 * z, 8 * z);
-  ctx.strokeRect(-62 * z, 18 * z, 44 * z, 8 * z);
-  // bottom-right pair
-  ctx.fillRect(18 * z, 7 * z, 44 * z, 8 * z);
-  ctx.strokeRect(18 * z, 7 * z, 44 * z, 8 * z);
-  ctx.fillRect(18 * z, 18 * z, 44 * z, 8 * z);
-  ctx.strokeRect(18 * z, 18 * z, 44 * z, 8 * z);
+  
+  drawSolarPanelPair(ctx, z, -62, -26);  // top-left
+  drawSolarPanelPair(ctx, z, -62, -15);
+  drawSolarPanelPair(ctx, z, 18, -26);   // top-right
+  drawSolarPanelPair(ctx, z, 18, -15);
+  drawSolarPanelPair(ctx, z, -62, 7);    // bottom-left
+  drawSolarPanelPair(ctx, z, -62, 18);
+  drawSolarPanelPair(ctx, z, 18, 7);     // bottom-right
+  drawSolarPanelPair(ctx, z, 18, 18);
+}
 
-  // --- Docking arm ---
+/** Zeichnet ein einzelnes Solarmodul-Rechteck. */
+function drawSolarPanelPair(ctx, z, x, y) {
+  ctx.fillRect(x * z, y * z, 44 * z, 8 * z);
+  ctx.strokeRect(x * z, y * z, 44 * z, 8 * z);
+}
+
+/** Zeichnet den Docking-Arm mit Port, Gelenk und Anflug-Indikatoren. */
+function drawDockingArm(ctx, station, z, color) {
   ctx.save();
   ctx.rotate(station.dockAngle);
 
-  // arm strut
+  drawArmStrut(ctx, z);
+  drawArmJoint(ctx, z);
+  drawDockingPort(ctx, z, color);
+  if (station.docked) drawDockedRing(ctx, z);
+  drawApproachIndicator(ctx, z, color);
+
+  ctx.restore();
+}
+
+/** Zeichnet die Hauptverbindung des Docking-Arms. */
+function drawArmStrut(ctx, z) {
   ctx.strokeStyle = '#aaa';
   ctx.lineWidth = 2.5 * z;
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(ARM_LENGTH * z, 0);
   ctx.stroke();
+}
 
-  // small joint at midpoint
+/** Zeichnet das Gelenk am Mittelpunkt des Arms. */
+function drawArmJoint(ctx, z) {
   ctx.fillStyle = '#bbb';
   ctx.beginPath();
   ctx.arc(ARM_LENGTH * 0.5 * z, 0, 3 * z, 0, Math.PI * 2);
   ctx.fill();
+}
 
-  // port circle at arm end
+/** Zeichnet den Docking-Port am Ende des Arms. */
+function drawDockingPort(ctx, z, color) {
   ctx.strokeStyle = color;
   ctx.lineWidth = 2 * z;
   ctx.fillStyle = '#333';
@@ -194,20 +215,23 @@ export function drawStation(ctx, station, cam, canvas, color = 'red') {
   ctx.arc(ARM_LENGTH * z, 0, 5 * z, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+}
 
-  // glowing dock ring
-  if (station.docked) {
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
-    ctx.lineWidth = 3.5 * z;
-    ctx.beginPath();
-    ctx.arc(ARM_LENGTH * z, 0, 8 * z, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+/** Zeichnet den grünen Glow-Ring für erfolgreiche Dockings. */
+function drawDockedRing(ctx, z) {
+  ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+  ctx.lineWidth = 3.5 * z;
+  ctx.beginPath();
+  ctx.arc(ARM_LENGTH * z, 0, 8 * z, 0, Math.PI * 2);
+  ctx.stroke();
+}
 
-  // approach arrow: points AWAY from port (= from where ship must come)
-  // arrow tip is at arm end, tail points toward the approaching ship
+/** Zeichnet Pfeil und Kegel für die Anflugrichtung. */
+function drawApproachIndicator(ctx, z, color) {
   const arrowDist = 18 * z;
   const ax = ARM_LENGTH * z + arrowDist;
+
+  // Approach arrow
   ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.moveTo(ax, 0);           // tip (pointing toward port)
@@ -216,7 +240,7 @@ export function drawStation(ctx, station, cam, canvas, color = 'red') {
   ctx.closePath();
   ctx.fill();
 
-  // subtle approach cone
+  // Subtle approach cone
   ctx.strokeStyle = `${color}55`;
   ctx.lineWidth = 1 * z;
   ctx.beginPath();
@@ -225,10 +249,6 @@ export function drawStation(ctx, station, cam, canvas, color = 'red') {
   ctx.moveTo(ARM_LENGTH * z, 0);
   ctx.lineTo(ARM_LENGTH * z + 40 * z, -15 * z);
   ctx.stroke();
-
-  ctx.restore(); // end dock arm transform
-
-  ctx.restore(); // end station transform
 }
 
 export function drawVelocityVec(ctx, ship, cam, canvas) {
@@ -248,22 +268,15 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
 
-  // Direction from ship to target station in world space
   const dx = targetStation.x - ship.x;
   const dy = targetStation.y - ship.y;
   const dist = Math.hypot(dx, dy);
 
-  // Check if station is already visible on screen
-  const stationScreen = { x: width / 2 + dx * cam.zoom, y: height / 2 + dy * cam.zoom };
-  const onScreen = stationScreen.x > 40 && stationScreen.x < width - 40 &&
-                   stationScreen.y > 40 && stationScreen.y < height - 40;
+  // No arrow needed if station is visible on screen
+  if (isWorldPointOnScreen(targetStation.x, targetStation.y, cam, canvas)) return;
 
-  if (onScreen) return; // station visible, no arrow needed
-
-  // Angle from ship to target
   const angle = Math.atan2(dy, dx);
 
-  // Place arrow on a circle near screen edge, centered on screen
   const cx = width / 2;
   const cy = height / 2;
   const edgeR = Math.min(cx, cy) - 48;
@@ -342,8 +355,19 @@ export function drawTargetAngle(ctx, ship, cam, canvas) {
   ctx.setLineDash([]);
 }
 
-export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dockColorValue, level = 1) {
-  // top left info
+/**
+ * Zeichnet das Spiel-HUD mit Treibstoff-, Status- und Zielinformationen.
+ * Empfängt vorberechnete Daten aus main.js — keine Physik- oder
+ * Winkelberechnungen im Renderer.
+ * @param {number} dockAngleDiff - Vorberechnete Winkeldifferenz in Grad (0–180)
+ */
+export function drawHud(ctx, ship, canvas, dockCheck, score, dockColorValue, level = 1, dockAngleDiff = 0) {
+  drawFuelPanel(ctx, ship);
+  drawTargetPanel(ctx, ship, canvas, dockCheck, score, dockColorValue, level, dockAngleDiff);
+  if (ship.dockedTimer > 0) drawDockedBanner(ctx, canvas);
+}
+
+function drawFuelPanel(ctx, ship) {
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 10, 220, 100);
   ctx.fillStyle = '#555';
@@ -358,36 +382,31 @@ export function drawHud(ctx, ship, canvas, targetStation, dockCheck, score, dock
   const speed = Math.hypot(ship.vx, ship.vy).toFixed(2);
   ctx.fillText('Speed: ' + speed, 20, 78);
   ctx.fillText('Cargo: ' + (ship.cargo > 0 ? 'Loaded' : 'Empty'), 20, 98);
-  
-  // top right info (target and score)
+}
+
+function drawTargetPanel(ctx, ship, canvas, dockCheck, score, dockColorValue, level, dockAngleDiff) {
   const trX = canvas.clientWidth - 230;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(trX, 10, 220, 120);
-  
+
   ctx.fillStyle = '#fff';
+  ctx.font = '14px sans-serif';
   ctx.fillText('Level: ' + level, trX + 10, 30);
   ctx.fillText('Score: ' + score, trX + 10, 50);
   ctx.fillText('Target Dist: ' + Math.floor(dockCheck.dist), trX + 10, 70);
-  
-  // Angle diff to degrees
-  const targetApproachAngle = targetStation.dockAngle + Math.PI;
-  const angleDiffDeg = Math.floor(Math.abs(ship.angle - targetApproachAngle) * (180/Math.PI)) % 360;
-  const actualDiff = angleDiffDeg > 180 ? 360 - angleDiffDeg : angleDiffDeg;
-  ctx.fillText('Target Angle: ' + actualDiff + '°', trX + 10, 90);
-  
-  // Dock status
+  ctx.fillText('Target Angle: ' + dockAngleDiff + '°', trX + 10, 90);
+
   ctx.fillText('Dock Status: ', trX + 10, 110);
   ctx.fillStyle = dockColorValue;
   ctx.fillRect(trX + 100, 98, 14, 14);
+}
 
-  // Docked timer
-  if (ship.dockedTimer > 0) {
-    ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
-    ctx.font = '30px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Docked! Transferring...', canvas.clientWidth / 2, canvas.clientHeight / 4);
-    ctx.textAlign = 'left'; // reset
-  }
+function drawDockedBanner(ctx, canvas) {
+  ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
+  ctx.font = '30px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Docked! Transferring...', canvas.clientWidth / 2, canvas.clientHeight / 4);
+  ctx.textAlign = 'left';
 }
 
 // ---- Level 3: Asteroid Field Rendering ----
@@ -452,234 +471,247 @@ export function drawAsteroids(ctx, asteroids, cam, canvas, highlightedAsteroid =
 
 /**
  * Zeichnet ein technisches Schrottfeld aus geometrischen Wrackteilen.
- * Jedes Objekt nutzt den selben Kollisionskreis wie Asteroiden, sieht aber
- * erkennbar nach Weltraummüll aus (Satelliten, Tanks, Platten, Trümmer).
+ * Verwendet Strategy-Map für verschiedene Debris-Typen statt lange if/else-Kette.
  * Der subtype wird deterministisch aus dem Seed abgeleitet.
  */
 export function drawDebrisField(ctx, asteroids, cam, canvas, highlightedAsteroid = null) {
   ctx.save();
 
   for (const asteroid of asteroids) {
-    const p = worldToScreen(cam, asteroid.x, asteroid.y, canvas);
-    const z = cam.zoom;
-    const r = asteroid.radius * z;
-    const isHighlighted = asteroid === highlightedAsteroid;
-
-    ctx.save();
-    ctx.translate(p.x, p.y);
-
-    // Deterministische Rotation aus Seed
-    const rotAngle = (asteroid.seed * 137.508) % (Math.PI * 2);
-    ctx.rotate(rotAngle);
-
-    // Kollisionswarnung-Ring (identisch zu drawAsteroids)
-    if (isHighlighted) {
-      ctx.strokeStyle = 'rgba(255, 70, 70, 0.8)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
-      ctx.beginPath();
-      ctx.arc(0, 0, (asteroid.radius + SHIP_RADIUS) * z, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // Subtype aus Seed: 0=sat, 1=tank, 2=panel, 3=chunk
-    const subtype = asteroid.seed % 4;
-
-    if (subtype === 0) {
-      // --- Satellitenbus: Zentrales Rechteck + Solarpanel-Stummel ---
-      const bw = r * 1.1;
-      const bh = r * 0.7;
-      const panelW = r * 0.9;
-      const panelH = r * 0.22;
-
-      // Rumpf
-      const bodyGrad = ctx.createLinearGradient(-bw * 0.5, -bh * 0.5, bw * 0.5, bh * 0.5);
-      bodyGrad.addColorStop(0, '#8a9aaa');
-      bodyGrad.addColorStop(0.4, '#5a6a76');
-      bodyGrad.addColorStop(1, '#2a3038');
-      ctx.fillStyle = bodyGrad;
-      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(160,180,200,0.55)';
-      ctx.lineWidth = isHighlighted ? 2 : 1;
-      ctx.beginPath();
-      ctx.rect(-bw * 0.5, -bh * 0.5, bw, bh);
-      ctx.fill();
-      ctx.stroke();
-
-      // Verbrannte Stellen (dunkel)
-      ctx.fillStyle = 'rgba(20, 10, 0, 0.45)';
-      ctx.beginPath();
-      ctx.ellipse(bw * 0.18, -bh * 0.1, r * 0.22, r * 0.14, 0.4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Solarpanels links + rechts
-      const panelGrad = ctx.createLinearGradient(0, -panelH * 0.5, 0, panelH * 0.5);
-      panelGrad.addColorStop(0, '#2a4a6a');
-      panelGrad.addColorStop(0.5, '#1a3050');
-      panelGrad.addColorStop(1, '#0a1828');
-      ctx.fillStyle = panelGrad;
-      ctx.strokeStyle = 'rgba(80, 140, 200, 0.5)';
-      ctx.lineWidth = 0.8;
-      // Links
-      ctx.beginPath();
-      ctx.rect(-bw * 0.5 - panelW, -panelH * 0.5, panelW, panelH);
-      ctx.fill();
-      ctx.stroke();
-      // Rechts
-      ctx.beginPath();
-      ctx.rect(bw * 0.5, -panelH * 0.5, panelW, panelH);
-      ctx.fill();
-      ctx.stroke();
-      // Panel-Gitterlinien
-      ctx.strokeStyle = 'rgba(60, 110, 170, 0.6)';
-      ctx.lineWidth = 0.5;
-      for (let i = 1; i < 3; i++) {
-        const lx = -bw * 0.5 - panelW + panelW * (i / 3);
-        ctx.beginPath(); ctx.moveTo(lx, -panelH * 0.5); ctx.lineTo(lx, panelH * 0.5); ctx.stroke();
-        const rx = bw * 0.5 + panelW * (i / 3);
-        ctx.beginPath(); ctx.moveTo(rx, -panelH * 0.5); ctx.lineTo(rx, panelH * 0.5); ctx.stroke();
-      }
-
-      // Reflektion oben links
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-      ctx.beginPath();
-      ctx.rect(-bw * 0.5 + 1, -bh * 0.5 + 1, bw * 0.4, bh * 0.28);
-      ctx.fill();
-
-    } else if (subtype === 1) {
-      // --- Drucktank: Kugel mit Schweißnähten ---
-      const tankGrad = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.05, 0, 0, r);
-      tankGrad.addColorStop(0, '#b0a090');
-      tankGrad.addColorStop(0.35, '#7a6858');
-      tankGrad.addColorStop(0.7, '#4a3a2c');
-      tankGrad.addColorStop(1, '#1e1410');
-      ctx.fillStyle = tankGrad;
-      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(180,160,130,0.5)';
-      ctx.lineWidth = isHighlighted ? 2 : 1.2;
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Schweißnähte (2 Ringe, 1 Meridian)
-      ctx.strokeStyle = isHighlighted ? 'rgba(255,120,120,0.6)' : 'rgba(100, 85, 65, 0.8)';
-      ctx.lineWidth = Math.max(1, r * 0.08);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, r * 0.98, r * 0.38, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, -r);
-      ctx.lineTo(0, r);
-      ctx.stroke();
-
-      // Rostflecken
-      ctx.fillStyle = 'rgba(160, 80, 20, 0.3)';
-      ctx.beginPath();
-      ctx.ellipse(r * 0.3, r * 0.25, r * 0.28, r * 0.18, 0.7, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Reflektion
-      ctx.fillStyle = 'rgba(255, 240, 220, 0.18)';
-      ctx.beginPath();
-      ctx.arc(-r * 0.26, -r * 0.28, r * 0.18, 0, Math.PI * 2);
-      ctx.fill();
-
-    } else if (subtype === 2) {
-      // --- Metallplatte: Flaches Viereck, scharfkantig ---
-      const pw = r * 1.6;
-      const ph = r * 0.55;
-      // Leichte Verzerrung für zerstörten Look
-      const skew = ((asteroid.seed * 73) % 20 - 10) / 100;
-
-      const plateGrad = ctx.createLinearGradient(-pw * 0.5, 0, pw * 0.5, ph);
-      plateGrad.addColorStop(0, '#9aa4ac');
-      plateGrad.addColorStop(0.3, '#6a7478');
-      plateGrad.addColorStop(0.7, '#3a4044');
-      plateGrad.addColorStop(1, '#1a2024');
-      ctx.fillStyle = plateGrad;
-      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(160,175,185,0.5)';
-      ctx.lineWidth = isHighlighted ? 2 : 1;
-      ctx.beginPath();
-      ctx.moveTo(-pw * 0.5, -ph * 0.5 + skew * pw);
-      ctx.lineTo(pw * 0.5, -ph * 0.5 - skew * pw);
-      ctx.lineTo(pw * 0.5 - r * 0.08, ph * 0.5 - skew * pw);  // abgeknicktes Ende
-      ctx.lineTo(-pw * 0.5 + r * 0.06, ph * 0.5 + skew * pw);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Nieten-Reihe
-      ctx.fillStyle = 'rgba(200, 215, 225, 0.6)';
-      const nivetCount = 5;
-      for (let i = 0; i < nivetCount; i++) {
-        const nx = -pw * 0.4 + (pw * 0.8 / (nivetCount - 1)) * i;
-        ctx.beginPath();
-        ctx.arc(nx, -ph * 0.22, Math.max(1, r * 0.055), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Verbiegung / Knick (dunkle Diagonale)
-      ctx.strokeStyle = 'rgba(10, 15, 20, 0.6)';
-      ctx.lineWidth = Math.max(1, r * 0.1);
-      ctx.beginPath();
-      ctx.moveTo(pw * 0.15, -ph * 0.5);
-      ctx.lineTo(pw * 0.28, ph * 0.5);
-      ctx.stroke();
-
-      // Reflektion
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.beginPath();
-      ctx.rect(-pw * 0.45, -ph * 0.45, pw * 0.35, ph * 0.35);
-      ctx.fill();
-
-    } else {
-      // --- Trümmerstück: Scharfkantiges, unregelmäßiges Polygon ---
-      const numPts = 6 + (asteroid.seed % 3);  // 6–8 Ecken
-      const pts = [];
-      for (let i = 0; i < numPts; i++) {
-        const baseAngle = (i / numPts) * Math.PI * 2;
-        // Scharfe, unregelmäßige Variation (mehr Jitter als Asteroiden)
-        const jitterSeed = (asteroid.seed * 17 + i * 31) % 100;
-        const scale = 0.55 + (jitterSeed / 100) * 0.55;
-        pts.push({ angle: baseAngle, scale });
-      }
-
-      const chunkGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.05, 0, 0, r);
-      chunkGrad.addColorStop(0, '#a09080');
-      chunkGrad.addColorStop(0.4, '#605040');
-      chunkGrad.addColorStop(0.75, '#382820');
-      chunkGrad.addColorStop(1, '#181008');
-      ctx.fillStyle = chunkGrad;
-      ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(175,155,130,0.5)';
-      ctx.lineWidth = isHighlighted ? 2 : 1.2;
-      ctx.beginPath();
-      for (let i = 0; i < pts.length; i++) {
-        const px = Math.cos(pts[i].angle) * r * pts[i].scale;
-        const py = Math.sin(pts[i].angle) * r * pts[i].scale;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Roststreifen
-      ctx.fillStyle = 'rgba(180, 70, 10, 0.28)';
-      ctx.beginPath();
-      ctx.ellipse(r * 0.1, r * 0.15, r * 0.35, r * 0.15, -0.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Reflektion
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.13)';
-      ctx.beginPath();
-      ctx.arc(-r * 0.18, -r * 0.22, Math.max(2, r * 0.14), 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
+    drawDebrisObject(ctx, asteroid, cam, canvas, asteroid === highlightedAsteroid);
   }
 
   ctx.restore();
+}
+
+/** Strategy-Map: jeder Debris-Typ hat eine eigene Render-Funktion. */
+const DEBRIS_RENDERERS = {
+  0: drawDebrisSatellite,
+  1: drawDebrisTank,
+  2: drawDebrisPlate,
+  3: drawDebrisChunk,
+};
+
+/** Zeichnet ein einzelnes Debris-Objekt mit Kollisionsring und typenspezifischem Renderer. */
+function drawDebrisObject(ctx, asteroid, cam, canvas, isHighlighted) {
+  const p = worldToScreen(cam, asteroid.x, asteroid.y, canvas);
+  const z = cam.zoom;
+  const r = asteroid.radius * z;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate((asteroid.seed * 137.508) % (Math.PI * 2));
+
+  if (isHighlighted) drawCollisionWarningRing(ctx, asteroid, z);
+
+  const subtype = asteroid.seed % 4;
+  DEBRIS_RENDERERS[subtype](ctx, r, isHighlighted, asteroid);
+
+  ctx.restore();
+}
+
+/** Zeichnet den roten Kollisions-Warnring um hervorgehobene Objekte. */
+function drawCollisionWarningRing(ctx, asteroid, z) {
+  ctx.strokeStyle = 'rgba(255, 70, 70, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.arc(0, 0, (asteroid.radius + SHIP_RADIUS) * z, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/** Zeichnet einen Satellitenbus: Zentrales Rechteck + Solarpanel-Stummel. */
+function drawDebrisSatellite(ctx, r, isHighlighted) {
+  const bw = r * 1.1;
+  const bh = r * 0.7;
+  const panelW = r * 0.9;
+  const panelH = r * 0.22;
+
+  // Rumpf
+  const bodyGrad = ctx.createLinearGradient(-bw * 0.5, -bh * 0.5, bw * 0.5, bh * 0.5);
+  bodyGrad.addColorStop(0, '#8a9aaa');
+  bodyGrad.addColorStop(0.4, '#5a6a76');
+  bodyGrad.addColorStop(1, '#2a3038');
+  ctx.fillStyle = bodyGrad;
+  ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(160,180,200,0.55)';
+  ctx.lineWidth = isHighlighted ? 2 : 1;
+  ctx.beginPath();
+  ctx.rect(-bw * 0.5, -bh * 0.5, bw, bh);
+  ctx.fill();
+  ctx.stroke();
+
+  // Verbrannte Stellen (dunkel)
+  ctx.fillStyle = 'rgba(20, 10, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(bw * 0.18, -bh * 0.1, r * 0.22, r * 0.14, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Solarpanels links + rechts
+  const panelGrad = ctx.createLinearGradient(0, -panelH * 0.5, 0, panelH * 0.5);
+  panelGrad.addColorStop(0, '#2a4a6a');
+  panelGrad.addColorStop(0.5, '#1a3050');
+  panelGrad.addColorStop(1, '#0a1828');
+  ctx.fillStyle = panelGrad;
+  ctx.strokeStyle = 'rgba(80, 140, 200, 0.5)';
+  ctx.lineWidth = 0.8;
+  // Links
+  ctx.beginPath();
+  ctx.rect(-bw * 0.5 - panelW, -panelH * 0.5, panelW, panelH);
+  ctx.fill();
+  ctx.stroke();
+  // Rechts
+  ctx.beginPath();
+  ctx.rect(bw * 0.5, -panelH * 0.5, panelW, panelH);
+  ctx.fill();
+  ctx.stroke();
+  // Panel-Gitterlinien
+  ctx.strokeStyle = 'rgba(60, 110, 170, 0.6)';
+  ctx.lineWidth = 0.5;
+  for (let i = 1; i < 3; i++) {
+    const lx = -bw * 0.5 - panelW + panelW * (i / 3);
+    ctx.beginPath(); ctx.moveTo(lx, -panelH * 0.5); ctx.lineTo(lx, panelH * 0.5); ctx.stroke();
+    const rx = bw * 0.5 + panelW * (i / 3);
+    ctx.beginPath(); ctx.moveTo(rx, -panelH * 0.5); ctx.lineTo(rx, panelH * 0.5); ctx.stroke();
+  }
+
+  // Reflektion oben links
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+  ctx.beginPath();
+  ctx.rect(-bw * 0.5 + 1, -bh * 0.5 + 1, bw * 0.4, bh * 0.28);
+  ctx.fill();
+}
+
+/** Zeichnet einen Drucktank: Kugel mit Schweißnähten. */
+function drawDebrisTank(ctx, r, isHighlighted) {
+  const tankGrad = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.05, 0, 0, r);
+  tankGrad.addColorStop(0, '#b0a090');
+  tankGrad.addColorStop(0.35, '#7a6858');
+  tankGrad.addColorStop(0.7, '#4a3a2c');
+  tankGrad.addColorStop(1, '#1e1410');
+  ctx.fillStyle = tankGrad;
+  ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(180,160,130,0.5)';
+  ctx.lineWidth = isHighlighted ? 2 : 1.2;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Schweißnähte (2 Ringe, 1 Meridian)
+  ctx.strokeStyle = isHighlighted ? 'rgba(255,120,120,0.6)' : 'rgba(100, 85, 65, 0.8)';
+  ctx.lineWidth = Math.max(1, r * 0.08);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.98, r * 0.38, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -r);
+  ctx.lineTo(0, r);
+  ctx.stroke();
+
+  // Rostflecken
+  ctx.fillStyle = 'rgba(160, 80, 20, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(r * 0.3, r * 0.25, r * 0.28, r * 0.18, 0.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Reflektion
+  ctx.fillStyle = 'rgba(255, 240, 220, 0.18)';
+  ctx.beginPath();
+  ctx.arc(-r * 0.26, -r * 0.28, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Zeichnet eine Metallplatte: Flaches Viereck, scharfkantig. */
+function drawDebrisPlate(ctx, r, isHighlighted, asteroid) {
+  const pw = r * 1.6;
+  const ph = r * 0.55;
+  // Leichte Verzerrung für zerstörten Look
+  const skew = ((asteroid.seed * 73) % 20 - 10) / 100;
+
+  const plateGrad = ctx.createLinearGradient(-pw * 0.5, 0, pw * 0.5, ph);
+  plateGrad.addColorStop(0, '#9aa4ac');
+  plateGrad.addColorStop(0.3, '#6a7478');
+  plateGrad.addColorStop(0.7, '#3a4044');
+  plateGrad.addColorStop(1, '#1a2024');
+  ctx.fillStyle = plateGrad;
+  ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(160,175,185,0.5)';
+  ctx.lineWidth = isHighlighted ? 2 : 1;
+  ctx.beginPath();
+  ctx.moveTo(-pw * 0.5, -ph * 0.5 + skew * pw);
+  ctx.lineTo(pw * 0.5, -ph * 0.5 - skew * pw);
+  ctx.lineTo(pw * 0.5 - r * 0.08, ph * 0.5 - skew * pw);  // abgeknicktes Ende
+  ctx.lineTo(-pw * 0.5 + r * 0.06, ph * 0.5 + skew * pw);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Nieten-Reihe
+  ctx.fillStyle = 'rgba(200, 215, 225, 0.6)';
+  const nivetCount = 5;
+  for (let i = 0; i < nivetCount; i++) {
+    const nx = -pw * 0.4 + (pw * 0.8 / (nivetCount - 1)) * i;
+    ctx.beginPath();
+    ctx.arc(nx, -ph * 0.22, Math.max(1, r * 0.055), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Verbiegung / Knick (dunkle Diagonale)
+  ctx.strokeStyle = 'rgba(10, 15, 20, 0.6)';
+  ctx.lineWidth = Math.max(1, r * 0.1);
+  ctx.beginPath();
+  ctx.moveTo(pw * 0.15, -ph * 0.5);
+  ctx.lineTo(pw * 0.28, ph * 0.5);
+  ctx.stroke();
+
+  // Reflektion
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath();
+  ctx.rect(-pw * 0.45, -ph * 0.45, pw * 0.35, ph * 0.35);
+  ctx.fill();
+}
+
+/** Zeichnet ein Trümmerstück: Scharfkantiges, unregelmäßiges Polygon. */
+function drawDebrisChunk(ctx, r, isHighlighted, asteroid) {
+  const numPts = 6 + (asteroid.seed % 3);  // 6–8 Ecken
+  const pts = [];
+  for (let i = 0; i < numPts; i++) {
+    const baseAngle = (i / numPts) * Math.PI * 2;
+    // Scharfe, unregelmäßige Variation (mehr Jitter als Asteroiden)
+    const jitterSeed = (asteroid.seed * 17 + i * 31) % 100;
+    const scale = 0.55 + (jitterSeed / 100) * 0.55;
+    pts.push({ angle: baseAngle, scale });
+  }
+
+  const chunkGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.05, 0, 0, r);
+  chunkGrad.addColorStop(0, '#a09080');
+  chunkGrad.addColorStop(0.4, '#605040');
+  chunkGrad.addColorStop(0.75, '#382820');
+  chunkGrad.addColorStop(1, '#181008');
+  ctx.fillStyle = chunkGrad;
+  ctx.strokeStyle = isHighlighted ? 'rgba(255,100,100,0.95)' : 'rgba(175,155,130,0.5)';
+  ctx.lineWidth = isHighlighted ? 2 : 1.2;
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const px = Math.cos(pts[i].angle) * r * pts[i].scale;
+    const py = Math.sin(pts[i].angle) * r * pts[i].scale;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Roststreifen
+  ctx.fillStyle = 'rgba(180, 70, 10, 0.28)';
+  ctx.beginPath();
+  ctx.ellipse(r * 0.1, r * 0.15, r * 0.35, r * 0.15, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Reflektion
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.13)';
+  ctx.beginPath();
+  ctx.arc(-r * 0.18, -r * 0.22, Math.max(2, r * 0.14), 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // ---- Level 2: Gravity Well Rendering ----
@@ -1274,29 +1306,17 @@ export function drawPlanetImpactMarker(ctx, x, y, cam, canvas) {
 }
 
 /**
- * Zeichnet Orbit-HUD für Level 5: Zielorbit zuerst, Rendezvous danach.
+ * Zeichnet Orbit-HUD für Level 7: Zielorbit zuerst, Rendezvous danach.
+ * Empfängt vorberechnete Physikdaten aus computeOrbitHudData() in main.js —
+ * keine Physikberechnungen im Renderer.
+ * @param {object} data - { deltaV, radiusError, radialSpeed, tangentialError,
+ *                          heightOk, radialOk, tangentOk, orbitOk }
  */
-export function drawOrbitHud(ctx, ship, station, planet, canvas, orbit) {
-  if (!station || !station.orbiting) return;
+export function drawOrbitHud(ctx, canvas, data) {
+  if (!data) return;
 
-  const relVx = ship.vx - station.vx;
-  const relVy = ship.vy - station.vy;
-  const deltaV = Math.hypot(relVx, relVy);
-  const dx = ship.x - planet.x;
-  const dy = ship.y - planet.y;
-  const radius = Math.hypot(dx, dy);
-  const invRadius = radius > 0 ? 1 / radius : 0;
-  const ux = dx * invRadius;
-  const uy = dy * invRadius;
-  const radialSpeed = ship.vx * ux + ship.vy * uy;
-  const tangentialSpeed = ship.vx * -uy + ship.vy * ux;
-  const radiusError = radius - orbit.orbitRadius;
-  const tangentialError = tangentialSpeed - orbit.targetSpeed;
-
-  const heightOk = Math.abs(radiusError) <= orbit.radiusTolerance;
-  const radialOk = Math.abs(radialSpeed) <= orbit.radialSpeedOk;
-  const tangentOk = Math.abs(tangentialError) <= orbit.tangentialSpeedOk;
-  const orbitOk = heightOk && radialOk && tangentOk;
+  const { deltaV, radiusError, radialSpeed, tangentialError,
+          heightOk, radialOk, tangentOk, orbitOk } = data;
 
   const w = canvas.clientWidth;
   const panelX = Math.floor(w / 2) - 138;
@@ -1389,54 +1409,63 @@ export function drawGasPlanet(ctx, planet, cam, canvas) {
   const z = cam.zoom;
   const r = planet.radius * z;
   const time = performance.now() * 0.001;
-  const bandPhase = planet.cloudAngle + time * 0.012; // langsame Wolkenrotation
+  const bandPhase = planet.cloudAngle + time * 0.012;
 
   ctx.save();
   ctx.translate(p.x, p.y);
 
-  // Clip auf Planetenkreis
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.clip();
 
-  // --- 1. Basiskugel (orangebraun) ---
+  drawGasPlanetSurface(ctx, r, bandPhase);
+  drawGasCloudBands(ctx, r, bandPhase);
+  drawGasBandWaviness(ctx, r, bandPhase);
+  drawGreatRedSpot(ctx, r, bandPhase);
+
+  ctx.restore();
+
+  drawGasAtmosphereHalo(ctx, r, p);
+  drawGasTerminator(ctx, r, p);
+  drawGasHighlight(ctx, r, p);
+}
+
+/** Zeichnet die orange-braune Basiskugel des Gasriesen. */
+function drawGasPlanetSurface(ctx, r, bandPhase) {
   const baseGrad = ctx.createRadialGradient(-r * 0.28, -r * 0.30, r * 0.05, 0, 0, r);
-  baseGrad.addColorStop(0,    '#e8c080');  // helles Orange-Creme (Highlight)
-  baseGrad.addColorStop(0.30, '#c97840');  // mittleres Orange-Braun
-  baseGrad.addColorStop(0.65, '#8b4520');  // dunkles Braun
-  baseGrad.addColorStop(1,    '#4a200a');  // sehr dunkles Braun am Rand
+  baseGrad.addColorStop(0,    '#e8c080');
+  baseGrad.addColorStop(0.30, '#c97840');
+  baseGrad.addColorStop(0.65, '#8b4520');
+  baseGrad.addColorStop(1,    '#4a200a');
   ctx.fillStyle = baseGrad;
   ctx.fillRect(-r - 2, -r - 2, (r + 2) * 2, (r + 2) * 2);
+}
 
-  // --- 2. Horizontale Wolkenbänder ---
-  // Jedes Band ist ein horizontaler Streifen, der sich leicht verschiebt
+/** Zeichnet die horizontalen Wolkenbänder mit differentieller Rotation. */
+function drawGasCloudBands(ctx, r, bandPhase) {
   for (let bi = 0; bi < GAS_CLOUD_BANDS.length; bi++) {
     const band = GAS_CLOUD_BANDS[bi];
-    // Leichter horizontaler Versatz pro Band (simuliert Differentialrotation)
     const xOffset = Math.sin(bandPhase * (0.7 + bi * 0.18) + bi * 1.3) * r * 0.04;
     const bandY = band.y * r;
     const halfW = band.w * r;
 
     ctx.save();
     ctx.translate(xOffset, 0);
-
-    // Band als horizontaler Rechteck-Streifen (innerhalb des Clips)
     ctx.fillStyle = band.color;
     ctx.globalAlpha = band.alpha;
     ctx.fillRect(-r - 4, bandY - halfW, (r + 4) * 2, halfW * 2);
-
     ctx.restore();
   }
   ctx.globalAlpha = 1;
+}
 
-  // --- 3. Welligkeit der Bänder (turbulente Kanten) ---
+/** Zeichnet die welligen turbulenten Kanten an den Wolkenbändern. */
+function drawGasBandWaviness(ctx, r, bandPhase) {
   ctx.save();
   for (let bi = 0; bi < GAS_CLOUD_BANDS.length; bi++) {
     const band = GAS_CLOUD_BANDS[bi];
     const bandY = band.y * r;
     const halfW = band.w * r;
-
-    // Wellige Oberkante mit Bezier-ähnlichem Sinus-Verlauf
     const waveAmp = r * 0.025;
     const waveFreq = 3.5 + bi * 0.4;
     const phase = bandPhase * (0.6 + bi * 0.2) + bi * 0.8;
@@ -1451,17 +1480,18 @@ export function drawGasPlanet(ctx, planet, cam, canvas) {
     ctx.lineTo(-r, bandY + halfW * 0.3);
     ctx.closePath();
 
-    // Leicht hellere Kante
     const edgeColor = bi % 2 === 0 ? 'rgba(255,220,150,0.22)' : 'rgba(80,30,10,0.18)';
     ctx.fillStyle = edgeColor;
     ctx.fill();
   }
   ctx.restore();
+}
 
-  // --- 4. Großer Roter Fleck (Sturm-Oval) ---
+/** Zeichnet den Großen Roten Fleck (Sturm-Oval) mit hellem Kern. */
+function drawGreatRedSpot(ctx, r, bandPhase) {
   const spotPhase = bandPhase * 0.55;
-  const spotX = Math.sin(spotPhase) * r * 0.18;  // bewegt sich leicht horizontal
-  const spotY = r * 0.10;                          // leicht unterhalb Äquator
+  const spotX = Math.sin(spotPhase) * r * 0.18;
+  const spotY = r * 0.10;
   const spotRx = r * 0.22;
   const spotRy = r * 0.11;
 
@@ -1476,7 +1506,6 @@ export function drawGasPlanet(ctx, planet, cam, canvas) {
   ctx.ellipse(spotX, spotY, spotRx, spotRy, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Heller Innenkern des Flecks
   const spotCore = ctx.createRadialGradient(spotX - spotRx * 0.15, spotY - spotRy * 0.15, 0, spotX, spotY, spotRx * 0.45);
   spotCore.addColorStop(0, 'rgba(255,160,100,0.6)');
   spotCore.addColorStop(1, 'rgba(255,100, 60,0)');
@@ -1485,10 +1514,10 @@ export function drawGasPlanet(ctx, planet, cam, canvas) {
   ctx.ellipse(spotX, spotY, spotRx * 0.45, spotRy * 0.45, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+}
 
-  ctx.restore(); // Ende Clip
-
-  // --- 5. Atmosphären-Halo (orange/gelb) ---
+/** Zeichnet den orange/gelben Atmosphären-Halo um den Planeten. */
+function drawGasAtmosphereHalo(ctx, r, p) {
   const atmInner = r * 0.97;
   const atmOuter = r * 1.16;
   const atmGrad = ctx.createRadialGradient(0, 0, atmInner, 0, 0, atmOuter);
@@ -1496,36 +1525,47 @@ export function drawGasPlanet(ctx, planet, cam, canvas) {
   atmGrad.addColorStop(0.35, 'rgba(200, 110,  30, 0.26)');
   atmGrad.addColorStop(0.72, 'rgba(150,  70,  10, 0.09)');
   atmGrad.addColorStop(1,    'rgba(100,  40,   0, 0)');
-  const atmCtx = ctx;
-  atmCtx.save();
-  atmCtx.translate(p.x, p.y);
-  atmCtx.fillStyle = atmGrad;
-  atmCtx.beginPath();
-  atmCtx.arc(0, 0, atmOuter, 0, Math.PI * 2);
-  atmCtx.fill();
 
-  // --- 6. Terminator-Schatten ---
-  const shadowGrad = atmCtx.createRadialGradient(r * 0.38, -r * 0.28, 0, -r * 0.1, r * 0.1, r * 1.2);
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.fillStyle = atmGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, atmOuter, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Zeichnet den Terminator-Schatten auf der Nachtseite. */
+function drawGasTerminator(ctx, r, p) {
+  const shadowGrad = ctx.createRadialGradient(r * 0.38, -r * 0.28, 0, -r * 0.1, r * 0.1, r * 1.2);
   shadowGrad.addColorStop(0,    'rgba(0,0,0,0)');
   shadowGrad.addColorStop(0.52, 'rgba(0,0,0,0)');
   shadowGrad.addColorStop(0.76, 'rgba(0,5,15,0.25)');
   shadowGrad.addColorStop(1,    'rgba(0,3,10,0.60)');
-  atmCtx.beginPath();
-  atmCtx.arc(0, 0, r, 0, Math.PI * 2);
-  atmCtx.fillStyle = shadowGrad;
-  atmCtx.fill();
 
-  // --- 7. Spekularer Highlight ---
-  const hlGrad = atmCtx.createRadialGradient(-r * 0.28, -r * 0.32, 0, -r * 0.28, -r * 0.32, r * 0.32);
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = shadowGrad;
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Zeichnet den spekularen Highlight (Lichtreflex). */
+function drawGasHighlight(ctx, r, p) {
+  const hlGrad = ctx.createRadialGradient(-r * 0.28, -r * 0.32, 0, -r * 0.28, -r * 0.32, r * 0.32);
   hlGrad.addColorStop(0, 'rgba(255,230,180,0.20)');
   hlGrad.addColorStop(0.5, 'rgba(255,210,140,0.06)');
   hlGrad.addColorStop(1,    'rgba(255,200,100,0)');
-  atmCtx.fillStyle = hlGrad;
-  atmCtx.beginPath();
-  atmCtx.arc(0, 0, r, 0, Math.PI * 2);
-  atmCtx.fill();
 
-  atmCtx.restore();
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.fillStyle = hlGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -1623,13 +1663,12 @@ export function drawMoon(ctx, moon, cam, canvas) {
 // ---------------------------------------------------------------------------
 
 /**
- * Sanftes Slingshot-Assist-HUD:
- * - Closest Approach (Abstand zur Planetenoberfläche an dem nächsten Trajektoriepunkt)
- * - Geschwindigkeitsanzeige
- * - Farbcodierter Status (grün = sicherer Abstand, gelb = eng, rot = zu nah / Kollision)
- * @param {object} status - { closestApproach, speed, hasTrajectory }
+ * Zeichnet das Slingshot-HUD für Level 6.
+ * Empfängt vorberechnete Anzeigedaten aus computeSlingshotHudData() in main.js —
+ * keine Entscheidungslogik oder Schwellwertvergleiche im Renderer.
+ * @param {object} data - { hasTrajectory, caColor, caLabel, speed, speedColor, dotColor }
  */
-export function drawSlingshotHud(ctx, ship, well, canvas, status) {
+export function drawSlingshotHud(ctx, canvas, data) {
   const w = canvas.clientWidth;
   const panelX = Math.floor(w / 2) - 130;
   const panelY = 10;
@@ -1638,62 +1677,33 @@ export function drawSlingshotHud(ctx, ship, well, canvas, status) {
 
   ctx.save();
 
-  // Panel-Hintergrund
   ctx.fillStyle = 'rgba(0,0,0,0.52)';
   ctx.fillRect(panelX, panelY, panelW, panelH);
 
-  // Titel
   ctx.font = '11px sans-serif';
   ctx.fillStyle = '#ffb860';
   ctx.fillText('Schwerkraftschleuder', panelX + 10, panelY + 18);
 
-  if (!status.hasTrajectory) {
+  if (!data.hasTrajectory) {
     ctx.fillStyle = '#6f8fa8';
     ctx.fillText('Trajektorie berechnen ...', panelX + 10, panelY + 42);
     ctx.restore();
     return;
   }
 
-  // Closest Approach: Farbcodierung
-  const ca = status.closestApproach;
-  let caColor, caLabel;
-  if (ca < 0) {
-    caColor = '#ff4444';
-    caLabel = 'KOLLISION';
-  } else if (ca < 80) {
-    caColor = '#ff8844';
-    caLabel = Math.round(ca) + ' px — zu nah!';
-  } else if (ca < 200) {
-    caColor = '#ffdd44';
-    caLabel = Math.round(ca) + ' px — eng';
-  } else if (ca < 500) {
-    caColor = '#88ff88';
-    caLabel = Math.round(ca) + ' px — gut';
-  } else {
-    caColor = '#6f8fa8';
-    caLabel = Math.round(ca) + ' px — zu weit';
-  }
-
-  ctx.font = '11px sans-serif';
   ctx.fillStyle = '#8fd0ff';
   ctx.fillText('Closest Approach:', panelX + 10, panelY + 40);
-  ctx.fillStyle = caColor;
-  ctx.fillText(caLabel, panelX + 10, panelY + 58);
+  ctx.fillStyle = data.caColor;
+  ctx.fillText(data.caLabel, panelX + 10, panelY + 58);
 
-  // Geschwindigkeit rechts
-  const speed = status.speed;
-  const speedColor = speed > 2.5 ? '#88ff88' : speed > 1.2 ? '#ffdd44' : '#ff7744';
-  ctx.font = '11px sans-serif';
   ctx.fillStyle = '#8fd0ff';
   ctx.textAlign = 'right';
   ctx.fillText('Geschw.:', panelX + panelW - 10, panelY + 40);
-  ctx.fillStyle = speedColor;
-  ctx.fillText(speed.toFixed(2) + ' px/f', panelX + panelW - 10, panelY + 58);
+  ctx.fillStyle = data.speedColor;
+  ctx.fillText(data.speed.toFixed(2) + ' px/f', panelX + panelW - 10, panelY + 58);
   ctx.textAlign = 'left';
 
-  // Status-Dot oben rechts
-  const dotColor = ca < 0 ? '#ff4444' : ca < 80 ? '#ff8844' : ca < 200 ? '#ffdd44' : ca < 500 ? '#44ff88' : '#6f8fa8';
-  ctx.fillStyle = dotColor;
+  ctx.fillStyle = data.dotColor;
   ctx.beginPath();
   ctx.arc(panelX + panelW - 16, panelY + 18, 6, 0, Math.PI * 2);
   ctx.fill();

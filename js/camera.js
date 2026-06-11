@@ -48,3 +48,14 @@ export function screenToWorld(cam, sx, sy, canvas) {
   const wy = cam.y + (sy - cy) / cam.zoom;
   return { x: wx, y: wy };
 }
+
+/**
+ * Prüft, ob ein Punkt in Weltkoordinaten auf dem Bildschirm sichtbar ist
+ * (mit optionalem Randabstand in Pixeln).
+ */
+export function isWorldPointOnScreen(worldX, worldY, cam, canvas, margin = 40) {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const p = worldToScreen(cam, worldX, worldY, canvas);
+  return p.x > margin && p.x < w - margin && p.y > margin && p.y < h - margin;
+}

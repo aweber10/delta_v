@@ -1,5 +1,5 @@
 import { createShip } from './ship.js';
-import { createCamera, updateCamera } from './camera.js';
+import { createCamera, updateCamera, isWorldPointOnScreen } from './camera.js';
 import { createInputFlags, setupDesktopInput } from './input-desktop.js';
 import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
@@ -117,46 +117,39 @@ let isInDanger = false;
 // Explosionspartikel
 let particles = [];
 
+const EXPLOSION_PARTICLE_TYPES = [
+  { threshold: 0.25, speedMin: 2.5, speedMax: 6,    sizeMin: 2,  sizeMax: 4,  lifeMin: 18, lifeMax: 32, colors: ['#ffffff', '#ffee88'] },
+  { threshold: 0.65, speedMin: 1.2, speedMax: 3.7,  sizeMin: 3,  sizeMax: 6.5,lifeMin: 28, lifeMax: 50, colors: ['#ff8800', '#ff5500', '#ffaa00', '#ff3300'] },
+  { threshold: 1,    speedMin: 0.4, speedMax: 1.8,  sizeMin: 4,  sizeMax: 8,  lifeMin: 40, lifeMax: 70, colors: ['#aa2200', '#882200', '#664444', '#553333'] },
+];
+
 function spawnExplosion(x, y) {
   const COUNT = 55;
   for (let i = 0; i < COUNT; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const type = Math.random();
-
-    let speed, size, maxLife, color;
-    if (type < 0.25) {
-      // Heißer Kern: klein, weiß/gelb, schnell, kurze Lebenszeit
-      speed = 2.5 + Math.random() * 3.5;
-      size = 2 + Math.random() * 2;
-      maxLife = 18 + Math.random() * 14;
-      color = Math.random() < 0.5 ? '#ffffff' : '#ffee88';
-    } else if (type < 0.65) {
-      // Flammenpartikel: mittel, orange/rot
-      speed = 1.2 + Math.random() * 2.5;
-      size = 3 + Math.random() * 3.5;
-      maxLife = 28 + Math.random() * 22;
-      const colors = ['#ff8800', '#ff5500', '#ffaa00', '#ff3300'];
-      color = colors[Math.floor(Math.random() * colors.length)];
-    } else {
-      // Trümmer: größer, dunkelrot/grau, langsam, länger
-      speed = 0.4 + Math.random() * 1.4;
-      size = 4 + Math.random() * 4;
-      maxLife = 40 + Math.random() * 30;
-      const colors = ['#aa2200', '#882200', '#664444', '#553333'];
-      color = colors[Math.floor(Math.random() * colors.length)];
-    }
-
-    particles.push({
-      x,
-      y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: maxLife,
-      maxLife,
-      size,
-      color,
-    });
+    const config = pickExplosionConfig(Math.random());
+    const speed = config.speedMin + Math.random() * (config.speedMax - config.speedMin);
+    particles.push(createExplosionParticle(x, y, angle, speed, config));
   }
+}
+
+function pickExplosionConfig(roll) {
+  for (const c of EXPLOSION_PARTICLE_TYPES) {
+    if (roll < c.threshold) return c;
+  }
+  return EXPLOSION_PARTICLE_TYPES[EXPLOSION_PARTICLE_TYPES.length - 1];
+}
+
+function createExplosionParticle(x, y, angle, speed, config) {
+  const size = config.sizeMin + Math.random() * (config.sizeMax - config.sizeMin);
+  const maxLife = Math.round(config.lifeMin + Math.random() * (config.lifeMax - config.lifeMin));
+  const color = config.colors[Math.floor(Math.random() * config.colors.length)];
+  return {
+    x, y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    life: maxLife, maxLife, size, color,
+  };
 }
 
 function updateParticles(dt) {
@@ -464,16 +457,7 @@ function updateLevelSystems(dt, now) {
     const distB = Math.hypot(ship.x - currentLevel.stationB.x, ship.y - currentLevel.stationB.y);
     setTutorialNearStation(tut, distA < 400 || distB < 400);
 
-    // Station "in Sichtweite" = würde auf dem Bildschirm erscheinen (gleiche Logik wie drawTargetArrow)
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    const tsDx = targetStation.x - ship.x;
-    const tsDy = targetStation.y - ship.y;
-    const tsScreenX = w / 2 + tsDx * cam.zoom;
-    const tsScreenY = h / 2 + tsDy * cam.zoom;
-    const stationOnScreen = tsScreenX > 40 && tsScreenX < w - 40 &&
-                            tsScreenY > 40 && tsScreenY < h - 40;
-    setTutorialStationVisible(tut, stationOnScreen);
+    setTutorialStationVisible(tut, isWorldPointOnScreen(targetStation.x, targetStation.y, cam, canvas));
     setTutorialArrowTarget(tut, targetStation);
   }
 
@@ -611,34 +595,47 @@ function updateDocking() {
 
 function updateDockingApproach(dt) {
   if (!dockingApproach) return;
-  
+
   dockingApproach.timer += dt;
   const t = Math.min(1, dockingApproach.timer / dockingApproach.duration);
-  const easedT = t * (2 - t); // Ease-out
+  const easedT = easeOut(t);
 
-  const station = dockingApproach.station;
-  // Bei Orbit-Stationen bewegt sich der Port während des Anflugs weiter
-  if (station.orbiting) {
-    updateOrbitingStation(station, dt);
-  }
-  const port = getPortPosition(station);
-  const targetAngle = normalizeAngle(station.dockAngle + Math.PI);
+  advanceOrbitingStationDuringApproach(dockingApproach.station, dt);
+  interpolateShipToDockPort(dockingApproach, easedT);
 
-  ship.x = lerp(dockingApproach.startX, port.x, easedT);
-  ship.y = lerp(dockingApproach.startY, port.y, easedT);
-  ship.angle = interpolateAngle(dockingApproach.startAngle, targetAngle, easedT);
+  if (t >= 1) finalizeDockingApproach();
+}
+
+/** Ease-out-Kurve: f(t) = t*(2-t) */
+function easeOut(t) {
+  return t * (2 - t);
+}
+
+/** Bewegt eine orbitierende Station während des Anflugs weiter. */
+function advanceOrbitingStationDuringApproach(station, dt) {
+  if (station.orbiting) updateOrbitingStation(station, dt);
+}
+
+/** Interpoliert Position und Winkel des Schiffs zum Docking-Port. */
+function interpolateShipToDockPort(approach, easedT) {
+  const port = getPortPosition(approach.station);
+  const targetAngle = normalizeAngle(approach.station.dockAngle + Math.PI);
+  ship.x = lerp(approach.startX, port.x, easedT);
+  ship.y = lerp(approach.startY, port.y, easedT);
+  ship.angle = interpolateAngle(approach.startAngle, targetAngle, easedT);
   ship.targetAngle = ship.angle;
   ship.vx = 0;
   ship.vy = 0;
   ship.angularVel = 0;
+}
 
-  if (t >= 1) {
-    gameState = 'playing';
-    const st = dockingApproach.station;
-    dockingApproach = null;
-    handleDocking(ship, st);
-    targetStation = st === currentLevel.stationA ? currentLevel.stationB : currentLevel.stationA;
-  }
+/** Schließt den Andock-Anflug ab: setzt State zurück und löst Docking aus. */
+function finalizeDockingApproach() {
+  gameState = 'playing';
+  const st = dockingApproach.station;
+  dockingApproach = null;
+  handleDocking(ship, st);
+  targetStation = st === currentLevel.stationA ? currentLevel.stationB : currentLevel.stationA;
 }
 
 function getDockableTargetStation() {
@@ -764,25 +761,33 @@ function drawHudAndOverlays(well, stationB, stationRenderState) {
 
   const targetCheck = targetStation === currentLevel.stationA ? stationRenderState.checkA : stationRenderState.checkB;
   const targetColor = targetStation === currentLevel.stationA ? stationRenderState.colorA : stationRenderState.colorB;
-  renderer.drawHud(ctx, ship, canvas, targetStation, targetCheck, score, targetColor, level);
+  const dockAngleDiff = computeDockAngleDiff(ship, targetStation);
+  renderer.drawHud(ctx, ship, canvas, targetCheck, score, targetColor, level, dockAngleDiff);
   renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
   if (level === 6) {
     const slingshotStatus = getSlingshotStatus(ship, currentLevel.well, trajX, trajY, trajValidSteps);
-    renderer.drawSlingshotHud(ctx, ship, currentLevel.well, canvas, slingshotStatus);
+    const slingshotHudData = computeSlingshotHudData(slingshotStatus);
+    renderer.drawSlingshotHud(ctx, canvas, slingshotHudData);
   }
 
   if (level === 7) {
-    renderer.drawOrbitHud(ctx, renderShip, stationB, currentLevel.planet, canvas, {
-      orbitRadius: ORBIT_STATION_RADIUS,
-      targetSpeed: ORBIT_STATION_RADIUS * ORBIT_STATION_SPEED,
-      radiusTolerance: ORBIT_TOLERANCE,
-      radialSpeedOk: ORBIT_RADIAL_SPEED_OK,
-      tangentialSpeedOk: ORBIT_TANGENTIAL_SPEED_OK,
-    });
+    const orbitHudData = computeOrbitHudData(renderShip, stationB, currentLevel.planet);
+    renderer.drawOrbitHud(ctx, canvas, orbitHudData);
   }
 
   if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
+}
+
+/**
+ * Berechnet die Winkeldifferenz zwischen Schiffausrichtung und
+ * dem optimalen Andockwinkel der Zielstation — in Grad (0–180).
+ * Trennt die Physikberechnung von der HUD-Darstellung.
+ */
+function computeDockAngleDiff(sourceShip, station) {
+  const targetApproachAngle = station.dockAngle + Math.PI;
+  const angleDiffDeg = Math.floor(Math.abs(sourceShip.angle - targetApproachAngle) * (180 / Math.PI)) % 360;
+  return angleDiffDeg > 180 ? 360 - angleDiffDeg : angleDiffDeg;
 }
 
 function getOrbitStatus(sourceShip, planet) {
@@ -804,6 +809,76 @@ function getOrbitStatus(sourceShip, planet) {
     && Math.abs(tangentialError) <= ORBIT_TANGENTIAL_SPEED_OK;
 
   return { orbitOk, radialSpeed, tangentialError };
+}
+
+/**
+ * Klassifiziert den Closest-Approach-Wert in Farbe + Label.
+ * Trennt die Entscheidungslogik vom Renderer.
+ */
+function classifyClosestApproach(ca) {
+  if (ca < 0)   return { color: '#ff4444', label: 'KOLLISION' };
+  if (ca < 80)  return { color: '#ff8844', label: Math.round(ca) + ' px — zu nah!' };
+  if (ca < 200) return { color: '#ffdd44', label: Math.round(ca) + ' px — eng' };
+  if (ca < 500) return { color: '#88ff88', label: Math.round(ca) + ' px — gut' };
+  return { color: '#6f8fa8', label: Math.round(ca) + ' px — zu weit' };
+}
+
+/**
+ * Klassifiziert die Fluggeschwindigkeit in eine Statusfarbe.
+ */
+function classifySlingshotSpeed(speed) {
+  if (speed > 2.5) return '#88ff88';
+  if (speed > 1.2) return '#ffdd44';
+  return '#ff7744';
+}
+
+/**
+ * Berechnet alle Anzeigedaten für das Slingshot-HUD (Level 6).
+ * Der Renderer erhält ein fertiges Datenobjekt und enthält keine if/else-Logik.
+ */
+function computeSlingshotHudData(status) {
+  const approach = classifyClosestApproach(status.closestApproach);
+  const speedColor = classifySlingshotSpeed(status.speed);
+  const dotColor = approach.color;
+  return {
+    hasTrajectory: status.hasTrajectory,
+    caColor: approach.color,
+    caLabel: approach.label,
+    speed: status.speed,
+    speedColor,
+    dotColor,
+  };
+}
+
+/**
+ * Berechnet alle Anzeigedaten für das Orbit-HUD (Level 7).
+ * Trennt die Physikberechnung vom Renderer — drawOrbitHud() erhält
+ * nur noch ein fertiges Datenobjekt und muss keine Physik berechnen.
+ */
+function computeOrbitHudData(sourceShip, station, planet) {
+  if (!station || !station.orbiting) return null;
+
+  const relVx = sourceShip.vx - station.vx;
+  const relVy = sourceShip.vy - station.vy;
+  const deltaV = Math.hypot(relVx, relVy);
+
+  const dx = sourceShip.x - planet.x;
+  const dy = sourceShip.y - planet.y;
+  const radius = Math.hypot(dx, dy);
+  const invRadius = radius > 0 ? 1 / radius : 0;
+  const ux = dx * invRadius;
+  const uy = dy * invRadius;
+  const radialSpeed = sourceShip.vx * ux + sourceShip.vy * uy;
+  const tangentialSpeed = sourceShip.vx * -uy + sourceShip.vy * ux;
+  const radiusError = radius - ORBIT_STATION_RADIUS;
+  const tangentialError = tangentialSpeed - ORBIT_STATION_RADIUS * ORBIT_STATION_SPEED;
+
+  const heightOk = Math.abs(radiusError) <= ORBIT_TOLERANCE;
+  const radialOk = Math.abs(radialSpeed) <= ORBIT_RADIAL_SPEED_OK;
+  const tangentOk = Math.abs(tangentialError) <= ORBIT_TANGENTIAL_SPEED_OK;
+  const orbitOk = heightOk && radialOk && tangentOk;
+
+  return { deltaV, radiusError, radialSpeed, tangentialError, heightOk, radialOk, tangentOk, orbitOk };
 }
 
 /**
@@ -851,23 +926,7 @@ function updateOrbitAssist() {
 
   if (!currentLevel.well?.isPlanet || trajValidSteps < 4) return;
 
-  let minI = 0;
-  let maxI = 0;
-  let minR = Infinity;
-  let maxR = -Infinity;
-  for (let i = 0; i < trajValidSteps; i++) {
-    const dx = trajX[i] - currentLevel.planet.x;
-    const dy = trajY[i] - currentLevel.planet.y;
-    const r = Math.hypot(dx, dy);
-    if (r < minR) {
-      minR = r;
-      minI = i;
-    }
-    if (r > maxR) {
-      maxR = r;
-      maxI = i;
-    }
-  }
+  const { minI, maxI, minR, maxR } = findApsides(trajX, trajY, trajValidSteps, currentLevel.planet.x, currentLevel.planet.y);
 
   orbitAssist.periapsis = createApsisMarker(minI, 'PE');
   orbitAssist.apoapsis = createApsisMarker(maxI, 'AP');
@@ -876,11 +935,29 @@ function updateOrbitAssist() {
   orbitAssist.orbitOk = orbitStatus.orbitOk;
   if (orbitStatus.orbitOk) return;
 
-  if (Math.abs(orbitStatus.radialSpeed) > ORBIT_RADIAL_SPEED_OK * 1.5) {
-    orbitAssist.burnHint = createApsisMarker(Math.abs(minR - ORBIT_STATION_RADIUS) < Math.abs(maxR - ORBIT_STATION_RADIUS) ? minI : maxI, 'RADIAL');
-  } else {
-    orbitAssist.burnHint = createApsisMarker(minR < ORBIT_STATION_RADIUS ? maxI : minI, 'TAN');
+  orbitAssist.burnHint = computeBurnHint(orbitStatus, minI, maxI, minR, maxR);
+}
+
+/** Durchsucht die Trajektorie nach Apoapsis und Periapsis. */
+function findApsides(trajX, trajY, steps, planetX, planetY) {
+  let minI = 0, maxI = 0, minR = Infinity, maxR = -Infinity;
+  for (let i = 0; i < steps; i++) {
+    const dx = trajX[i] - planetX;
+    const dy = trajY[i] - planetY;
+    const r = Math.hypot(dx, dy);
+    if (r < minR) { minR = r; minI = i; }
+    if (r > maxR) { maxR = r; maxI = i; }
   }
+  return { minI, maxI, minR, maxR };
+}
+
+/** Entscheidet, wo der nächste Zündungs-Hint (Burn) platziert werden soll. */
+function computeBurnHint(orbitStatus, minI, maxI, minR, maxR) {
+  if (Math.abs(orbitStatus.radialSpeed) > ORBIT_RADIAL_SPEED_OK * 1.5) {
+    const i = Math.abs(minR - ORBIT_STATION_RADIUS) < Math.abs(maxR - ORBIT_STATION_RADIUS) ? minI : maxI;
+    return createApsisMarker(i, 'RADIAL');
+  }
+  return createApsisMarker(minR < ORBIT_STATION_RADIUS ? maxI : minI, 'TAN');
 }
 
 function createApsisMarker(index, label) {
@@ -944,14 +1021,22 @@ function completeLevel() {
   playDeliveryComplete();
 
   if (level >= TOTAL_LEVELS) {
-    setTimeout(() => {
-      finalCompleteScreen.hidden = false;
-    }, 800);
-    return;
+    showFinalScreen();
+  } else {
+    showLevelCompleteScreen();
   }
+}
 
+/** Zeigt das Final-Complete-Screen mit Verzögerung. */
+function showFinalScreen() {
+  setTimeout(() => {
+    finalCompleteScreen.hidden = false;
+  }, 800);
+}
+
+/** Zeigt den Level-Complete-Screen mit Verzögerung und Leveltext. */
+function showLevelCompleteScreen() {
   showLevelCompleteCopy(getLevelCompleteCopy(level));
-
   setTimeout(() => {
     levelCompleteScreen.hidden = false;
   }, 800);
@@ -1042,6 +1127,16 @@ function getLevelCompleteCopy(completedLevel) {
 }
 
 function resetLevel() {
+  clearBlackHoleTimers();
+  resetShipState();
+  resetStationStates();
+  resetTrajectoryState();
+  resetCameraState();
+  syncRenderStates();
+}
+
+/** Bricht laufende Black-Hole-Animationen ab und räumt Timer auf. */
+function clearBlackHoleTimers() {
   if (blackHoleCollapseTimer) {
     clearTimeout(blackHoleCollapseTimer);
     blackHoleCollapseTimer = null;
@@ -1051,6 +1146,10 @@ function resetLevel() {
     blackHoleResetTimer = null;
   }
   blackHoleCollapse = null;
+}
+
+/** Setzt alle Schiff-Properties auf den Level-Startzustand zurück. */
+function resetShipState() {
   const start = currentLevel.shipStart;
   ship.x = start.x;
   ship.y = start.y;
@@ -1066,6 +1165,10 @@ function resetLevel() {
   ship.thrustHeld = false;
   ship.tapThrustTime = 0;
   ship.pendingBrakeImpulse = false;
+}
+
+/** Setzt Andockstatus und Startpositionen aller Stationen zurück. */
+function resetStationStates() {
   currentLevel.stationA.docked = false;
   currentLevel.stationB.docked = false;
   // Bei orbitierenden Stationen: Startposition zurücksetzen
@@ -1075,6 +1178,10 @@ function resetLevel() {
   }
   targetStation = currentLevel.stationA;
   dockingApproach = null;
+}
+
+/** Setzt Trajektorie-Buffer, Orbit-Assist-Marker und Partikel zurück. */
+function resetTrajectoryState() {
   isInDanger = false;
   trajValidSteps = 0;
   trajWillHitAsteroid = false;
@@ -1084,29 +1191,48 @@ function resetLevel() {
   orbitAssist.burnHint = null;
   orbitAssist.orbitOk = false;
   particles = [];
+}
+
+/** Setzt die Kamera auf die Schiffposition zurück. */
+function resetCameraState() {
   cam.x = ship.x;
   cam.y = ship.y;
   cam.targetZoom = 1;
-  syncRenderStates();
 }
 
 function crashReset() {
   spawnExplosion(ship.x, ship.y);
   gameState = 'crashed';
+  freezeShipInput();
+  setTimeout(restoreAfterCrash, 1200);
+}
+
+/** Stoppt alle Schiff-Input-Aktionen sofort. */
+function freezeShipInput() {
   ship.pendingBrakeImpulse = false;
   ship.thrustHeld = false;
   ship.tapThrustTime = 0;
-  setTimeout(() => {
-    particles = [];
-    resetLevel();
-    if (demoMode.active) {
-      ship.cargo = 1;
-      targetStation = currentLevel.stationB;
-      setDemoPhase('transfer');
-    }
-    gameState = 'playing';
-    last = performance.now();
-  }, 1200);
+}
+
+/** Stellt den Zustand nach einem Crash wieder her und setzt das Spiel fort. */
+function restoreAfterCrash() {
+  particles = [];
+  resetLevel();
+  if (demoMode.active) restoreDemoStateAfterCrash();
+  resumeGameplay();
+}
+
+/** Stellt Demo-spezifischen Zustand nach Crash wieder her. */
+function restoreDemoStateAfterCrash() {
+  ship.cargo = 1;
+  targetStation = currentLevel.stationB;
+  setDemoPhase('transfer');
+}
+
+/** Setzt den Gameplay-Zustand und Timer zurück. */
+function resumeGameplay() {
+  gameState = 'playing';
+  last = performance.now();
 }
 
 const nextLevelButton = document.getElementById('nextLevelButton');
