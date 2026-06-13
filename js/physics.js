@@ -12,9 +12,9 @@ const ZERO_SPEED_EPSILON = 1e-9;
  * @param {object} ship
  * @param {object} flags
  * @param {number} dt
- * @param {object|null} gravityWell - optionale Gravitationsquelle (Level 2+)
+ * @param {object|object[]|null} gravitySources - optionale Gravitationsquelle(n)
  */
-export function updatePhysics(ship, flags, dt, gravityWell = null) {
+export function updatePhysics(ship, flags, dt, gravitySources = null) {
   if (updateDockedShip(ship, dt)) return;
 
   updateRotation(ship, dt);
@@ -22,8 +22,9 @@ export function updatePhysics(ship, flags, dt, gravityWell = null) {
   applyMainThrust(ship, flags, dt);
   applyRcsImpulse(ship, flags);
 
-  if (gravityWell) {
-    applyGravity(ship, gravityWell, dt);
+  const wells = Array.isArray(gravitySources) ? gravitySources : (gravitySources ? [gravitySources] : []);
+  for (const well of wells) {
+    applyGravity(ship, well, dt);
   }
 
   integratePosition(ship, dt);

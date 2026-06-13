@@ -68,3 +68,12 @@ export const L6_WELL_RADIUS = 492;          // Kollisionszone (leicht über Plan
 export const L6_MOON_RADIUS = 72;           // Mond-Radius (rein visuell)
 export const L6_MOON_ORBIT_RADIUS = 700;    // Mondabstand vom Gasriesen-Zentrum
 export const L6_MOON_ORBIT_SPEED = 0.00055; // Mondrotationsgeschwindigkeit (rad/frame)
+
+// --- Level 8: Binary System ---
+export const L8_WELL_A_STRENGTH = 90.0;     // kleinerer Stern, links
+export const L8_WELL_A_RADIUS = 450;        // Einflussradius
+export const L8_WELL_A_BODY = 30;           // sichtbarer/tödlicher Körper
+export const L8_WELL_B_STRENGTH = 140.0;    // größerer Stern, rechts
+export const L8_WELL_B_RADIUS = 550;
+export const L8_WELL_B_BODY = 38;
+export const L8_FUEL_START = 80;            // Relay macht die Route komfortabel, Direktflug bleibt knapp

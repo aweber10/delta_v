@@ -46,32 +46,35 @@ export function checkWellCollision(ship, well) {
  * Berechnet vorausgesagte Flugbahn in vorab allozierte Arrays (kein GC).
  * Gibt Anzahl gültiger Schritte zurück.
  */
-export function predictTrajectory(ship, well, steps, outX, outY) {
+export function predictTrajectory(ship, gravitySources, steps, outX, outY) {
   let px = ship.x;
   let py = ship.y;
   let vx = ship.vx;
   let vy = ship.vy;
-
-  const gStrength = well.gravityStrength !== undefined ? well.gravityStrength : G_STRENGTH;
-  const gRadius = well.gravityRadius !== undefined ? well.gravityRadius : (well.isBlackHole ? G_RADIUS * 2 : G_RADIUS);
+  const wells = Array.isArray(gravitySources) ? gravitySources : (gravitySources ? [gravitySources] : []);
 
   for (let i = 0; i < steps; i++) {
-    const dx = well.x - px;
-    const dy = well.y - py;
-    const distSq = dx * dx + dy * dy;
+    for (const well of wells) {
+      const dx = well.x - px;
+      const dy = well.y - py;
+      const distSq = dx * dx + dy * dy;
 
-    if (distSq <= well.wellRadius * well.wellRadius) {
-      for (let j = i; j < steps; j++) { outX[j] = px; outY[j] = py; }
-      return i;
-    }
+      if (distSq <= well.wellRadius * well.wellRadius) {
+        for (let j = i; j < steps; j++) { outX[j] = px; outY[j] = py; }
+        return i;
+      }
 
-    if (distSq <= gRadius * gRadius) {
-      const dist = Math.sqrt(distSq);
-      const effectiveDist = Math.max(distSq, MIN_DIST_SQ);
-      const strengthMult = well.isBlackHole ? 8 : 1;
-      const force = (gStrength * strengthMult) / effectiveDist;
-      vx += force * (dx / dist);
-      vy += force * (dy / dist);
+      const gStrength = well.gravityStrength !== undefined ? well.gravityStrength : G_STRENGTH;
+      const gRadius = well.gravityRadius !== undefined ? well.gravityRadius : (well.isBlackHole ? G_RADIUS * 2 : G_RADIUS);
+
+      if (distSq <= gRadius * gRadius) {
+        const dist = Math.sqrt(distSq);
+        const effectiveDist = Math.max(distSq, MIN_DIST_SQ);
+        const strengthMult = well.isBlackHole ? 8 : 1;
+        const force = (gStrength * strengthMult) / effectiveDist;
+        vx += force * (dx / dist);
+        vy += force * (dy / dist);
+      }
     }
 
     px += vx;

@@ -75,6 +75,7 @@ setupMobileInput(flags, canvas, cam, ship);
 
 let score = 0;
 let targetStation = currentLevel.stationA;
+let missionTargetIndex = 0;
 let gameState = 'start';
 let dockingApproach = null;
 let level = 1;
@@ -283,6 +284,7 @@ function startDemoLevel5() {
   score = 0;
   resetLevel();
   ship.cargo = 1;
+  missionTargetIndex = 1;
   targetStation = currentLevel.stationB;
   demoMode.active = true;
   demoMode.phase = 'transfer';
@@ -347,6 +349,22 @@ if ('serviceWorker' in navigator) {
 
 function getStations() {
   return currentLevel.stations;
+}
+
+function getGravityWells(sourceLevel = currentLevel) {
+  return sourceLevel.wells ?? (sourceLevel.well ? [sourceLevel.well] : []);
+}
+
+function getMissionStations() {
+  const sequence = currentLevel.missionSequence;
+  if (!sequence) return currentLevel.stations;
+  return sequence.map(key => currentLevel[key]).filter(Boolean);
+}
+
+function getOptionalDockStations() {
+  return (currentLevel.optionalDockStations ?? [])
+    .map(key => currentLevel[key])
+    .filter(station => station && !station.optionalDockUsed);
 }
 
 function loop() {
@@ -442,7 +460,7 @@ function updateGame(dt, now) {
     });
   }
 
-  updatePhysics(ship, flags, dt, currentLevel.well);
+  updatePhysics(ship, flags, dt, getGravityWells());
   updateLevelSystems(dt, now);
   if (gameState !== 'playing') return;
   updateDocking();
@@ -461,7 +479,7 @@ function updateLevelSystems(dt, now) {
     setTutorialArrowTarget(tut, targetStation);
   }
 
-  if (currentLevel.well) {
+  if (getGravityWells().length > 0) {
     updateGravityHazards(now);
     updateGravityTrajectoryPrediction();
   }
@@ -485,28 +503,34 @@ function updateLevelSystems(dt, now) {
 }
 
 function updateGravityHazards(now) {
-  const well = currentLevel.well;
-  if (checkWellCollision(ship, well)) {
+  isInDanger = false;
+
+  for (const well of getGravityWells()) {
+    if (!checkWellCollision(ship, well)) continue;
+
     if (well.isBlackHole) {
-      blackHoleCrashReset(now);
+      blackHoleCrashReset(now, well);
     } else {
       crashReset();
     }
     return;
   }
 
-  const dist = Math.hypot(well.x - ship.x, well.y - ship.y);
-  // Bei Planeten (L5) keine Gefahren-Vignette — der Planet ist das Ziel, nicht ein Hindernis
-  if (!well.isPlanet) {
+  for (const well of getGravityWells()) {
+    // Bei Planeten (L5) keine Gefahren-Vignette — der Planet ist das Ziel, nicht ein Hindernis
+    if (well.isPlanet) continue;
+
+    const dist = Math.hypot(well.x - ship.x, well.y - ship.y);
     const dangerLimit = well.isBlackHole ? EVENT_HORIZON * 1.5 : EVENT_HORIZON;
-    isInDanger = dist < dangerLimit;
-    if (isInDanger) {
-      eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
-    }
+    if (dist >= dangerLimit) continue;
+
+    isInDanger = true;
+    eventHorizonPulse = 0.5 + 0.5 * Math.sin(now / 150);
+    return;
   }
 }
 
-function blackHoleCrashReset(now) {
+function blackHoleCrashReset(now, well = currentLevel.well) {
   if (gameState === 'blackHoleCollapse' || gameState === 'blackout') return;
   gameState = 'blackHoleCollapse';
   ship.pendingBrakeImpulse = false;
@@ -521,8 +545,8 @@ function blackHoleCrashReset(now) {
     startX: ship.x,
     startY: ship.y,
     startAngle: ship.angle,
-    targetX: currentLevel.well.x,
-    targetY: currentLevel.well.y,
+    targetX: well.x,
+    targetY: well.y,
   };
 
   if (blackHoleCollapseTimer) clearTimeout(blackHoleCollapseTimer);
@@ -548,7 +572,7 @@ function updateGravityTrajectoryPrediction() {
   if (trajFrameCounter < 2) return;
 
   trajFrameCounter = 0;
-  trajValidSteps = predictTrajectory(ship, currentLevel.well, TRAJ_STEPS, trajX, trajY);
+  trajValidSteps = predictTrajectory(ship, getGravityWells(), TRAJ_STEPS, trajX, trajY);
   updateOrbitAssist();
 }
 
@@ -635,12 +659,18 @@ function finalizeDockingApproach() {
   const st = dockingApproach.station;
   dockingApproach = null;
   handleDocking(ship, st);
-  targetStation = st === currentLevel.stationA ? currentLevel.stationB : currentLevel.stationA;
 }
 
 function getDockableTargetStation() {
   const check = checkDock(ship, targetStation);
-  return dockColor(check) === 'green' ? targetStation : null;
+  if (dockColor(check) === 'green') return targetStation;
+
+  for (const station of getOptionalDockStations()) {
+    const optionalCheck = checkDock(ship, station);
+    if (dockColor(optionalCheck) === 'green') return station;
+  }
+
+  return null;
 }
 
 function renderFrame(alpha = 1) {
@@ -651,14 +681,13 @@ function renderFrame(alpha = 1) {
     return;
   }
 
-  const well = currentLevel.well;
+  const wells = getGravityWells();
   const asteroids = currentLevel.asteroids;
-  const stationA = currentLevel.stationA;
   const stationB = currentLevel.stationB;
 
-  drawWorldBackground(well, asteroids, stationB);
-  const stationRenderState = drawStations(stationA, stationB);
-  drawTrajectoryPreview(well, asteroids);
+  drawWorldBackground(wells, asteroids, stationB);
+  const stationRenderState = drawStations(currentLevel.stations);
+  drawTrajectoryPreview(wells, asteroids);
 
   if (gameState === 'blackHoleCollapse' && blackHoleCollapse) {
     drawBlackHoleCollapse();
@@ -666,10 +695,10 @@ function renderFrame(alpha = 1) {
   }
 
   drawShipAndMotion();
-  drawHudAndOverlays(well, stationB, stationRenderState);
+  drawHudAndOverlays(wells, stationB, stationRenderState);
 }
 
-function drawWorldBackground(well, asteroids, stationB) {
+function drawWorldBackground(wells, asteroids, stationB) {
   renderer.clear(ctx, canvas);
   renderer.drawStars(ctx, stars, renderCam, canvas);
 
@@ -684,8 +713,10 @@ function drawWorldBackground(well, asteroids, stationB) {
     renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
   }
 
-  if (well && !well.isPlanet) {
-    renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
+  for (const well of wells) {
+    if (!well.isPlanet) {
+      renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
+    }
   }
 
   if (level === 7 && currentLevel.planet) {
@@ -702,23 +733,21 @@ function drawWorldBackground(well, asteroids, stationB) {
   }
 }
 
-function drawStations(stationA, stationB) {
-  const checkA = checkDock(ship, stationA);
-  const colorA = dockColor(checkA);
-  renderer.drawStation(ctx, stationA, renderCam, canvas, colorA);
-
-  const checkB = checkDock(ship, stationB);
-  const colorB = dockColor(checkB);
-  renderer.drawStation(ctx, stationB, renderCam, canvas, colorB);
-
-  return { checkA, colorA, checkB, colorB };
+function drawStations(stations) {
+  return stations.map(station => {
+    const check = checkDock(ship, station);
+    const color = dockColor(check);
+    renderer.drawStation(ctx, station, renderCam, canvas, color);
+    return { station, check, color };
+  });
 }
 
-function drawTrajectoryPreview(well, asteroids) {
-  if (well && trajValidSteps > 1) {
-    const willHitPlanet = well.isPlanet && trajValidSteps < TRAJ_STEPS;
+function drawTrajectoryPreview(wells, asteroids) {
+  if (wells.length > 0 && trajValidSteps > 1) {
+    const planetWell = wells.find(well => well.isPlanet);
+    const willHitPlanet = Boolean(planetWell) && trajValidSteps < TRAJ_STEPS;
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, isInDanger || willHitPlanet);
-    if (well.isPlanet) {
+    if (planetWell) {
       renderer.drawOrbitTrajectoryAssist(ctx, orbitAssist, renderCam, canvas);
     }
     if (willHitPlanet) {
@@ -754,15 +783,16 @@ function drawShipAndMotion() {
   renderer.drawVelocityVec(ctx, renderShip, renderCam, canvas);
 }
 
-function drawHudAndOverlays(well, stationB, stationRenderState) {
-  if (well && isInDanger) {
+function drawHudAndOverlays(wells, stationB, stationRenderState) {
+  if (wells.length > 0 && isInDanger) {
     renderer.drawEventHorizonWarning(ctx, canvas, eventHorizonPulse);
   }
 
-  const targetCheck = targetStation === currentLevel.stationA ? stationRenderState.checkA : stationRenderState.checkB;
-  const targetColor = targetStation === currentLevel.stationA ? stationRenderState.colorA : stationRenderState.colorB;
+  const targetRenderState = stationRenderState.find(state => state.station === targetStation);
+  const targetCheck = targetRenderState?.check ?? checkDock(ship, targetStation);
+  const targetColor = targetRenderState?.color ?? dockColor(targetCheck);
   const dockAngleDiff = computeDockAngleDiff(ship, targetStation);
-  renderer.drawHud(ctx, ship, canvas, targetCheck, score, targetColor, level, dockAngleDiff);
+  renderer.drawHud(ctx, ship, canvas, targetCheck, score, targetColor, level, dockAngleDiff, currentLevel.fuelStart ?? FUEL_START);
   renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
   if (level === 6) {
@@ -966,7 +996,7 @@ function createApsisMarker(index, label) {
 
 function handleDocking(ship, station) {
   dockShipAtStation(ship, station);
-  transferCargo();
+  advanceMissionAfterDock(station);
   scheduleUndock(station);
 }
 
@@ -992,9 +1022,23 @@ function dockShipAtStation(ship, station) {
   playDock();
 }
 
-function transferCargo() {
-  if (ship.cargo === 0) {
+function advanceMissionAfterDock(station) {
+  if (getOptionalDockStations().includes(station)) {
+    station.optionalDockUsed = true;
+    return;
+  }
+
+  const missionStations = getMissionStations();
+  const isExpectedStation = station === missionStations[missionTargetIndex];
+  if (!isExpectedStation) return;
+
+  if (missionTargetIndex === 0) {
     ship.cargo = 1;
+  }
+
+  if (missionTargetIndex < missionStations.length - 1) {
+    missionTargetIndex += 1;
+    targetStation = missionStations[missionTargetIndex];
     return;
   }
 
@@ -1123,6 +1167,15 @@ function getLevelCompleteCopy(completedLevel) {
     };
   }
 
+  if (completedLevel === 7) {
+    return {
+      eyebrow: 'Level 7 abgeschlossen',
+      title: 'Rendezvous abgeschlossen',
+      mission: 'Der Orbit war stabil und die Station erreicht. Jetzt wartet ein System mit zwei Sternen.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
   return null;
 }
 
@@ -1169,14 +1222,20 @@ function resetShipState() {
 
 /** Setzt Andockstatus und Startpositionen aller Stationen zurück. */
 function resetStationStates() {
-  currentLevel.stationA.docked = false;
-  currentLevel.stationB.docked = false;
-  // Bei orbitierenden Stationen: Startposition zurücksetzen
-  if (currentLevel.stationB.orbiting) {
-    currentLevel.stationB.orbitAngle = Math.PI * 1.25;
-    updateOrbitingStation(currentLevel.stationB, 0);
+  for (const station of currentLevel.stations) {
+    station.docked = false;
+    station.optionalDockUsed = false;
   }
-  targetStation = currentLevel.stationA;
+
+  // Bei orbitierenden Stationen: Startposition zurücksetzen
+  for (const station of currentLevel.stations) {
+    if (!station.orbiting) continue;
+    station.orbitAngle = Math.PI * 1.25;
+    updateOrbitingStation(station, 0);
+  }
+
+  missionTargetIndex = 0;
+  targetStation = getMissionStations()[missionTargetIndex];
   dockingApproach = null;
 }
 
@@ -1225,6 +1284,7 @@ function restoreAfterCrash() {
 /** Stellt Demo-spezifischen Zustand nach Crash wieder her. */
 function restoreDemoStateAfterCrash() {
   ship.cargo = 1;
+  missionTargetIndex = 1;
   targetStation = currentLevel.stationB;
   setDemoPhase('transfer');
 }
@@ -1294,6 +1354,14 @@ const level7StartButton = document.getElementById('level7StartButton');
 if (level7StartButton) {
   level7StartButton.addEventListener('click', () => {
     document.getElementById('level7StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
+const level8StartButton = document.getElementById('level8StartButton');
+if (level8StartButton) {
+  level8StartButton.addEventListener('click', () => {
+    document.getElementById('level8StartScreen').hidden = true;
     beginGameplay();
   });
 }

@@ -1,5 +1,12 @@
 import {
   EVENT_HORIZON,
+  L8_FUEL_START,
+  L8_WELL_A_BODY,
+  L8_WELL_A_RADIUS,
+  L8_WELL_A_STRENGTH,
+  L8_WELL_B_BODY,
+  L8_WELL_B_RADIUS,
+  L8_WELL_B_STRENGTH,
   L6_FUEL_START,
   L6_GRAVITY_RADIUS,
   L6_GRAVITY_STRENGTH,
@@ -235,6 +242,32 @@ L6.well.gravityRadius = L6_GRAVITY_RADIUS;
 L6.well.isPlanet = true;
 L6.well.isGasPlanet = true;
 
+const L8_STAR_A_X = 780;
+const L8_STAR_A_Y = 1100;
+const L8_STAR_B_X = 1620;
+const L8_STAR_B_Y = 640;
+
+const L8_WELL_A = createGravityWell(L8_STAR_A_X, L8_STAR_A_Y, L8_WELL_A_BODY, false);
+L8_WELL_A.gravityStrength = L8_WELL_A_STRENGTH;
+L8_WELL_A.gravityRadius = L8_WELL_A_RADIUS;
+
+const L8_WELL_B = createGravityWell(L8_STAR_B_X, L8_STAR_B_Y, L8_WELL_B_BODY, false);
+L8_WELL_B.gravityStrength = L8_WELL_B_STRENGTH;
+L8_WELL_B.gravityRadius = L8_WELL_B_RADIUS;
+
+const L8 = {
+  shipStart: { x: 220, y: 1300 },
+  stationA: createStation(220, 1300, -Math.PI * 0.20),
+  stationB: createStation(1200, 870, 0),
+  stationC: createStation(1880, 420, -Math.PI * 0.22),
+  wells: [L8_WELL_A, L8_WELL_B],
+  well: null,
+  asteroids: null,
+  fuelStart: L8_FUEL_START,
+  missionSequence: ['stationA', 'stationC'],
+  optionalDockStations: ['stationB'],
+};
+
 L1.stations = [L1.stationA, L1.stationB];
 L2.stations = [L2.stationA, L2.stationB];
 L3.stations = [L3.stationA, L3.stationB];
@@ -242,6 +275,7 @@ L4.stations = [L4.stationA, L4.stationB];
 L_DEBRIS.stations = [L_DEBRIS.stationA, L_DEBRIS.stationB];
 L5.stations = [L5.stationA, L5.stationB];
 L6.stations = [L6.stationA, L6.stationB];
+L8.stations = [L8.stationA, L8.stationB, L8.stationC];
 
 export function getLevelByNumber(levelNum) {
   if (levelNum === 1) return L1;
@@ -250,5 +284,7 @@ export function getLevelByNumber(levelNum) {
   if (levelNum === 4) return L4;
   if (levelNum === 5) return L_DEBRIS;
   if (levelNum === 6) return L6;
-  return L5;
+  if (levelNum === 7) return L5;
+  if (levelNum === 8) return L8;
+  return L1;
 }

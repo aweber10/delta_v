@@ -361,19 +361,19 @@ export function drawTargetAngle(ctx, ship, cam, canvas) {
  * Winkelberechnungen im Renderer.
  * @param {number} dockAngleDiff - Vorberechnete Winkeldifferenz in Grad (0–180)
  */
-export function drawHud(ctx, ship, canvas, dockCheck, score, dockColorValue, level = 1, dockAngleDiff = 0) {
-  drawFuelPanel(ctx, ship);
+export function drawHud(ctx, ship, canvas, dockCheck, score, dockColorValue, level = 1, dockAngleDiff = 0, fuelMax = FUEL_START) {
+  drawFuelPanel(ctx, ship, fuelMax);
   drawTargetPanel(ctx, ship, canvas, dockCheck, score, dockColorValue, level, dockAngleDiff);
   if (ship.dockedTimer > 0) drawDockedBanner(ctx, canvas);
 }
 
-function drawFuelPanel(ctx, ship) {
+function drawFuelPanel(ctx, ship, fuelMax) {
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 10, 220, 100);
   ctx.fillStyle = '#555';
   ctx.fillRect(15, 20, 210, 20);
   ctx.fillStyle = 'lime';
-  ctx.fillRect(15, 20, (ship.fuel / FUEL_START) * 210, 20);
+  ctx.fillRect(15, 20, (ship.fuel / fuelMax) * 210, 20);
 
   ctx.fillStyle = '#fff';
   ctx.font = '14px sans-serif';
@@ -730,12 +730,14 @@ export function drawGravityWell(ctx, well, cam, canvas, eventHorizon) {
   ctx.save();
   ctx.translate(p.x, p.y);
 
-  // Einflussfeld-Ringe (äußerster = G_RADIUS)
+  const gravityRadius = well.gravityRadius ?? 600;
+
+  // Einflussfeld-Ringe (äußerster = gravityRadius)
   const ringColors = [
-    { r: 600 * z, alpha: 0.15 },
-    { r: 420 * z, alpha: 0.25 },
-    { r: 260 * z, alpha: 0.35 },
-    { r: 140 * z, alpha: 0.50 },
+    { r: gravityRadius * z, alpha: 0.15 },
+    { r: gravityRadius * 0.7 * z, alpha: 0.25 },
+    { r: gravityRadius * 0.43 * z, alpha: 0.35 },
+    { r: gravityRadius * 0.23 * z, alpha: 0.50 },
   ];
   for (const ring of ringColors) {
     ctx.strokeStyle = `rgba(255, 160, 40, ${ring.alpha})`;
