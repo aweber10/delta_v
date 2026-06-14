@@ -193,7 +193,7 @@ function startLevel(targetLevel) {
   startScreen.hidden = true;
   levelCompleteScreen.hidden = true;
   finalCompleteScreen.hidden = true;
-  beginGameplay();
+  showLevelIntroOrStart(targetLevel);
 }
 
 function selectLevel(targetLevel) {
@@ -1359,11 +1359,20 @@ if (nextLevelButton) {
 function showLevelIntroOrStart(targetLevel) {
   const intro = document.getElementById(`level${targetLevel}StartScreen`);
   if (intro) {
+    gameState = 'start';
     intro.hidden = false;
     return;
   }
 
-  gameState = 'playing';
+  beginGameplay();
+}
+
+const level1StartButton = document.getElementById('level1StartButton');
+if (level1StartButton) {
+  level1StartButton.addEventListener('click', () => {
+    document.getElementById('level1StartScreen').hidden = true;
+    beginGameplay();
+  });
 }
 
 const level2StartButton = document.getElementById('level2StartButton');

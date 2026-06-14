@@ -75,6 +75,8 @@
 
     .start-panel {
       width: min(760px, 100%);
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
       text-align: center;
     }
 
@@ -102,11 +104,15 @@
     }
 
     .mission {
-      margin: 18px auto 28px;
+      margin: 14px auto;
       max-width: 440px;
       color: #c8d3df;
       font-size: 16px;
       line-height: 1.45;
+    }
+
+    .mission + .actions {
+      margin-top: 28px;
     }
 
     .orbit-briefing {
@@ -934,21 +940,25 @@
   <div class="overlay level6" id="finalCompleteScreen" hidden>
     <section class="start-panel" aria-labelledby="finalTitle">
       <p class="eyebrow" style="color: #ff9030;">Kampagne abgeschlossen</p>
-      <h1 id="finalTitle">Mission erfüllt</h1>
-      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift über Ereignishorizont und Schwerkraftschleuder bis zum Orbit-Rendezvous — du hast die gesamte Route gemeistert.</p>
-      <div class="final-stats" aria-label="Missionsbilanz">
-        <span class="final-stat">
-          <span class="final-stat__label">Status</span>
-          <span class="final-stat__value">Route abgeschlossen</span>
-        </span>
-        <span class="final-stat">
-          <span class="final-stat__label">Letzte Mission</span>
-          <span class="final-stat__value">Orbital Rendezvous</span>
-        </span>
-      </div>
+      <h1 id="finalTitle">Rendezvous</h1>
+      <p class="mission">Andocken erfolgreich. Die Luke öffnet sich – von beiden Seiten zugleich.</p>
+      <p class="mission">Acht Jahre Funkstille enden in diesem Moment.</p>
       <div class="actions">
         <button id="finalMenuButton" type="button">Hauptmenü</button>
         <button class="secondary" id="finalReplayButton" type="button">Level 7 wiederholen</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 1: Start Screen (Story) -->
+  <div class="overlay" id="level1StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l1Title">
+      <p class="eyebrow">Level 1 — First Delivery</p>
+      <h1 id="l1Title">Calder-System</h1>
+      <p class="mission">Erster Tag bei Halvorsen Logistics. Zwei Stationen im Heimatorbit, der Frachtraum voller Ersatzteile – nichts, was jemand vermissen würde, wenn du es verlierst. Halvorsen sieht dir beim Andocken zu und sagt nichts. Genau das ist der Test.</p>
+      <p class="mission">Im Hintergrund läuft Funkverkehr aus dem ganzen System. Zwischen den üblichen Meldungen taucht für einen Moment ein Signal auf, das in keinem Register verzeichnet ist. Dann ist es wieder weg, bevor jemand reagieren kann.</p>
+      <div class="actions">
+        <button id="level1StartButton" type="button">Start</button>
       </div>
     </section>
   </div>
@@ -957,11 +967,8 @@
   <div class="overlay level2" id="level2StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l2Title">
       <p class="eyebrow" style="color: #8fd0ff;">Level 2 — Relay Run</p>
-      <h1 id="l2Title">Delta V</h1>
-      <p class="mission">Drei Stationen, ein knapper Tank pro Etappe. Fliege ruhig, vermeide harte Korrekturen und nutze jeden Docking-Stopp zum Auftanken.</p>
-      <p class="mission" style="font-size: 13px; color: #ffb040; margin-top: -10px;">
-        Fuel Range zeigt, ob dein aktueller Kurs genug Reserve zur nächsten Station lässt.
-      </p>
+      <h1 id="l2Title">Calder-System</h1>
+      <p class="mission">Drei Außenposten im mittleren System warten seit Wochen auf Nachschub. Halvorsen hat den Tank knapp kalkuliert – er kalkuliert alles knapp. Jede Station füllt deinen Tank wieder auf. Jede Station, die du nicht erreichst, bleibt leer.</p>
       <div class="actions">
         <button id="level2StartButton" type="button">Start</button>
       </div>
@@ -972,11 +979,9 @@
   <div class="overlay level4" id="level4StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l4Title">
       <p class="eyebrow orange">Level 4 — Gravity & Event Horizon</p>
-      <h1 id="l4Title">Delta V</h1>
-      <p class="mission">Ein gefährliches Gravitationsfeld liegt auf der Route. Nutze die Trajektorien-Vorschau für einen Swing-by oder flieg sicher außen herum.</p>
-      <p class="mission" style="font-size: 13px; color: #ffb040; margin-top: -10px;">
-        Der Ereignishorizont ist sichtbar: kommst du zu nah, wird der Kurs tödlich.
-      </p>
+      <h1 id="l4Title">Calder-System</h1>
+      <p class="mission">Calder ist ein Doppelstern – und der kleinere Partner ist vor Jahrmillionen in sich zusammengefallen. Er leuchtet nicht mehr, aber seine Masse zieht noch immer alles in der Nähe an. Die Vorhersagebahn zeigt dir, wie die Schwerkraft dich trägt. Der Ereignishorizont zeigt dir die Linie, hinter der keine Bahn mehr zurückführt.</p>
+      <p class="mission">In den Navigationsdaten liegen alte Flugrouten. Einige führen weiter nach außen, als heute noch jemand fliegt – als hätte das System einmal Ziele gehabt, die heute niemand mehr kennt.</p>
       <div class="actions">
         <button id="level4StartButton" type="button">Start</button>
       </div>
@@ -987,11 +992,8 @@
   <div class="overlay level3" id="level5StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l5Title">
       <p class="eyebrow" style="color: #c0905a;">Level 5 — Debris Field</p>
-      <h1 id="l5Title">Delta V</h1>
-      <p class="mission">Ein Schrottfeld blockiert die Route — zerstörte Satelliten, Drucktanks, Wrackteile. Die Gassen sind enger als im Asteroidenfeld.</p>
-      <p class="mission" style="font-size: 13px; color: #c0905a; margin-top: -10px;">
-        Rote Flugbahn: deine aktuelle Drift schneidet ein Wrackteil.
-      </p>
+      <h1 id="l5Title">Calder-System</h1>
+      <p class="mission">Zwei Jahrzehnte sind seit dem Ende von Praskev vergangen – genug Zeit, damit alles auseinanderfällt. Abbau-Rigs, geborstene Tanks, Container, die niemand mehr abgeholt hat: alles driftet, dicht und ungeordnet, weit über die alte Kolonie hinaus. Halvorsen nennt es den Friedhof. Die Lieferung muss hindurch – eine andere Route gibt es nicht.</p>
       <div class="actions">
         <button id="level5StartButton" type="button">Start</button>
       </div>
@@ -1002,23 +1004,9 @@
   <div class="overlay level6" id="level6StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l6Title">
       <p class="eyebrow" style="color: #ff9030;">Level 6 — Schwerkraftschleuder</p>
-      <h1 id="l6Title">Delta V</h1>
-      <p class="mission">Der Treibstoff reicht nicht für den Direktflug. Nutze die Schwerkraft des Gasriesen — und beachte den Mond, der deine Bahn zusätzlich zieht.</p>
-      <div class="orbit-briefing" aria-label="Slingshot Briefing">
-        <ol class="orbit-briefing__flow">
-          <li>Steuere auf den Gasriesen zu, aber <strong>nicht frontal</strong> — ziel auf seinen Rand.</li>
-          <li>Je näher dein Closest Approach (HUD: <strong>grün = gut</strong>), desto mehr Boost bekommst du.</li>
-          <li>Das Manöver beschleunigt dich automatisch — du brauchst danach kaum noch Schub.</li>
-          <li>Der Mond bewegt sich mit und zieht schwach an deinem Schiff; Kollision mit ihm ist tödlich.</li>
-          <li>Passe den Kurs nach dem Swing-by mit kleinen Korrekturen an Station B an.</li>
-        </ol>
-        <dl class="orbit-briefing__instruments">
-          <div><dt>Closest Approach</dt><dd>: Nächste Distanz zur Planetenoberfläche.</dd></div>
-          <div><dt>Grün (gut)</dt><dd>: 200–500 px — optimaler Slingshot-Korridor.</dd></div>
-          <div><dt>Gelb (eng)</dt><dd>: 80–200 px — riskant, aber maximaler Boost.</dd></div>
-          <div><dt>Rot</dt><dd>: unter 80 px — Kollisionsgefahr!</dd></div>
-        </dl>
-      </div>
+      <h1 id="l6Title">Calder-System</h1>
+      <p class="mission">Der Gasriese Vendahl markiert den Rand des Calder-Systems – und den Grund, warum seit Jahren niemand weiter draußen liefert. Der Direktflug ist unmöglich, dein Tank reicht dafür nicht aus. Aber Vendahls Schwerkraft kann dich hinaustragen, wenn du ihr nahe genug kommst, ohne dich zu verlieren. Sein Mond zieht mit – und steht nicht mehr an der Stelle, an der du ihn zuletzt gesehen hast.</p>
+      <p class="mission">Im Schleuderpunkt empfängt dein Bordcomputer dasselbe Signal wie an deinem ersten Tag. Diesmal verschwindet es nicht. Es wird stärker, je weiter es dich nach außen trägt.</p>
       <div class="actions">
         <button id="level6StartButton" type="button">Start</button>
       </div>
@@ -1029,24 +1017,13 @@
   <div class="overlay level5" id="level7StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l7Title">
       <p class="eyebrow" style="color: #44aaff;">Level 7 — Orbital Rendezvous</p>
-      <h1 id="l7Title">Delta V</h1>
-      <p class="mission">Erst stabiler Orbit, dann Rendezvous: Nutze das Orbit-HUD, um deine Bahn an die Zielumlaufbahn anzupassen, bevor du die Station einholst.</p>
-      <div class="orbit-briefing" aria-label="Orbit-HUD Briefing">
-        <ol class="orbit-briefing__flow">
-          <li>Lass dich zum Planeten ziehen, aber meide den Einschlagmarker auf der Trajektorie.</li>
-          <li>Bringe <strong>Altitude</strong> nahe 0 und reduziere <strong>Radial</strong>, damit deine Bahn nicht weiter steigt oder fällt.</li>
-          <li>Korrigiere bei <strong>AP</strong> oder <strong>PE</strong> tangential, bis <strong>Tangent</strong> nahe 0 liegt.</li>
-          <li>Wenn die Orbitwerte grün sind, senke <strong>Rendezvous ΔV</strong> zur Station für das Andocken.</li>
-        </ol>
-        <dl class="orbit-briefing__instruments">
-          <div><dt>Altitude</dt><dd>: Abstand zur Zielbahn.</dd></div>
-          <div><dt>Radial</dt><dd>: Drift zum oder vom Planeten.</dd></div>
-          <div><dt>Tangent</dt><dd>: Abweichung von Kreisbahngeschwindigkeit.</dd></div>
-          <div><dt>AP / PE</dt><dd>: höchster und niedrigster Punkt der Vorhersage.</dd></div>
-          <div><dt>TAN</dt><dd>: tangential beschleunigen oder bremsen.</dd></div>
-          <div><dt>RADIAL</dt><dd>: radialen Drift zuerst abbauen.</dd></div>
-        </dl>
-      </div>
+      <h1 id="l7Title">Calder-System</h1>
+      <p class="mission">Kestrel Station. Orbit jenseits von Vendahl. Äußerster Rand des Calder-Systems.</p>
+      <p class="mission">Acht Jahre lang gab es kein Lebenszeichen von hier. Die letzte Crew ist nie gegangen – sie hat nur aufgehört zu senden. Diesen Auftrag hat nicht Halvorsen vergeben. Der erste Funkspruch seit acht Jahren kam von der Station selbst.</p>
+      <p class="mission">Bevor du andocken kannst, musst du in einen niedrigen, stabilen Orbit einschwenken – erst dann lässt sich die letzte Distanz überbrücken.</p>
+      <p class="mission">Das Signal, das dich seit deinem ersten Tag begleitet, trifft hier auf seinen Ursprung. Es wiederholt sich nicht mehr. Es hat auf eine Antwort gewartet – und kennt deinen Namen.</p>
+      <p class="mission">Jetzt bist du nah genug, um zu antworten.</p>
+      <p class="mission">Du bist allein hier draußen. Niemand sonst wird kommen.</p>
       <div class="actions">
         <button id="level7StartButton" type="button">Start</button>
       </div>
@@ -1057,17 +1034,15 @@
   <div class="overlay level3" id="level3StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l3Title">
       <p class="eyebrow steel">Level 3 — Asteroid Field</p>
-      <h1 id="l3Title">Delta V</h1>
-      <p class="mission">Ein dichtes Feld blockiert die Route. Lies die Lücken, halte die Drift sauber und vermeide harte Kontakte.</p>
-      <p class="mission" style="font-size: 13px; color: #b8c4cc; margin-top: -10px;">
-        Rote Flugbahn: deine aktuelle Drift schneidet einen Asteroiden.
-      </p>
+      <h1 id="l3Title">Calder-System</h1>
+      <p class="mission">Die schnelle Route führt durch das, was von Praskev übrig ist – einer Bergbaukolonie, die abgeschaltet wurde, als die Ader vor zwanzig Jahren versiegte. Hier ist der Trümmerkern noch dicht. Andere Piloten fliegen außen herum und verlieren zwei Tage. Du hast keine zwei Tage.</p>
+      <p class="mission">Irgendwo zwischen den Trümmern sendet noch immer eine Bake – dieselbe Frachtbestätigung, Jahr für Jahr, an einen Empfänger, der nie quittiert hat. Niemand schaltet sie ab. Vielleicht weiß niemand mehr, wie.</p>
       <div class="actions">
         <button id="level3StartButton" type="button">Start</button>
       </div>
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=54"></script>
+  <script type="module" src="./js/main.js?v=56"></script>
 </body>
 </html>
