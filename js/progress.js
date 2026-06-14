@@ -1,5 +1,5 @@
 export const PROGRESS_KEY = 'delta_v_progress';
-export const TOTAL_LEVELS = 8;
+export const TOTAL_LEVELS = 7;
 
 export function loadProgress() {
   try {

@@ -377,11 +377,46 @@ function drawFuelPanel(ctx, ship, fuelMax) {
 
   ctx.fillStyle = '#fff';
   ctx.font = '14px sans-serif';
-  ctx.fillText('Fuel: ' + Math.floor(ship.fuel), 20, 58);
+  ctx.fillText('Fuel: ' + formatFuelValue(ship.fuel), 20, 58);
 
   const speed = Math.hypot(ship.vx, ship.vy).toFixed(2);
   ctx.fillText('Speed: ' + speed, 20, 78);
   ctx.fillText('Cargo: ' + (ship.cargo > 0 ? 'Loaded' : 'Empty'), 20, 98);
+}
+
+function formatFuelValue(fuel) {
+  if (fuel <= 0) return '0';
+  if (fuel < 10) return fuel.toFixed(1);
+  return Math.floor(fuel).toString();
+}
+
+export function drawFuelRangeHud(ctx, canvas, data) {
+  const panelX = 10;
+  const panelY = 116;
+  const panelW = 220;
+  const panelH = 62;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = 'rgba(0,0,0,0.52)';
+  ctx.fillRect(panelX, panelY, panelW, panelH);
+
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#8fd0ff';
+  ctx.fillText('Fuel Range', panelX + 10, panelY + 18);
+
+  ctx.fillStyle = data.color;
+  ctx.fillText(data.label, panelX + 10, panelY + 38);
+
+  ctx.fillStyle = '#c8d8e0';
+  const reservePrefix = data.reserve >= 0 ? '+' : '';
+  ctx.fillText(
+    `${reservePrefix}${Math.round(data.reserve)} fuel · ${Math.round(data.distance)} px`,
+    panelX + 10,
+    panelY + 54
+  );
+
+  ctx.restore();
 }
 
 function drawTargetPanel(ctx, ship, canvas, dockCheck, score, dockColorValue, level, dockAngleDiff) {

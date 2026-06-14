@@ -5,7 +5,7 @@ import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
 import { updateOrbitingStation, checkDock, dockColor, getPortPosition } from './station.js';
 import * as renderer from './renderer.js';
-import { FUEL_START, EVENT_HORIZON, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, normalizeAngle } from './constants.js';
+import { FUEL_MAIN, FUEL_START, EVENT_HORIZON, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, THRUST_MAIN, normalizeAngle } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial, setTutorialNearStation, setTutorialStationVisible, setTutorialArrowTarget } from './tutorial.js';
 import { checkWellCollision, predictTrajectory } from './gravity.js';
@@ -352,7 +352,13 @@ function getStations() {
 }
 
 function getGravityWells(sourceLevel = currentLevel) {
-  return sourceLevel.wells ?? (sourceLevel.well ? [sourceLevel.well] : []);
+  if (sourceLevel.moonWell && sourceLevel.moon) {
+    sourceLevel.moonWell.x = sourceLevel.moon.x;
+    sourceLevel.moonWell.y = sourceLevel.moon.y;
+  }
+
+  const wells = sourceLevel.wells ?? (sourceLevel.well ? [sourceLevel.well] : []);
+  return sourceLevel.moonWell ? [...wells, sourceLevel.moonWell] : wells;
 }
 
 function getMissionStations() {
@@ -460,6 +466,7 @@ function updateGame(dt, now) {
     });
   }
 
+  updateDynamicLevelBodies(dt);
   updatePhysics(ship, flags, dt, getGravityWells());
   updateLevelSystems(dt, now);
   if (gameState !== 'playing') return;
@@ -489,13 +496,14 @@ function updateLevelSystems(dt, now) {
     updateAsteroidTrajectoryPrediction();
   }
 
-  // Level 6: Mond animieren + Gasriese rotieren (Slingshot)
+}
+
+function updateDynamicLevelBodies(dt) {
   if (level === 6) {
     updateOrbitingMoon(currentLevel.moon, dt);
     currentLevel.planet.rotation += 0.00008 * dt;
   }
 
-  // Level 7: Orbiting Station bewegen + Planet rotieren (Orbital Rendezvous)
   if (level === 7) {
     updateOrbitingStation(currentLevel.stationB, dt);
     currentLevel.planet.rotation += 0.00012 * dt;
@@ -517,8 +525,8 @@ function updateGravityHazards(now) {
   }
 
   for (const well of getGravityWells()) {
-    // Bei Planeten (L5) keine Gefahren-Vignette — der Planet ist das Ziel, nicht ein Hindernis
-    if (well.isPlanet) continue;
+    // Bei Planeten und Monden keine Ereignishorizont-Vignette.
+    if (well.isPlanet || well.isMoon) continue;
 
     const dist = Math.hypot(well.x - ship.x, well.y - ship.y);
     const dangerLimit = well.isBlackHole ? EVENT_HORIZON * 1.5 : EVENT_HORIZON;
@@ -714,7 +722,7 @@ function drawWorldBackground(wells, asteroids, stationB) {
   }
 
   for (const well of wells) {
-    if (!well.isPlanet) {
+    if (!well.isPlanet && !well.isMoon) {
       renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
     }
   }
@@ -744,8 +752,9 @@ function drawStations(stations) {
 
 function drawTrajectoryPreview(wells, asteroids) {
   if (wells.length > 0 && trajValidSteps > 1) {
+    const hitWell = trajValidSteps < TRAJ_STEPS ? findTrajectoryHitWell(wells) : null;
     const planetWell = wells.find(well => well.isPlanet);
-    const willHitPlanet = Boolean(planetWell) && trajValidSteps < TRAJ_STEPS;
+    const willHitPlanet = Boolean(hitWell?.isPlanet);
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, isInDanger || willHitPlanet);
     if (planetWell) {
       renderer.drawOrbitTrajectoryAssist(ctx, orbitAssist, renderCam, canvas);
@@ -758,6 +767,16 @@ function drawTrajectoryPreview(wells, asteroids) {
   if (asteroids && trajValidSteps > 1) {
     renderer.drawTrajectory(ctx, trajX, trajY, trajValidSteps, renderCam, canvas, trajWillHitAsteroid);
   }
+}
+
+function findTrajectoryHitWell(wells) {
+  const hitX = trajX[trajValidSteps];
+  const hitY = trajY[trajValidSteps];
+  return wells.find(well => {
+    const dx = hitX - well.x;
+    const dy = hitY - well.y;
+    return dx * dx + dy * dy <= well.wellRadius * well.wellRadius;
+  }) ?? null;
 }
 
 function drawBlackHoleCollapse() {
@@ -795,6 +814,10 @@ function drawHudAndOverlays(wells, stationB, stationRenderState) {
   renderer.drawHud(ctx, ship, canvas, targetCheck, score, targetColor, level, dockAngleDiff, currentLevel.fuelStart ?? FUEL_START);
   renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
 
+  if (level === 2) {
+    renderer.drawFuelRangeHud(ctx, canvas, computeFuelRangeHudData(renderShip, targetStation));
+  }
+
   if (level === 6) {
     const slingshotStatus = getSlingshotStatus(ship, currentLevel.well, trajX, trajY, trajValidSteps);
     const slingshotHudData = computeSlingshotHudData(slingshotStatus);
@@ -818,6 +841,31 @@ function computeDockAngleDiff(sourceShip, station) {
   const targetApproachAngle = station.dockAngle + Math.PI;
   const angleDiffDeg = Math.floor(Math.abs(sourceShip.angle - targetApproachAngle) * (180 / Math.PI)) % 360;
   return angleDiffDeg > 180 ? 360 - angleDiffDeg : angleDiffDeg;
+}
+
+function computeFuelRangeHudData(sourceShip, station) {
+  const distance = Math.hypot(station.x - sourceShip.x, station.y - sourceShip.y);
+  const speed = Math.hypot(sourceShip.vx, sourceShip.vy);
+  const brakingFuel = (speed / THRUST_MAIN) * FUEL_MAIN;
+  const routeFuel = distance * 0.035;
+  const reserve = sourceShip.fuel - brakingFuel - routeFuel;
+
+  let color = '#88ff88';
+  let label = 'Reserve OK';
+  if (reserve < 0) {
+    color = '#ff7744';
+    label = 'zu knapp';
+  } else if (reserve < 18) {
+    color = '#ffdd44';
+    label = 'knapp';
+  }
+
+  return {
+    distance,
+    reserve,
+    color,
+    label,
+  };
 }
 
 function getOrbitStatus(sourceShip, planet) {
@@ -1125,8 +1173,8 @@ function getLevelCompleteCopy(completedLevel) {
   if (completedLevel === 2) {
     return {
       eyebrow: 'Level 2 abgeschlossen',
-      title: 'Gravity Well bezwungen',
-      mission: 'Du hast den Gravitationseinfluss gemeistert und die Fracht sicher geliefert.',
+      title: 'Relay-Kette abgeschlossen',
+      mission: 'Du hast den Tank diszipliniert genutzt und die Lieferung über mehrere Stationen gebracht.',
       nextLevelLabel: 'Nächstes Level',
     };
   }
@@ -1143,8 +1191,8 @@ function getLevelCompleteCopy(completedLevel) {
   if (completedLevel === 4) {
     return {
       eyebrow: 'Level 4 abgeschlossen',
-      title: 'Singularität bezwungen',
-      mission: 'Du hast dem Schwarzen Loch widerstanden und die Fracht unbeschadet geliefert.',
+      title: 'Ereignishorizont gemieden',
+      mission: 'Du hast die Trajektorie gelesen, den Swing-by kontrolliert und die Fracht sicher geliefert.',
       nextLevelLabel: 'Nächstes Level',
     };
   }
@@ -1162,7 +1210,7 @@ function getLevelCompleteCopy(completedLevel) {
     return {
       eyebrow: 'Level 6 abgeschlossen',
       title: 'Schwerkraftschleuder gemeistert',
-      mission: 'Das Manöver hat geklappt — der Gasriese hat dich auf Kurs geschleudert.',
+      mission: 'Das Manöver hat geklappt — Gasriese und Mond haben dich auf Kurs gebracht.',
       nextLevelLabel: 'Nächstes Level',
     };
   }
@@ -1171,8 +1219,8 @@ function getLevelCompleteCopy(completedLevel) {
     return {
       eyebrow: 'Level 7 abgeschlossen',
       title: 'Rendezvous abgeschlossen',
-      mission: 'Der Orbit war stabil und die Station erreicht. Jetzt wartet ein System mit zwei Sternen.',
-      nextLevelLabel: 'Nächstes Level',
+      mission: 'Der Orbit war stabil und die finale Station erreicht.',
+      nextLevelLabel: null,
     };
   }
 
@@ -1334,6 +1382,14 @@ if (level3StartButton) {
   });
 }
 
+const level4StartButton = document.getElementById('level4StartButton');
+if (level4StartButton) {
+  level4StartButton.addEventListener('click', () => {
+    document.getElementById('level4StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
 const level5StartButton = document.getElementById('level5StartButton');
 if (level5StartButton) {
   level5StartButton.addEventListener('click', () => {
@@ -1354,14 +1410,6 @@ const level7StartButton = document.getElementById('level7StartButton');
 if (level7StartButton) {
   level7StartButton.addEventListener('click', () => {
     document.getElementById('level7StartScreen').hidden = true;
-    beginGameplay();
-  });
-}
-
-const level8StartButton = document.getElementById('level8StartButton');
-if (level8StartButton) {
-  level8StartButton.addEventListener('click', () => {
-    document.getElementById('level8StartScreen').hidden = true;
     beginGameplay();
   });
 }

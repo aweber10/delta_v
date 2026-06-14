@@ -668,10 +668,10 @@
         rgba(2, 4, 8, 0.88);
     }
 
-    /* Level 2: Gravity Well Accent */
+    /* Level 2: Relay Run Accent */
     .overlay.level2 {
       background:
-        radial-gradient(circle at 50% 38%, rgba(255, 120, 20, 0.22), transparent 34%),
+        radial-gradient(circle at 50% 38%, rgba(90, 170, 220, 0.18), transparent 34%),
         rgba(2, 4, 8, 0.88);
     }
     .eyebrow.orange { color: #ffb040; }
@@ -720,26 +720,35 @@
       border-radius: 50%;
     }
 
-    .level-card__hazard--binary {
-      background: radial-gradient(circle at 35% 35%, #fff6c7, #ff9e30 45%, #4a1400);
-      border-color: rgba(255, 190, 90, 0.72);
+    .level-card__hazard--relay {
+      width: 10px;
+      height: 10px;
+      background: #07131c;
+      border-color: rgba(143, 208, 255, 0.72);
       box-shadow:
-        0 0 0 3px rgba(255, 170, 50, 0.2),
-        0 0 18px rgba(255, 130, 30, 0.42);
+        -28px 12px 0 -2px rgba(143, 208, 255, 0.62),
+        28px -12px 0 -2px rgba(143, 208, 255, 0.62),
+        0 0 16px rgba(143, 208, 255, 0.34);
     }
 
-    .level-card__hazard--binary::after {
+    .level-card__hazard--relay::before,
+    .level-card__hazard--relay::after {
       content: "";
       position: absolute;
-      right: -22px;
-      top: -14px;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #fff8df, #ffcc52 45%, #7a2200);
-      box-shadow:
-        0 0 0 3px rgba(255, 190, 80, 0.15),
-        0 0 15px rgba(255, 160, 40, 0.38);
+      top: 50%;
+      width: 26px;
+      border-top: 1px solid rgba(143, 208, 255, 0.55);
+      transform-origin: center;
+    }
+
+    .level-card__hazard--relay::before {
+      right: 8px;
+      transform: rotate(-24deg);
+    }
+
+    .level-card__hazard--relay::after {
+      left: 8px;
+      transform: rotate(-24deg);
     }
 
     /* Level 6: Overlay */
@@ -747,13 +756,6 @@
       background:
         radial-gradient(circle at 50% 38%, rgba(200, 110, 30, 0.26), transparent 34%),
         rgba(2, 4, 8, 0.88);
-    }
-
-    .overlay.level8 {
-      background:
-        radial-gradient(circle at 42% 55%, rgba(255, 142, 36, 0.2), transparent 26%),
-        radial-gradient(circle at 62% 35%, rgba(255, 205, 82, 0.18), transparent 24%),
-        rgba(2, 4, 8, 0.9);
     }
 
     @media (max-width: 720px) {
@@ -814,17 +816,17 @@
             <span class="level-card__hazard" aria-hidden="true"></span>
           </span>
         </button>
-        <button class="level-card" id="startL2" data-level="2" type="button" style="--accent: #ffb040; --hazard-x: 52%; --hazard-size: 18px;">
+        <button class="level-card" id="startL2" data-level="2" type="button" style="--accent: #8fd0ff; --hazard-x: 50%; --hazard-size: 12px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 2</span>
-            <span class="level-card__risk">Gravitation</span>
+            <span class="level-card__risk">Fuel</span>
           </span>
           <span>
-            <span class="level-card__title">Gravity Well</span>
-            <span class="level-card__copy">Swing-by planen oder sicher außen herum fliegen.</span>
+            <span class="level-card__title">Relay Run</span>
+            <span class="level-card__copy">Mehrere Stationen, knapper Tank, ruhiger Kurs.</span>
           </span>
           <span class="level-card__route">
-            <span class="level-card__hazard" aria-hidden="true"></span>
+            <span class="level-card__hazard level-card__hazard--relay" aria-hidden="true"></span>
           </span>
         </button>
         <button class="level-card" id="startL3" data-level="3" type="button" style="--accent: #b8c4cc; --hazard-x: 55%; --hazard-size: 15px;">
@@ -844,11 +846,11 @@
         <button class="level-card" id="startL4" data-level="4" type="button" style="--accent: #ff8800; --hazard-x: 50%; --hazard-size: 16px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 4</span>
-            <span class="level-card__risk">Singularität</span>
+            <span class="level-card__risk">Horizont</span>
           </span>
           <span class="level-card__mid">
-            <span class="level-card__title">The Singularity</span>
-            <span class="level-card__copy">Extremes Feld. Ereignishorizont meiden.</span>
+            <span class="level-card__title">Gravity & Event Horizon</span>
+            <span class="level-card__copy">Swing-by nutzen, Ereignishorizont meiden.</span>
           </span>
           <span class="level-card__route">
             <span class="level-card__hazard level-card__hazard--blackhole" aria-hidden="true"></span>
@@ -876,7 +878,7 @@
           </span>
           <span class="level-card__mid">
             <span class="level-card__title">Schwerkraftschleuder</span>
-            <span class="level-card__copy">Zu wenig Treibstoff für den Direktflug — nutze den Gasriesen als Katapult.</span>
+            <span class="level-card__copy">Gasriese und Mond formen deine Schleuderbahn.</span>
           </span>
           <span class="level-card__route">
             <span class="level-card__hazard level-card__hazard--gasplanet" aria-hidden="true"></span>
@@ -896,21 +898,6 @@
             <span class="level-card__hazard level-card__hazard--planet" aria-hidden="true"></span>
           </span>
         </button>
-
-        <button class="level-card" id="startL8" data-level="8" type="button" style="--accent: #ffb040; --hazard-x: 47%; --hazard-size: 20px;">
-          <span class="level-card__top">
-            <span class="level-card__number">Level 8</span>
-            <span class="level-card__risk">Binary</span>
-          </span>
-          <span class="level-card__mid">
-            <span class="level-card__title">Binary System</span>
-            <span class="level-card__copy">Zwei Sterne, ein Relay, eine enge S-Kurve durch den Kanal.</span>
-          </span>
-          <span class="level-card__route">
-            <span class="level-card__hazard level-card__hazard--binary" aria-hidden="true"></span>
-          </span>
-        </button>
-
       </div>
 
       <div class="demo-strip">
@@ -948,7 +935,7 @@
     <section class="start-panel" aria-labelledby="finalTitle">
       <p class="eyebrow" style="color: #ff9030;">Kampagne abgeschlossen</p>
       <h1 id="finalTitle">Mission erfüllt</h1>
-      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift über Schwarzes Loch und Schwerkraftschleuder bis zum Binary System — du hast die gesamte Route gemeistert.</p>
+      <p class="mission">Alle Lieferungen sind angekommen. Von der ersten Drift über Ereignishorizont und Schwerkraftschleuder bis zum Orbit-Rendezvous — du hast die gesamte Route gemeistert.</p>
       <div class="final-stats" aria-label="Missionsbilanz">
         <span class="final-stat">
           <span class="final-stat__label">Status</span>
@@ -956,27 +943,42 @@
         </span>
         <span class="final-stat">
           <span class="final-stat__label">Letzte Mission</span>
-          <span class="final-stat__value">Binary System</span>
+          <span class="final-stat__value">Orbital Rendezvous</span>
         </span>
       </div>
       <div class="actions">
         <button id="finalMenuButton" type="button">Hauptmenü</button>
-        <button class="secondary" id="finalReplayButton" type="button">Level 8 wiederholen</button>
+        <button class="secondary" id="finalReplayButton" type="button">Level 7 wiederholen</button>
       </div>
     </section>
   </div>
 
-  <!-- Level 2: Start Screen -->
+  <!-- Level 2: Start Screen (Relay Run) -->
   <div class="overlay level2" id="level2StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l2Title">
-      <p class="eyebrow orange">Level 2 — Gravity Well</p>
+      <p class="eyebrow" style="color: #8fd0ff;">Level 2 — Relay Run</p>
       <h1 id="l2Title">Delta V</h1>
-      <p class="mission">Eine Gravitationsquelle liegt auf der Route. Nutze ihren Sog kontrolliert oder flieg mit Abstand vorbei.</p>
+      <p class="mission">Drei Stationen, ein knapper Tank pro Etappe. Fliege ruhig, vermeide harte Korrekturen und nutze jeden Docking-Stopp zum Auftanken.</p>
       <p class="mission" style="font-size: 13px; color: #ffb040; margin-top: -10px;">
-        Die gestrichelte Linie zeigt deine vorhergesagte Flugbahn.
+        Fuel Range zeigt, ob dein aktueller Kurs genug Reserve zur nächsten Station lässt.
       </p>
       <div class="actions">
         <button id="level2StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 4: Start Screen (Gravity & Event Horizon) -->
+  <div class="overlay level4" id="level4StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l4Title">
+      <p class="eyebrow orange">Level 4 — Gravity & Event Horizon</p>
+      <h1 id="l4Title">Delta V</h1>
+      <p class="mission">Ein gefährliches Gravitationsfeld liegt auf der Route. Nutze die Trajektorien-Vorschau für einen Swing-by oder flieg sicher außen herum.</p>
+      <p class="mission" style="font-size: 13px; color: #ffb040; margin-top: -10px;">
+        Der Ereignishorizont ist sichtbar: kommst du zu nah, wird der Kurs tödlich.
+      </p>
+      <div class="actions">
+        <button id="level4StartButton" type="button">Start</button>
       </div>
     </section>
   </div>
@@ -1001,12 +1003,13 @@
     <section class="start-panel" aria-labelledby="l6Title">
       <p class="eyebrow" style="color: #ff9030;">Level 6 — Schwerkraftschleuder</p>
       <h1 id="l6Title">Delta V</h1>
-      <p class="mission">Der Treibstoff reicht nicht für den Direktflug. Nutze die Schwerkraft des Gasriesen: Flieg nahe an ihm vorbei — er schleudert dich auf Kurs.</p>
+      <p class="mission">Der Treibstoff reicht nicht für den Direktflug. Nutze die Schwerkraft des Gasriesen — und beachte den Mond, der deine Bahn zusätzlich zieht.</p>
       <div class="orbit-briefing" aria-label="Slingshot Briefing">
         <ol class="orbit-briefing__flow">
           <li>Steuere auf den Gasriesen zu, aber <strong>nicht frontal</strong> — ziel auf seinen Rand.</li>
           <li>Je näher dein Closest Approach (HUD: <strong>grün = gut</strong>), desto mehr Boost bekommst du.</li>
           <li>Das Manöver beschleunigt dich automatisch — du brauchst danach kaum noch Schub.</li>
+          <li>Der Mond bewegt sich mit und zieht schwach an deinem Schiff; Kollision mit ihm ist tödlich.</li>
           <li>Passe den Kurs nach dem Swing-by mit kleinen Korrekturen an Station B an.</li>
         </ol>
         <dl class="orbit-briefing__instruments">
@@ -1050,26 +1053,6 @@
     </section>
   </div>
 
-  <!-- Level 8: Start Screen (Binary System) -->
-  <div class="overlay level8" id="level8StartScreen" hidden>
-    <section class="start-panel" aria-labelledby="l8Title">
-      <p class="eyebrow" style="color: #ffb040;">Level 8 — Binary System</p>
-      <h1 id="l8Title">Delta V</h1>
-      <p class="mission">Zwei Sterne zerren gleichzeitig an deiner Route. Flieg außen herum für Sicherheit oder nutze die S-Kurve durch den Kanal und docke am Relay zum Auftanken.</p>
-      <div class="orbit-briefing" aria-label="Binary-System Briefing">
-        <ol class="orbit-briefing__flow">
-          <li>Station B ist ein optionales Relay: Docking füllt den Tank, Station C bleibt das Ziel.</li>
-          <li>Zwischen den Sternen summieren sich beide Felder — kleine Korrekturen reichen oft.</li>
-          <li>Die äußere Route ist sicherer, verbraucht aber deutlich mehr Treibstoff.</li>
-          <li>Die optimale Route beschreibt eine S-Kurve erst am linken, dann am rechten Stern vorbei.</li>
-        </ol>
-      </div>
-      <div class="actions">
-        <button id="level8StartButton" type="button">Start</button>
-      </div>
-    </section>
-  </div>
-
   <!-- Level 3: Start Screen -->
   <div class="overlay level3" id="level3StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l3Title">
@@ -1085,6 +1068,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=50"></script>
+  <script type="module" src="./js/main.js?v=54"></script>
 </body>
 </html>

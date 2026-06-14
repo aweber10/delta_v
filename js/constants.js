@@ -34,12 +34,18 @@ export function normalizeAngle(a) {
   return a;
 }
 
-// --- Level 2: Gravity Well ---
+// --- Level 2: Relay Run ---
+export const RELAY_FUEL_START = 25;        // Knapp pro Etappe, Docking füllt wieder auf
+
+// --- Level 4: Gravity & Event Horizon ---
 export const G_STRENGTH = 120.0;  // Anziehungsstärke
 export const MIN_DIST_SQ = 2500;  // Nahbereich-Deckel (~50px Radius²)
 export const G_RADIUS = 600;      // Einflussradius in World-Units
 export const WELL_RADIUS = 40;    // sichtbarer/tödlicher Körperradius
 export const EVENT_HORIZON = 80;  // Warnschwelle: ab hier ist Absturz gefährlich
+export const GRAVITY_EVENT_STRENGTH = 18.0; // Black-hole-Multiplier ergibt spürbaren Swing-by
+export const GRAVITY_EVENT_RADIUS = 720;
+export const GRAVITY_EVENT_BODY = 45;
 
 // --- Level 3: Asteroid Field ---
 export const ASTEROID_BOUNCE_MAX_SPEED = V_DOCK_MAX;
@@ -68,12 +74,5 @@ export const L6_WELL_RADIUS = 492;          // Kollisionszone (leicht über Plan
 export const L6_MOON_RADIUS = 72;           // Mond-Radius (rein visuell)
 export const L6_MOON_ORBIT_RADIUS = 700;    // Mondabstand vom Gasriesen-Zentrum
 export const L6_MOON_ORBIT_SPEED = 0.00055; // Mondrotationsgeschwindigkeit (rad/frame)
-
-// --- Level 8: Binary System ---
-export const L8_WELL_A_STRENGTH = 90.0;     // kleinerer Stern, links
-export const L8_WELL_A_RADIUS = 450;        // Einflussradius
-export const L8_WELL_A_BODY = 30;           // sichtbarer/tödlicher Körper
-export const L8_WELL_B_STRENGTH = 140.0;    // größerer Stern, rechts
-export const L8_WELL_B_RADIUS = 550;
-export const L8_WELL_B_BODY = 38;
-export const L8_FUEL_START = 80;            // Relay macht die Route komfortabel, Direktflug bleibt knapp
+export const L6_MOON_GRAVITY_STRENGTH = 32.0;
+export const L6_MOON_GRAVITY_RADIUS = 360;
