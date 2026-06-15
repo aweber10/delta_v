@@ -1,5 +1,5 @@
 import { createShip } from './ship.js';
-import { createCamera, updateCamera, isWorldPointOnScreen } from './camera.js';
+import { createCamera, updateCamera, updateLevel8Camera, isWorldPointOnScreen } from './camera.js';
 import { createInputFlags, setupDesktopInput } from './input-desktop.js';
 import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
@@ -79,6 +79,10 @@ let missionTargetIndex = 0;
 let gameState = 'start';
 let dockingApproach = null;
 let level = 1;
+const level8State = {
+  phase: 'calder',
+  hintTimer: 0,
+};
 const demoMode = {
   active: false,
   phase: 'idle',
@@ -97,7 +101,7 @@ const BLACK_HOLE_COLLAPSE_MS = 750;
 const BLACK_HOLE_BLACKOUT_MS = 1000;
 
 // Vorab allozierte Trajectory-Buffer (kein GC im Hot-Path)
-const TRAJ_STEPS = 120;
+const TRAJ_STEPS = 240;
 const trajX = new Float32Array(TRAJ_STEPS);
 const trajY = new Float32Array(TRAJ_STEPS);
 let trajValidSteps = 0;
@@ -348,10 +352,17 @@ if ('serviceWorker' in navigator) {
 }
 
 function getStations() {
+  if (level === 8) {
+    return level8State.phase === 'calder' ? [currentLevel.stationA] : currentLevel.stations;
+  }
   return currentLevel.stations;
 }
 
 function getGravityWells(sourceLevel = currentLevel) {
+  if (level === 8 && sourceLevel === currentLevel && level8State.phase !== 'ring') {
+    return [];
+  }
+
   if (sourceLevel.moonWell && sourceLevel.moon) {
     sourceLevel.moonWell.x = sourceLevel.moon.x;
     sourceLevel.moonWell.y = sourceLevel.moon.y;
@@ -385,7 +396,11 @@ function loop() {
     captureCamState(prevCamState, cam);
 
     updateGame(1, now);
-    updateCamera(cam, ship, getStations());
+    if (level === 8) {
+      updateLevel8Camera(cam, ship, { phase: level8State.phase, level: currentLevel }, canvas);
+    } else {
+      updateCamera(cam, ship, getStations());
+    }
 
     captureShipState(currShipState, ship);
     captureCamState(currCamState, cam);
@@ -496,6 +511,9 @@ function updateLevelSystems(dt, now) {
     updateAsteroidTrajectoryPrediction();
   }
 
+  if (level === 8) {
+    updateLevel8Systems(dt);
+  }
 }
 
 function updateDynamicLevelBodies(dt) {
@@ -508,6 +526,55 @@ function updateDynamicLevelBodies(dt) {
     updateOrbitingStation(currentLevel.stationB, dt);
     currentLevel.planet.rotation += 0.00012 * dt;
   }
+
+  if (level === 8 && level8State.phase === 'ring') {
+    for (const station of currentLevel.stations) {
+      if (station.orbiting) updateOrbitingStation(station, dt);
+    }
+  }
+}
+
+function updateLevel8Systems(dt) {
+  if (level8State.phase === 'calder') {
+    const portal = currentLevel.portal;
+    const dx = ship.x - portal.x;
+    const dy = ship.y - portal.y;
+    if (dx * dx + dy * dy <= portal.radius * portal.radius) {
+      enterLevel8RingSystem();
+    }
+    return;
+  }
+
+  if (level8State.hintTimer > 0) {
+    level8State.hintTimer = Math.max(0, level8State.hintTimer - dt);
+  }
+}
+
+function enterLevel8RingSystem() {
+  level8State.phase = 'ring';
+  level8State.hintTimer = 360;
+
+  const start = currentLevel.phaseBStart;
+  ship.x = start.x;
+  ship.y = start.y;
+  ship.vx = start.vx;
+  ship.vy = start.vy;
+  ship.angle = start.angle;
+  ship.targetAngle = start.angle;
+  ship.angularVel = 0;
+  ship.fuel = currentLevel.fuelStart ?? FUEL_START;
+  ship.cargo = 1;
+  ship.dockedTimer = 0;
+  ship.dockedStation = null;
+  ship.thrustHeld = false;
+  ship.tapThrustTime = 0;
+  ship.pendingBrakeImpulse = false;
+
+  missionTargetIndex = 0;
+  targetStation = getMissionStations()[0];
+  resetCameraState();
+  resetTrajectoryState();
+  syncRenderStates();
 }
 
 function updateGravityHazards(now) {
@@ -609,6 +676,7 @@ function updateAsteroidTrajectoryPrediction() {
 
 function updateDocking() {
   if (ship.dockedTimer > 0) return;
+  if (level === 8 && level8State.phase !== 'ring') return;
 
   const station = getDockableTargetStation();
   if (!station) return;
@@ -694,7 +762,7 @@ function renderFrame(alpha = 1) {
   const stationB = currentLevel.stationB;
 
   drawWorldBackground(wells, asteroids, stationB);
-  const stationRenderState = drawStations(currentLevel.stations);
+  const stationRenderState = drawStations(getStations());
   drawTrajectoryPreview(wells, asteroids);
 
   if (gameState === 'blackHoleCollapse' && blackHoleCollapse) {
@@ -721,6 +789,14 @@ function drawWorldBackground(wells, asteroids, stationB) {
     renderer.drawPlanet(ctx, currentLevel.planet, renderCam, canvas);
   }
 
+  if (level === 8 && level8State.phase === 'calder') {
+    renderer.drawPortal(ctx, currentLevel.portal, renderCam, canvas);
+  }
+
+  if (level === 8 && level8State.phase === 'ring' && currentLevel.planet) {
+    renderer.drawRingPlanet(ctx, currentLevel.planet, renderCam, canvas);
+  }
+
   for (const well of wells) {
     if (!well.isPlanet && !well.isMoon) {
       renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
@@ -730,6 +806,10 @@ function drawWorldBackground(wells, asteroids, stationB) {
   if (level === 7 && currentLevel.planet) {
     const orbitStatus = getOrbitStatus(renderShip, currentLevel.planet);
     renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, stationB, ORBIT_STATION_RADIUS, renderCam, canvas, orbitStatus);
+  }
+
+  if (level === 8 && level8State.phase === 'ring' && currentLevel.planet) {
+    drawLevel8OrbitGuides();
   }
 
   if (asteroids && !currentLevel.debrisField) {
@@ -748,6 +828,15 @@ function drawStations(stations) {
     renderer.drawStation(ctx, station, renderCam, canvas, color);
     return { station, check, color };
   });
+}
+
+function drawLevel8OrbitGuides() {
+  for (const station of currentLevel.stations) {
+    const orbitStatus = station === targetStation
+      ? getOrbitStatusForRadius(renderShip, currentLevel.planet, station.orbitRadius, station.orbitSpeed)
+      : { orbitOk: false, radialSpeed: 0, tangentialError: 0 };
+    renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, station, station.orbitRadius, renderCam, canvas, orbitStatus);
+  }
 }
 
 function drawTrajectoryPreview(wells, asteroids) {
@@ -808,11 +897,12 @@ function drawHudAndOverlays(wells, stationB, stationRenderState) {
   }
 
   const targetRenderState = stationRenderState.find(state => state.station === targetStation);
-  const targetCheck = targetRenderState?.check ?? checkDock(ship, targetStation);
-  const targetColor = targetRenderState?.color ?? dockColor(targetCheck);
-  const dockAngleDiff = computeDockAngleDiff(ship, targetStation);
+  const portalCheck = getLevel8PortalHudCheck();
+  const targetCheck = portalCheck ?? (targetStation ? (targetRenderState?.check ?? checkDock(ship, targetStation)) : null);
+  const targetColor = portalCheck ? '#78d8ff' : (targetRenderState?.color ?? dockColor(targetCheck));
+  const dockAngleDiff = portalCheck ? 0 : (targetStation ? computeDockAngleDiff(ship, targetStation) : 0);
   renderer.drawHud(ctx, ship, canvas, targetCheck, score, targetColor, level, dockAngleDiff, currentLevel.fuelStart ?? FUEL_START);
-  renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
+  drawNavigationMarkers();
 
   if (level === 2) {
     renderer.drawFuelRangeHud(ctx, canvas, computeFuelRangeHudData(renderShip, targetStation));
@@ -829,7 +919,52 @@ function drawHudAndOverlays(wells, stationB, stationRenderState) {
     renderer.drawOrbitHud(ctx, canvas, orbitHudData);
   }
 
+  if (level === 8 && level8State.phase === 'ring') {
+    const orbitHudData = computeOrbitHudDataForTarget(renderShip, targetStation, currentLevel.planet);
+    renderer.drawOrbitHud(ctx, canvas, orbitHudData);
+    if (level8State.hintTimer > 0) {
+      renderer.drawLevel8Hint(ctx, canvas);
+    }
+  }
+
   if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
+}
+
+function getLevel8PortalHudCheck() {
+  if (level !== 8 || level8State.phase !== 'calder') return null;
+  const portal = currentLevel.portal;
+  const dx = portal.x - ship.x;
+  const dy = portal.y - ship.y;
+  return {
+    posOk: false,
+    speedOk: false,
+    angleOk: false,
+    dist: Math.hypot(dx, dy),
+    relSpeed: Math.hypot(ship.vx, ship.vy),
+  };
+}
+
+function drawNavigationMarkers() {
+  if (level === 8 && level8State.phase === 'calder') {
+    renderer.drawTargetArrow(ctx, renderShip, currentLevel.portal, renderCam, canvas, {
+      color: '#78d8ff',
+      glow: 'rgba(120, 216, 255, 0.32)',
+      labelColor: '#bfeeff',
+    });
+    return;
+  }
+
+  if (targetStation) {
+    renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
+  }
+
+  if (level === 8 && level8State.phase === 'ring') {
+    renderer.drawTargetArrow(ctx, renderShip, currentLevel.planet, renderCam, canvas, {
+      color: '#f0c47a',
+      glow: 'rgba(240, 196, 122, 0.24)',
+      labelColor: '#f3d69a',
+    });
+  }
 }
 
 /**
@@ -882,6 +1017,27 @@ function getOrbitStatus(sourceShip, planet) {
   const tangentialSpeed = sourceShip.vx * -uy + sourceShip.vy * ux;
   const radiusError = radius - ORBIT_STATION_RADIUS;
   const tangentialError = tangentialSpeed - ORBIT_STATION_RADIUS * ORBIT_STATION_SPEED;
+  const orbitOk = Math.abs(radiusError) <= ORBIT_TOLERANCE
+    && Math.abs(radialSpeed) <= ORBIT_RADIAL_SPEED_OK
+    && Math.abs(tangentialError) <= ORBIT_TANGENTIAL_SPEED_OK;
+
+  return { orbitOk, radialSpeed, tangentialError };
+}
+
+function getOrbitStatusForRadius(sourceShip, planet, orbitRadius, orbitSpeed) {
+  const dx = sourceShip.x - planet.x;
+  const dy = sourceShip.y - planet.y;
+  const radius = Math.hypot(dx, dy);
+  if (radius <= 0) {
+    return { orbitOk: false, radialSpeed: 0, tangentialError: 0 };
+  }
+
+  const ux = dx / radius;
+  const uy = dy / radius;
+  const radialSpeed = sourceShip.vx * ux + sourceShip.vy * uy;
+  const tangentialSpeed = sourceShip.vx * -uy + sourceShip.vy * ux;
+  const radiusError = radius - orbitRadius;
+  const tangentialError = tangentialSpeed - orbitRadius * orbitSpeed;
   const orbitOk = Math.abs(radiusError) <= ORBIT_TOLERANCE
     && Math.abs(radialSpeed) <= ORBIT_RADIAL_SPEED_OK
     && Math.abs(tangentialError) <= ORBIT_TANGENTIAL_SPEED_OK;
@@ -959,6 +1115,30 @@ function computeOrbitHudData(sourceShip, station, planet) {
   return { deltaV, radiusError, radialSpeed, tangentialError, heightOk, radialOk, tangentOk, orbitOk };
 }
 
+function computeOrbitHudDataForTarget(sourceShip, station, planet) {
+  if (!station?.orbiting) return null;
+
+  const relVx = sourceShip.vx - station.vx;
+  const relVy = sourceShip.vy - station.vy;
+  const deltaV = Math.hypot(relVx, relVy);
+  const status = getOrbitStatusForRadius(sourceShip, planet, station.orbitRadius, station.orbitSpeed);
+  const dx = sourceShip.x - planet.x;
+  const dy = sourceShip.y - planet.y;
+  const radius = Math.hypot(dx, dy);
+  const radiusError = radius - station.orbitRadius;
+
+  return {
+    deltaV,
+    radiusError,
+    radialSpeed: status.radialSpeed,
+    tangentialError: status.tangentialError,
+    heightOk: Math.abs(radiusError) <= ORBIT_TOLERANCE,
+    radialOk: Math.abs(status.radialSpeed) <= ORBIT_RADIAL_SPEED_OK,
+    tangentOk: Math.abs(status.tangentialError) <= ORBIT_TANGENTIAL_SPEED_OK,
+    orbitOk: status.orbitOk,
+  };
+}
+
 /**
  * Berechnet Slingshot-Statusdaten für das L6-HUD:
  * - closestApproach: kürzeste Distanz zur Planetenoberfläche entlang der Trajektorie
@@ -1009,11 +1189,29 @@ function updateOrbitAssist() {
   orbitAssist.periapsis = createApsisMarker(minI, 'PE');
   orbitAssist.apoapsis = createApsisMarker(maxI, 'AP');
 
-  const orbitStatus = getOrbitStatus(ship, currentLevel.planet);
+  const assistOrbitRadius = getCurrentOrbitAssistRadius();
+  const assistOrbitSpeed = getCurrentOrbitAssistSpeed();
+  const orbitStatus = assistOrbitRadius && assistOrbitSpeed
+    ? getOrbitStatusForRadius(ship, currentLevel.planet, assistOrbitRadius, assistOrbitSpeed)
+    : getOrbitStatus(ship, currentLevel.planet);
   orbitAssist.orbitOk = orbitStatus.orbitOk;
   if (orbitStatus.orbitOk) return;
 
-  orbitAssist.burnHint = computeBurnHint(orbitStatus, minI, maxI, minR, maxR);
+  orbitAssist.burnHint = computeBurnHint(orbitStatus, minI, maxI, minR, maxR, assistOrbitRadius ?? ORBIT_STATION_RADIUS);
+}
+
+function getCurrentOrbitAssistRadius() {
+  if (level === 8 && level8State.phase === 'ring' && targetStation?.orbiting) {
+    return targetStation.orbitRadius;
+  }
+  return ORBIT_STATION_RADIUS;
+}
+
+function getCurrentOrbitAssistSpeed() {
+  if (level === 8 && level8State.phase === 'ring' && targetStation?.orbiting) {
+    return targetStation.orbitSpeed;
+  }
+  return ORBIT_STATION_SPEED;
 }
 
 /** Durchsucht die Trajektorie nach Apoapsis und Periapsis. */
@@ -1030,12 +1228,12 @@ function findApsides(trajX, trajY, steps, planetX, planetY) {
 }
 
 /** Entscheidet, wo der nächste Zündungs-Hint (Burn) platziert werden soll. */
-function computeBurnHint(orbitStatus, minI, maxI, minR, maxR) {
+function computeBurnHint(orbitStatus, minI, maxI, minR, maxR, targetRadius = ORBIT_STATION_RADIUS) {
   if (Math.abs(orbitStatus.radialSpeed) > ORBIT_RADIAL_SPEED_OK * 1.5) {
-    const i = Math.abs(minR - ORBIT_STATION_RADIUS) < Math.abs(maxR - ORBIT_STATION_RADIUS) ? minI : maxI;
+    const i = Math.abs(minR - targetRadius) < Math.abs(maxR - targetRadius) ? minI : maxI;
     return createApsisMarker(i, 'RADIAL');
   }
-  return createApsisMarker(minR < ORBIT_STATION_RADIUS ? maxI : minI, 'TAN');
+  return createApsisMarker(minR < targetRadius ? maxI : minI, 'TAN');
 }
 
 function createApsisMarker(index, label) {
@@ -1097,6 +1295,11 @@ function advanceMissionAfterDock(station) {
 
 function scheduleUndock(station) {
   setTimeout(() => {
+    if (station.orbiting && ship.dockedStation === station) {
+      ship.vx = station.vx;
+      ship.vy = station.vy;
+      ship.dockedTimer = 0;
+    }
     station.docked = false;
     ship.dockedStation = null;
   }, 1500);
@@ -1220,6 +1423,15 @@ function getLevelCompleteCopy(completedLevel) {
       eyebrow: 'Level 7 abgeschlossen',
       title: 'Rendezvous abgeschlossen',
       mission: 'Der Orbit war stabil und die finale Station erreicht.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
+  if (completedLevel === 8) {
+    return {
+      eyebrow: 'Level 8 abgeschlossen',
+      title: 'Ringplanet erreicht',
+      mission: 'Portaltransit abgeschlossen. Die drei Orbitstationen wurden beliefert.',
       nextLevelLabel: null,
     };
   }
@@ -1229,11 +1441,18 @@ function getLevelCompleteCopy(completedLevel) {
 
 function resetLevel() {
   clearBlackHoleTimers();
+  resetLevel8State();
   resetShipState();
   resetStationStates();
   resetTrajectoryState();
   resetCameraState();
   syncRenderStates();
+}
+
+function resetLevel8State() {
+  if (level !== 8) return;
+  level8State.phase = 'calder';
+  level8State.hintTimer = 0;
 }
 
 /** Bricht laufende Black-Hole-Animationen ab und räumt Timer auf. */
@@ -1278,12 +1497,14 @@ function resetStationStates() {
   // Bei orbitierenden Stationen: Startposition zurücksetzen
   for (const station of currentLevel.stations) {
     if (!station.orbiting) continue;
-    station.orbitAngle = Math.PI * 1.25;
+    station.orbitAngle = station.initialOrbitAngle ?? Math.PI * 1.25;
     updateOrbitingStation(station, 0);
   }
 
   missionTargetIndex = 0;
-  targetStation = getMissionStations()[missionTargetIndex];
+  targetStation = level === 8 && level8State.phase === 'calder'
+    ? currentLevel.stationA
+    : getMissionStations()[missionTargetIndex];
   dockingApproach = null;
 }
 
@@ -1419,6 +1640,14 @@ const level7StartButton = document.getElementById('level7StartButton');
 if (level7StartButton) {
   level7StartButton.addEventListener('click', () => {
     document.getElementById('level7StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
+const level8StartButton = document.getElementById('level8StartButton');
+if (level8StartButton) {
+  level8StartButton.addEventListener('click', () => {
+    document.getElementById('level8StartScreen').hidden = true;
     beginGameplay();
   });
 }

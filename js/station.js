@@ -26,6 +26,7 @@ export function createOrbitingStation(cx, cy, orbitRadius, orbitSpeed, startAngl
     cy,
     orbitRadius,
     orbitSpeed,
+    initialOrbitAngle: angle,
     orbitAngle: angle,
     x: cx + Math.cos(angle) * orbitRadius,
     y: cy + Math.sin(angle) * orbitRadius,

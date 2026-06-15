@@ -264,9 +264,12 @@ export function drawVelocityVec(ctx, ship, cam, canvas) {
   ctx.lineWidth = 1;
 }
 
-export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
+export function drawTargetArrow(ctx, ship, targetStation, cam, canvas, options = null) {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
+  const color = options?.color ?? '#ff4444';
+  const glow = options?.glow ?? 'rgba(255, 80, 80, 0.3)';
+  const labelColor = options?.labelColor ?? '#ff9999';
 
   const dx = targetStation.x - ship.x;
   const dy = targetStation.y - ship.y;
@@ -289,7 +292,7 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
   ctx.rotate(angle);
 
   // Outer glow circle
-  ctx.strokeStyle = 'rgba(255, 80, 80, 0.3)';
+  ctx.strokeStyle = glow;
   ctx.lineWidth = 8;
   ctx.beginPath();
   ctx.arc(0, 0, 18, 0, Math.PI * 2);
@@ -302,7 +305,7 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
   ctx.fill();
 
   // Arrow pointing in direction of target
-  ctx.fillStyle = '#ff4444';
+  ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(14, 0);       // tip
   ctx.lineTo(2, -7);
@@ -312,7 +315,7 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
   ctx.fill();
 
   // Shaft
-  ctx.fillStyle = '#ff4444';
+  ctx.fillStyle = color;
   ctx.fillRect(-10, -3, 16, 6);
 
   ctx.restore();
@@ -328,8 +331,52 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas) {
   ctx.textBaseline = 'middle';
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(labelX - 20, labelY - 9, 40, 18);
-  ctx.fillStyle = '#ff9999';
+  ctx.fillStyle = labelColor;
   ctx.fillText(distLabel, labelX, labelY);
+  ctx.restore();
+}
+
+export function drawPortal(ctx, portal, cam, canvas) {
+  const p = worldToScreen(cam, portal.x, portal.y, canvas);
+  const r = portal.radius * cam.zoom;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  const halo = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r * 1.75);
+  halo.addColorStop(0, 'rgba(210, 235, 255, 0.46)');
+  halo.addColorStop(0.35, 'rgba(80, 180, 255, 0.20)');
+  halo.addColorStop(1, 'rgba(40, 80, 180, 0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.75, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(190, 230, 255, 0.86)';
+  ctx.lineWidth = Math.max(1, 3 * cam.zoom);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(120, 210, 255, 0.55)';
+  ctx.lineWidth = Math.max(1, 1.5 * cam.zoom);
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+    ctx.lineTo(Math.cos(a) * r * 1.18, Math.sin(a) * r * 1.18);
+    ctx.stroke();
+  }
+
+  const core = ctx.createRadialGradient(-r * 0.18, -r * 0.22, 0, 0, 0, r * 0.8);
+  core.addColorStop(0, 'rgba(250, 255, 255, 0.72)');
+  core.addColorStop(0.32, 'rgba(70, 170, 255, 0.32)');
+  core.addColorStop(1, 'rgba(4, 8, 18, 0.75)');
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 }
 
@@ -416,6 +463,30 @@ export function drawFuelRangeHud(ctx, canvas, data) {
     panelY + 54
   );
 
+  ctx.restore();
+}
+
+export function drawLevel8Hint(ctx, canvas) {
+  const width = canvas.clientWidth;
+  const x = Math.max(12, width / 2 - 180);
+  const y = 116;
+  const w = Math.min(360, width - 24);
+  const h = 64;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.58)';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = 'rgba(120, 216, 255, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillStyle = '#bfeeff';
+  ctx.fillText('Neues System', x + 12, y + 20);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#e8f6ff';
+  ctx.fillText('Rot: Zielstation. Gold: Planetenzentrum.', x + 12, y + 42);
   ctx.restore();
 }
 
@@ -1465,6 +1536,90 @@ export function drawGasPlanet(ctx, planet, cam, canvas) {
   drawGasAtmosphereHalo(ctx, r, p);
   drawGasTerminator(ctx, r, p);
   drawGasHighlight(ctx, r, p);
+}
+
+export function drawRingPlanet(ctx, planet, cam, canvas) {
+  const p = worldToScreen(cam, planet.x, planet.y, canvas);
+  const z = cam.zoom;
+  const r = planet.radius * z;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(-0.18);
+
+  drawRingPlanetBackRings(ctx, r);
+  drawRingPlanetBody(ctx, r);
+  drawRingPlanetFrontRings(ctx, r);
+
+  ctx.restore();
+
+  drawGasAtmosphereHalo(ctx, r, p);
+  drawGasTerminator(ctx, r, p);
+  drawGasHighlight(ctx, r, p);
+}
+
+function drawRingPlanetBody(ctx, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  const baseGrad = ctx.createRadialGradient(-r * 0.34, -r * 0.34, r * 0.06, 0, 0, r);
+  baseGrad.addColorStop(0, '#f0d7a0');
+  baseGrad.addColorStop(0.34, '#b98558');
+  baseGrad.addColorStop(0.70, '#6f4f56');
+  baseGrad.addColorStop(1, '#2c2638');
+  ctx.fillStyle = baseGrad;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+
+  const bands = [
+    { y: -0.62, h: 0.10, c: 'rgba(250, 224, 160, 0.55)' },
+    { y: -0.36, h: 0.16, c: 'rgba(130, 95, 100, 0.48)' },
+    { y: -0.08, h: 0.14, c: 'rgba(238, 198, 128, 0.42)' },
+    { y:  0.22, h: 0.18, c: 'rgba(92, 74, 96, 0.50)' },
+    { y:  0.54, h: 0.12, c: 'rgba(224, 174, 112, 0.40)' },
+  ];
+
+  for (const band of bands) {
+    ctx.fillStyle = band.c;
+    ctx.fillRect(-r, band.y * r, r * 2, band.h * r);
+  }
+
+  ctx.restore();
+}
+
+function drawRingPlanetBackRings(ctx, r) {
+  drawRingEllipse(ctx, r, 'back');
+}
+
+function drawRingPlanetFrontRings(ctx, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(-r * 2.65, 0, r * 5.3, r * 1.15);
+  ctx.clip();
+  drawRingEllipse(ctx, r, 'front');
+  ctx.restore();
+}
+
+function drawRingEllipse(ctx, r, pass) {
+  const alpha = pass === 'front' ? 0.68 : 0.38;
+  const rings = [
+    { scale: 1.52, width: 14, color: `rgba(230, 210, 170, ${alpha * 0.55})` },
+    { scale: 1.82, width: 22, color: `rgba(168, 150, 142, ${alpha * 0.70})` },
+    { scale: 2.12, width: 12, color: `rgba(245, 230, 190, ${alpha * 0.62})` },
+    { scale: 2.42, width: 20, color: `rgba(120, 112, 128, ${alpha * 0.45})` },
+  ];
+
+  ctx.save();
+  ctx.scale(1, 0.28);
+  for (const ring of rings) {
+    ctx.strokeStyle = ring.color;
+    ctx.lineWidth = Math.max(1, ring.width);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * ring.scale, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /** Zeichnet die orange-braune Basiskugel des Gasriesen. */

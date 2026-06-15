@@ -33,6 +33,30 @@ export function updateCamera(cam, ship, stations) {
   cam.zoom += (cam.targetZoom - cam.zoom) * CAMERA_ZOOM_SPEED;
 }
 
+export function updateLevel8Camera(cam, ship, levelState, canvas) {
+  cam.x += (ship.x - cam.x) * CAMERA_LERP;
+  cam.y += (ship.y - cam.y) * CAMERA_LERP;
+
+  if (levelState?.phase !== 'ring') {
+    cam.targetZoom = 0.82;
+  } else {
+    const planet = levelState.level.planet;
+    const radius = Math.hypot(ship.x - planet.x, ship.y - planet.y);
+    const zoomT = clamp((radius - 1200) / (3000 - 1200), 0, 1);
+    cam.targetZoom = 0.92 - zoomT * 0.5;
+
+    if (canvas?.clientWidth < 760) {
+      cam.targetZoom = Math.min(cam.targetZoom, 0.74);
+    }
+  }
+
+  cam.zoom += (cam.targetZoom - cam.zoom) * CAMERA_ZOOM_SPEED;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function worldToScreen(cam, worldX, worldY, canvas) {
   const cx = canvas.clientWidth / 2;
   const cy = canvas.clientHeight / 2;

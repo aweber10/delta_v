@@ -12,6 +12,18 @@ import {
   L6_MOON_RADIUS,
   L6_PLANET_RADIUS,
   L6_WELL_RADIUS,
+  L8_FUEL_START,
+  L8_ORBIT_INNER_RADIUS,
+  L8_ORBIT_INNER_SPEED,
+  L8_ORBIT_MIDDLE_RADIUS,
+  L8_ORBIT_MIDDLE_SPEED,
+  L8_ORBIT_OUTER_RADIUS,
+  L8_ORBIT_OUTER_SPEED,
+  L8_PLANET_GRAVITY_RADIUS,
+  L8_PLANET_GRAVITY_STRENGTH,
+  L8_PLANET_RADIUS,
+  L8_PLANET_WELL_RADIUS,
+  L8_PORTAL_RADIUS,
   ORBIT_STATION_RADIUS,
   ORBIT_STATION_SPEED,
   PLANET_GRAVITY_RADIUS,
@@ -248,6 +260,56 @@ L6.moonWell.gravityStrength = L6_MOON_GRAVITY_STRENGTH;
 L6.moonWell.gravityRadius = L6_MOON_GRAVITY_RADIUS;
 L6.moonWell.isMoon = true;
 
+const L8_PLANET_X = 5000;
+const L8_PLANET_Y = 1800;
+
+const L8 = {
+  shipStart: { x: 220, y: 1800 },
+  phaseBStart: {
+    x: 1300,
+    y: 1800,
+    vx: 0.24,
+    vy: -0.02,
+    angle: 0,
+  },
+  stationA: createStation(220, 1800, -Math.PI * 0.25),
+  portal: {
+    x: 1680,
+    y: 760,
+    radius: L8_PORTAL_RADIUS,
+  },
+  stationOuter: createOrbitingStation(
+    L8_PLANET_X,
+    L8_PLANET_Y,
+    L8_ORBIT_OUTER_RADIUS,
+    L8_ORBIT_OUTER_SPEED,
+    Math.PI
+  ),
+  stationMiddle: createOrbitingStation(
+    L8_PLANET_X,
+    L8_PLANET_Y,
+    L8_ORBIT_MIDDLE_RADIUS,
+    L8_ORBIT_MIDDLE_SPEED,
+    Math.PI * 0.72
+  ),
+  stationInner: createOrbitingStation(
+    L8_PLANET_X,
+    L8_PLANET_Y,
+    L8_ORBIT_INNER_RADIUS,
+    L8_ORBIT_INNER_SPEED,
+    Math.PI * 1.18
+  ),
+  planet: createPlanet(L8_PLANET_X, L8_PLANET_Y, L8_PLANET_RADIUS),
+  well: createGravityWell(L8_PLANET_X, L8_PLANET_Y, L8_PLANET_WELL_RADIUS, false),
+  asteroids: null,
+  fuelStart: L8_FUEL_START,
+  missionSequence: ['stationOuter', 'stationMiddle', 'stationInner'],
+};
+L8.well.gravityStrength = L8_PLANET_GRAVITY_STRENGTH;
+L8.well.gravityRadius = L8_PLANET_GRAVITY_RADIUS;
+L8.well.isPlanet = true;
+L8.well.isRingPlanet = true;
+
 L1.stations = [L1.stationA, L1.stationB];
 L_RELAY.stations = [L_RELAY.stationA, L_RELAY.stationB, L_RELAY.stationC];
 L3.stations = [L3.stationA, L3.stationB];
@@ -255,6 +317,7 @@ L_GRAVITY_EVENT.stations = [L_GRAVITY_EVENT.stationA, L_GRAVITY_EVENT.stationB];
 L_DEBRIS.stations = [L_DEBRIS.stationA, L_DEBRIS.stationB];
 L5.stations = [L5.stationA, L5.stationB];
 L6.stations = [L6.stationA, L6.stationB];
+L8.stations = [L8.stationOuter, L8.stationMiddle, L8.stationInner];
 
 export function getLevelByNumber(levelNum) {
   if (levelNum === 1) return L1;
@@ -264,5 +327,6 @@ export function getLevelByNumber(levelNum) {
   if (levelNum === 5) return L_DEBRIS;
   if (levelNum === 6) return L6;
   if (levelNum === 7) return L5;
+  if (levelNum === 8) return L8;
   throw new RangeError(`Unknown level number: ${levelNum}`);
 }

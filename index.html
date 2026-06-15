@@ -757,11 +757,41 @@
       transform: rotate(-24deg);
     }
 
+    .level-card__hazard--portal {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(210, 245, 255, 0.95), rgba(80, 190, 255, 0.55) 34%, rgba(4, 8, 18, 0.92) 58%),
+        #08101c;
+      border-color: rgba(120, 216, 255, 0.78);
+      box-shadow:
+        0 0 0 3px rgba(120, 216, 255, 0.18),
+        0 0 18px rgba(120, 216, 255, 0.42);
+    }
+
+    .level-card__hazard--portal::before {
+      content: "";
+      position: absolute;
+      left: -12px;
+      top: 50%;
+      width: 46px;
+      height: 10px;
+      border-top: 3px solid rgba(238, 210, 150, 0.7);
+      border-bottom: 3px solid rgba(160, 135, 128, 0.44);
+      border-radius: 50%;
+      transform: translateY(-50%) rotate(-16deg);
+    }
+
     /* Level 6: Overlay */
     .overlay.level6 {
       background:
         radial-gradient(circle at 50% 38%, rgba(200, 110, 30, 0.26), transparent 34%),
         rgba(2, 4, 8, 0.88);
+    }
+
+    .overlay.level8 {
+      background:
+        radial-gradient(circle at 50% 38%, rgba(120, 216, 255, 0.18), transparent 28%),
+        radial-gradient(circle at 50% 42%, rgba(238, 180, 100, 0.16), transparent 34%),
+        rgba(2, 4, 8, 0.9);
     }
 
     @media (max-width: 720px) {
@@ -904,6 +934,20 @@
             <span class="level-card__hazard level-card__hazard--planet" aria-hidden="true"></span>
           </span>
         </button>
+
+        <button class="level-card" id="startL8" data-level="8" type="button" style="--accent: #78d8ff; --hazard-x: 58%; --hazard-size: 24px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 8</span>
+            <span class="level-card__risk">Portal</span>
+          </span>
+          <span class="level-card__mid">
+            <span class="level-card__title">Ringplanet & Portal</span>
+            <span class="level-card__copy">Portaltransit und drei Lieferungen auf gestaffelten Orbits.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--portal" aria-hidden="true"></span>
+          </span>
+        </button>
       </div>
 
       <div class="demo-strip">
@@ -945,7 +989,7 @@
       <p class="mission">Acht Jahre Funkstille enden in diesem Moment.</p>
       <div class="actions">
         <button id="finalMenuButton" type="button">Hauptmenü</button>
-        <button class="secondary" id="finalReplayButton" type="button">Level 7 wiederholen</button>
+        <button class="secondary" id="finalReplayButton" type="button">Level 8 wiederholen</button>
       </div>
     </section>
   </div>
@@ -1030,6 +1074,19 @@
     </section>
   </div>
 
+  <!-- Level 8: Start Screen (Ringplanet & Portal) -->
+  <div class="overlay level8" id="level8StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l8Title">
+      <p class="eyebrow" style="color: #78d8ff;">Level 8 — Ringplanet & Portal</p>
+      <h1 id="l8Title">Jenseits von Calder</h1>
+      <p class="mission">Das Portal liegt außerhalb des Sichtfelds. Der Pfeil führt dich dorthin, aber du musst das Haupttriebwerk nutzen, um es zu erreichen.</p>
+      <p class="mission">Nach dem Transit wartet ein fremdes System: ein Ringplanet, drei Stationen auf gestaffelten Orbits, Auslieferung von außen nach innen.</p>
+      <div class="actions">
+        <button id="level8StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
   <!-- Level 3: Start Screen -->
   <div class="overlay level3" id="level3StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l3Title">
@@ -1043,6 +1100,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=56"></script>
+  <script type="module" src="./js/main.js?v=57"></script>
 </body>
 </html>

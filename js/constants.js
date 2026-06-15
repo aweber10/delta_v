@@ -65,6 +65,20 @@ export const ORBIT_RADIAL_SPEED_OK = 0.08;
 export const ORBIT_TANGENTIAL_SPEED_OK = 0.08;
 // Docking-Toleranz für relative Geschwindigkeit: V_DOCK_MAX wird für Relativgeschwindigkeit genutzt
 
+// --- Level 8: Ringplanet & Portal ---
+export const L8_FUEL_START = 360;
+export const L8_PORTAL_RADIUS = 90;
+export const L8_PLANET_RADIUS = 620;
+export const L8_PLANET_GRAVITY_STRENGTH = 320.0;
+export const L8_PLANET_GRAVITY_RADIUS = 4300;
+export const L8_PLANET_WELL_RADIUS = 635;
+export const L8_ORBIT_OUTER_RADIUS = 3000;
+export const L8_ORBIT_MIDDLE_RADIUS = 2100;
+export const L8_ORBIT_INNER_RADIUS = 1300;
+export const L8_ORBIT_OUTER_SPEED = Math.sqrt(L8_PLANET_GRAVITY_STRENGTH / (L8_ORBIT_OUTER_RADIUS ** 3));
+export const L8_ORBIT_MIDDLE_SPEED = Math.sqrt(L8_PLANET_GRAVITY_STRENGTH / (L8_ORBIT_MIDDLE_RADIUS ** 3));
+export const L8_ORBIT_INNER_SPEED = Math.sqrt(L8_PLANET_GRAVITY_STRENGTH / (L8_ORBIT_INNER_RADIUS ** 3));
+
 // --- Level 6: Schwerkraftschleuder (Slingshot) ---
 export const L6_FUEL_START = 180;           // Knappes Treibstoff-Budget — Direktflug unmöglich
 export const L6_PLANET_RADIUS = 480;        // Gasriese (Jupiter-artig)
