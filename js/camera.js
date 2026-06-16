@@ -1,5 +1,7 @@
 import { CAMERA_LERP, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM, CAMERA_ZOOM_SPEED } from './constants.js';
 
+const LEVEL8_ZOOM_OUT_SPEED = 0.018;
+
 export function createCamera(x = 0, y = 0) {
   return {
     x,
@@ -38,19 +40,43 @@ export function updateLevel8Camera(cam, ship, levelState, canvas) {
   cam.y += (ship.y - cam.y) * CAMERA_LERP;
 
   if (levelState?.phase !== 'ring') {
-    cam.targetZoom = 0.82;
+    const departureZoom = getDepartureZoom(ship, levelState.departureStation);
+    const stationZoom = getStationApproachZoom(ship, levelState.targetStation);
+    const portalZoom = getTargetApproachZoom(ship, levelState.level.portal, 180, 700, 0.82);
+    cam.targetZoom = Math.max(0.68, departureZoom, stationZoom, portalZoom);
   } else {
     const planet = levelState.level.planet;
     const radius = Math.hypot(ship.x - planet.x, ship.y - planet.y);
     const zoomT = clamp((radius - 1200) / (3000 - 1200), 0, 1);
-    cam.targetZoom = 0.92 - zoomT * 0.5;
+    const orbitZoom = 0.92 - zoomT * 0.5;
+    const departureZoom = getDepartureZoom(ship, levelState.departureStation);
+    const stationZoom = getStationApproachZoom(ship, levelState.targetStation);
 
-    if (canvas?.clientWidth < 760) {
-      cam.targetZoom = Math.min(cam.targetZoom, 0.74);
-    }
+    cam.targetZoom = Math.max(orbitZoom, departureZoom, stationZoom);
   }
 
-  cam.zoom += (cam.targetZoom - cam.zoom) * CAMERA_ZOOM_SPEED;
+  const zoomSpeed = cam.targetZoom < cam.zoom ? LEVEL8_ZOOM_OUT_SPEED : CAMERA_ZOOM_SPEED;
+  cam.zoom += (cam.targetZoom - cam.zoom) * zoomSpeed;
+}
+
+function getStationApproachZoom(ship, station) {
+  if (!station) return CAMERA_MIN_ZOOM;
+
+  return getTargetApproachZoom(ship, station, 220, 950, CAMERA_MAX_ZOOM);
+}
+
+function getDepartureZoom(ship, station) {
+  if (!station) return CAMERA_MIN_ZOOM;
+
+  return getTargetApproachZoom(ship, station, 260, 1700, CAMERA_MAX_ZOOM);
+}
+
+function getTargetApproachZoom(ship, target, nearDist, farDist, maxZoom) {
+  if (!target) return CAMERA_MIN_ZOOM;
+
+  const dist = Math.hypot(ship.x - target.x, ship.y - target.y);
+  const zoomT = clamp((dist - nearDist) / (farDist - nearDist), 0, 1);
+  return maxZoom - zoomT * (maxZoom - CAMERA_MIN_ZOOM);
 }
 
 function clamp(value, min, max) {

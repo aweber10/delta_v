@@ -262,9 +262,11 @@ L6.moonWell.isMoon = true;
 
 const L8_PLANET_X = 5000;
 const L8_PLANET_Y = 1800;
+const L8_CALDER_PLANET_X = L5_PLANET_X;
+const L8_CALDER_PLANET_Y = L5_PLANET_Y;
 
 const L8 = {
-  shipStart: { x: 220, y: 1800 },
+  shipStart: { x: 2200, y: 704 },
   phaseBStart: {
     x: 1300,
     y: 1800,
@@ -272,10 +274,16 @@ const L8 = {
     vy: -0.02,
     angle: 0,
   },
-  stationA: createStation(220, 1800, -Math.PI * 0.25),
+  stationA: createOrbitingStation(
+    L8_CALDER_PLANET_X,
+    L8_CALDER_PLANET_Y,
+    ORBIT_STATION_RADIUS,
+    ORBIT_STATION_SPEED,
+    Math.PI * 1.25
+  ),
   portal: {
-    x: 1680,
-    y: 760,
+    x: 900,
+    y: 220,
     radius: L8_PORTAL_RADIUS,
   },
   stationOuter: createOrbitingStation(
@@ -299,12 +307,17 @@ const L8 = {
     L8_ORBIT_INNER_SPEED,
     Math.PI * 1.18
   ),
+  calderPlanet: createPlanet(L8_CALDER_PLANET_X, L8_CALDER_PLANET_Y, PLANET_RADIUS),
   planet: createPlanet(L8_PLANET_X, L8_PLANET_Y, L8_PLANET_RADIUS),
   well: createGravityWell(L8_PLANET_X, L8_PLANET_Y, L8_PLANET_WELL_RADIUS, false),
   asteroids: null,
   fuelStart: L8_FUEL_START,
   missionSequence: ['stationOuter', 'stationMiddle', 'stationInner'],
 };
+L8.stationA.stationVariant = 'kestrel';
+L8.stationOuter.stationVariant = 'proteus-outer';
+L8.stationMiddle.stationVariant = 'proteus-middle';
+L8.stationInner.stationVariant = 'proteus-inner';
 L8.well.gravityStrength = L8_PLANET_GRAVITY_STRENGTH;
 L8.well.gravityRadius = L8_PLANET_GRAVITY_RADIUS;
 L8.well.isPlanet = true;

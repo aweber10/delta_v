@@ -23,6 +23,11 @@ const ctx = canvas.getContext('2d');
 const startScreen = document.getElementById('startScreen');
 const levelCompleteScreen = document.getElementById('levelCompleteScreen');
 const finalCompleteScreen = document.getElementById('finalCompleteScreen');
+const level8ClanScreen = document.getElementById('level8ClanScreen');
+const level8ClanEyebrow = document.getElementById('level8ClanEyebrow');
+const level8ClanTitle = document.getElementById('level8ClanTitle');
+const level8ClanMission = document.getElementById('level8ClanMission');
+const level8ClanContinueButton = document.getElementById('level8ClanContinueButton');
 const startL1 = document.getElementById('startL1');
 const startL2 = document.getElementById('startL2');
 const startL3 = document.getElementById('startL3');
@@ -82,7 +87,30 @@ let level = 1;
 const level8State = {
   phase: 'calder',
   hintTimer: 0,
+  pendingFinal: false,
+  cameraFocusStation: null,
+  departureStation: null,
 };
+const LEVEL8_CLAN_COPY = [
+  {
+    eyebrow: 'Äußerer Clan',
+    title: 'Die Vorsichtigen',
+    mission: 'Der äußerste Clan empfängt dich am Rand seines eigenen Systems - so weit draußen, dass ihr Planet nur ein Gerücht ist. Sie prüfen dich lange, bevor sie überhaupt antworten. Als sie es tun, ist es ein einzelner, exakt formulierter Satz der Begrüßung. Du verstehst: Das war, für sie, überschwänglich.',
+    button: 'Weiter zum zweiten Clan',
+  },
+  {
+    eyebrow: 'Mittlerer Clan',
+    title: 'Die Neugierigen',
+    mission: 'Der zweite Clan hat keine Geduld mit Förmlichkeiten. Kaum angedockt, prasseln Fragen auf dich ein - über Halvorsen, über Treibstoffpreise, über die Frachtbestätigung, die du auf der Bake bei Praskev nie quittiert hast. Sie finden die Menschheit faszinierend ineffizient. Sie meinen es als Kompliment.',
+    button: 'Weiter zum inneren Clan',
+  },
+  {
+    eyebrow: 'Innerer Clan',
+    title: 'Die Tonangebenden',
+    mission: 'Der innerste Clan kreist im Schatten der Ringe, am nächsten am Zentrum der Macht. Hier wird nicht geprüft und nicht gefragt - hier wird entschieden. Sie empfangen dich, als hätten sie dich erwartet, seit du an deinem ersten Tag jenen Kontakt registriert hast, den du für einen Sensorfehler hieltest. Vielleicht haben sie das.',
+    button: 'Mission abschließen',
+  },
+];
 const demoMode = {
   active: false,
   phase: 'idle',
@@ -197,6 +225,7 @@ function startLevel(targetLevel) {
   startScreen.hidden = true;
   levelCompleteScreen.hidden = true;
   finalCompleteScreen.hidden = true;
+  if (level8ClanScreen) level8ClanScreen.hidden = true;
   showLevelIntroOrStart(targetLevel);
 }
 
@@ -267,17 +296,19 @@ finalMenuButton.addEventListener('click', () => {
 finalReplayButton.addEventListener('click', () => {
   finalCompleteScreen.hidden = true;
   levelCompleteScreen.hidden = true;
+  if (level8ClanScreen) level8ClanScreen.hidden = true;
   startScreen.hidden = true;
   selectLevel(TOTAL_LEVELS);
   score = 0;
   resetLevel();
-  beginGameplay();
+  showLevelIntroOrStart(TOTAL_LEVELS);
 });
 
 function showMainMenu() {
   stopDemo();
   levelCompleteScreen.hidden = true;
   finalCompleteScreen.hidden = true;
+  if (level8ClanScreen) level8ClanScreen.hidden = true;
   startScreen.hidden = false;
   gameState = 'start';
   updateLevelSelectUI();
@@ -299,6 +330,7 @@ function startDemoLevel5() {
   startScreen.hidden = true;
   levelCompleteScreen.hidden = true;
   finalCompleteScreen.hidden = true;
+  if (level8ClanScreen) level8ClanScreen.hidden = true;
   setDemoHud(true);
   beginGameplay();
 }
@@ -397,7 +429,13 @@ function loop() {
 
     updateGame(1, now);
     if (level === 8) {
-      updateLevel8Camera(cam, ship, { phase: level8State.phase, level: currentLevel }, canvas);
+      clearLevel8DepartureStationIfFar();
+      updateLevel8Camera(cam, ship, {
+        phase: level8State.phase,
+        level: currentLevel,
+        targetStation: level8State.cameraFocusStation ?? targetStation,
+        departureStation: level8State.departureStation,
+      }, canvas);
     } else {
       updateCamera(cam, ship, getStations());
     }
@@ -417,6 +455,14 @@ function loop() {
   renderFrame(accumulator / FIXED_STEP_MS);
 
   requestAnimationFrame(loop);
+}
+
+function clearLevel8DepartureStationIfFar() {
+  const station = level8State.departureStation;
+  if (!station) return;
+
+  const dist = Math.hypot(ship.x - station.x, ship.y - station.y);
+  if (dist > 1800) level8State.departureStation = null;
 }
 
 function syncRenderStates() {
@@ -527,6 +573,11 @@ function updateDynamicLevelBodies(dt) {
     currentLevel.planet.rotation += 0.00012 * dt;
   }
 
+  if (level === 8 && level8State.phase === 'calder') {
+    updateOrbitingStation(currentLevel.stationA, dt);
+    currentLevel.calderPlanet.rotation += 0.00012 * dt;
+  }
+
   if (level === 8 && level8State.phase === 'ring') {
     for (const station of currentLevel.stations) {
       if (station.orbiting) updateOrbitingStation(station, dt);
@@ -553,6 +604,8 @@ function updateLevel8Systems(dt) {
 function enterLevel8RingSystem() {
   level8State.phase = 'ring';
   level8State.hintTimer = 360;
+  level8State.departureStation = null;
+  level8State.cameraFocusStation = null;
 
   const start = currentLevel.phaseBStart;
   ship.x = start.x;
@@ -790,6 +843,7 @@ function drawWorldBackground(wells, asteroids, stationB) {
   }
 
   if (level === 8 && level8State.phase === 'calder') {
+    renderer.drawPlanet(ctx, currentLevel.calderPlanet, renderCam, canvas);
     renderer.drawPortal(ctx, currentLevel.portal, renderCam, canvas);
   }
 
@@ -810,6 +864,19 @@ function drawWorldBackground(wells, asteroids, stationB) {
 
   if (level === 8 && level8State.phase === 'ring' && currentLevel.planet) {
     drawLevel8OrbitGuides();
+  }
+
+  if (level === 8 && level8State.phase === 'calder' && currentLevel.calderPlanet) {
+    renderer.drawOrbitGuide(
+      ctx,
+      currentLevel.calderPlanet,
+      renderShip,
+      currentLevel.stationA,
+      ORBIT_STATION_RADIUS,
+      renderCam,
+      canvas,
+      { orbitOk: false, radialSpeed: 0, tangentialError: 0 }
+    );
   }
 
   if (asteroids && !currentLevel.debrisField) {
@@ -1242,6 +1309,9 @@ function createApsisMarker(index, label) {
 
 function handleDocking(ship, station) {
   dockShipAtStation(ship, station);
+  if (level === 8) {
+    level8State.departureStation = station;
+  }
   advanceMissionAfterDock(station);
   scheduleUndock(station);
 }
@@ -1275,22 +1345,44 @@ function advanceMissionAfterDock(station) {
   }
 
   const missionStations = getMissionStations();
-  const isExpectedStation = station === missionStations[missionTargetIndex];
+  const completedTargetIndex = missionTargetIndex;
+  const isExpectedStation = station === missionStations[completedTargetIndex];
   if (!isExpectedStation) return;
 
-  if (missionTargetIndex === 0) {
+  if (completedTargetIndex === 0) {
     ship.cargo = 1;
   }
 
-  if (missionTargetIndex < missionStations.length - 1) {
+  if (completedTargetIndex < missionStations.length - 1) {
     missionTargetIndex += 1;
     targetStation = missionStations[missionTargetIndex];
+    if (level === 8 && level8State.phase === 'ring') {
+      showLevel8ClanScreen(completedTargetIndex, false);
+    }
     return;
   }
 
   ship.cargo = 0;
   score += 1;
+  if (level === 8 && level8State.phase === 'ring') {
+    showLevel8ClanScreen(completedTargetIndex, true);
+    return;
+  }
   completeLevel();
+}
+
+function showLevel8ClanScreen(clanIndex, pendingFinal) {
+  const copy = LEVEL8_CLAN_COPY[clanIndex];
+  if (!copy || !level8ClanScreen) return;
+
+  level8State.pendingFinal = pendingFinal;
+  level8State.cameraFocusStation = getMissionStations()[clanIndex] ?? null;
+  level8ClanEyebrow.textContent = copy.eyebrow;
+  level8ClanTitle.textContent = copy.title;
+  level8ClanMission.textContent = copy.mission;
+  level8ClanContinueButton.textContent = copy.button;
+  gameState = 'storyOverlay';
+  level8ClanScreen.hidden = false;
 }
 
 function scheduleUndock(station) {
@@ -1420,18 +1512,18 @@ function getLevelCompleteCopy(completedLevel) {
 
   if (completedLevel === 7) {
     return {
-      eyebrow: 'Level 7 abgeschlossen',
-      title: 'Rendezvous abgeschlossen',
-      mission: 'Der Orbit war stabil und die finale Station erreicht.',
+      eyebrow: 'Erstkontakt',
+      title: 'Kestrel',
+      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew. Acht Jahre lang hat etwas auf Kestrel gewartet und die Menschheit beobachtet. Es hat keine feste Gestalt: Licht und Kristall, nie zweimal dasselbe. In deinem Logbuch tippst du einen Namen ein, weil du einen brauchst: Proteus.',
       nextLevelLabel: 'Nächstes Level',
     };
   }
 
   if (completedLevel === 8) {
     return {
-      eyebrow: 'Level 8 abgeschlossen',
-      title: 'Ringplanet erreicht',
-      mission: 'Portaltransit abgeschlossen. Die drei Orbitstationen wurden beliefert.',
+      eyebrow: 'Mission abgeschlossen',
+      title: 'Botschafter',
+      mission: 'Drei Clans, drei Beziehungen, formell aufgenommen.',
       nextLevelLabel: null,
     };
   }
@@ -1453,6 +1545,9 @@ function resetLevel8State() {
   if (level !== 8) return;
   level8State.phase = 'calder';
   level8State.hintTimer = 0;
+  level8State.pendingFinal = false;
+  level8State.cameraFocusStation = null;
+  level8State.departureStation = currentLevel.stationA;
 }
 
 /** Bricht laufende Black-Hole-Animationen ab und räumt Timer auf. */
@@ -1489,13 +1584,17 @@ function resetShipState() {
 
 /** Setzt Andockstatus und Startpositionen aller Stationen zurück. */
 function resetStationStates() {
-  for (const station of currentLevel.stations) {
+  const resetStations = level === 8
+    ? [currentLevel.stationA, ...currentLevel.stations]
+    : currentLevel.stations;
+
+  for (const station of resetStations) {
     station.docked = false;
     station.optionalDockUsed = false;
   }
 
   // Bei orbitierenden Stationen: Startposition zurücksetzen
-  for (const station of currentLevel.stations) {
+  for (const station of resetStations) {
     if (!station.orbiting) continue;
     station.orbitAngle = station.initialOrbitAngle ?? Math.PI * 1.25;
     updateOrbitingStation(station, 0);
@@ -1505,7 +1604,22 @@ function resetStationStates() {
   targetStation = level === 8 && level8State.phase === 'calder'
     ? currentLevel.stationA
     : getMissionStations()[missionTargetIndex];
+  if (level === 8 && level8State.phase === 'calder') {
+    level8State.departureStation = currentLevel.stationA;
+    placeShipAtKestrelPort();
+  }
   dockingApproach = null;
+}
+
+function placeShipAtKestrelPort() {
+  const station = currentLevel.stationA;
+  const port = getPortPosition(station);
+  ship.x = port.x;
+  ship.y = port.y;
+  ship.vx = station.vx;
+  ship.vy = station.vy;
+  ship.angle = station.dockAngle + Math.PI;
+  ship.targetAngle = ship.angle;
 }
 
 /** Setzt Trajektorie-Buffer, Orbit-Assist-Marker und Partikel zurück. */
@@ -1572,8 +1686,24 @@ if (nextLevelButton) {
     score = 0;
     resetLevel();
     levelCompleteScreen.hidden = true;
+    if (level8ClanScreen) level8ClanScreen.hidden = true;
     showLevelIntroOrStart(nextLevel);
     last = performance.now();
+  });
+}
+
+if (level8ClanContinueButton) {
+  level8ClanContinueButton.addEventListener('click', () => {
+    level8ClanScreen.hidden = true;
+
+    if (level8State.pendingFinal) {
+      level8State.pendingFinal = false;
+      completeLevel();
+      return;
+    }
+
+    level8State.cameraFocusStation = null;
+    resumeGameplay();
   });
 }
 

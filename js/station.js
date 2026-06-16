@@ -36,8 +36,8 @@ export function createOrbitingStation(cx, cy, orbitRadius, orbitSpeed, startAngl
     docked: false,
     orbiting: true,
     // Geschwindigkeit der Station (für Relativgeschwindigkeit beim Docking)
-    vx: 0,
-    vy: 0,
+    vx: getOrbitVelocityX(angle, orbitRadius, orbitSpeed),
+    vy: getOrbitVelocityY(angle, orbitRadius, orbitSpeed),
   };
 }
 
@@ -46,21 +46,28 @@ export function createOrbitingStation(cx, cy, orbitRadius, orbitSpeed, startAngl
  * Muss jeden Physik-Frame aufgerufen werden.
  */
 export function updateOrbitingStation(station, dt) {
-  const prevAngle = station.orbitAngle;
   station.orbitAngle += station.orbitSpeed * dt;
 
   const newX = station.cx + Math.cos(station.orbitAngle) * station.orbitRadius;
   const newY = station.cy + Math.sin(station.orbitAngle) * station.orbitRadius;
 
-  // Geschwindigkeit aus Positionsdifferenz (für Relativgeschwindigkeit beim Docking)
-  station.vx = newX - station.x;
-  station.vy = newY - station.y;
+  // Tangentialgeschwindigkeit pro Physik-Tick, auch nach Reset mit dt=0.
+  station.vx = getOrbitVelocityX(station.orbitAngle, station.orbitRadius, station.orbitSpeed);
+  station.vy = getOrbitVelocityY(station.orbitAngle, station.orbitRadius, station.orbitSpeed);
 
   station.x = newX;
   station.y = newY;
 
   // Docking-Arm bleibt seitlich am Orbit, tangential zur Flugbahn.
   station.dockAngle = station.orbitAngle + Math.PI / 2;
+}
+
+function getOrbitVelocityX(angle, orbitRadius, orbitSpeed) {
+  return -Math.sin(angle) * orbitRadius * orbitSpeed;
+}
+
+function getOrbitVelocityY(angle, orbitRadius, orbitSpeed) {
+  return Math.cos(angle) * orbitRadius * orbitSpeed;
 }
 
 export function getPortPosition(station) {

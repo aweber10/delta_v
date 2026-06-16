@@ -113,8 +113,12 @@ export function drawStation(ctx, station, cam, canvas, color = 'red') {
   ctx.save();
   ctx.translate(p.x, p.y);
 
-  drawStationBody(ctx, z);
-  drawSolarPanels(ctx, z);
+  if (station.stationVariant?.startsWith('proteus-')) {
+    drawProteusStation(ctx, station, z);
+  } else {
+    drawStationBody(ctx, z);
+    drawSolarPanels(ctx, z);
+  }
   drawDockingArm(ctx, station, z, color);
 
   ctx.restore();
@@ -172,6 +176,122 @@ function drawSolarPanels(ctx, z) {
 function drawSolarPanelPair(ctx, z, x, y) {
   ctx.fillRect(x * z, y * z, 44 * z, 8 * z);
   ctx.strokeRect(x * z, y * z, 44 * z, 8 * z);
+}
+
+function drawProteusStation(ctx, station, z) {
+  if (station.stationVariant === 'proteus-outer') {
+    drawProteusOuterStation(ctx, z);
+    return;
+  }
+
+  if (station.stationVariant === 'proteus-middle') {
+    drawProteusMiddleStation(ctx, z);
+    return;
+  }
+
+  drawProteusInnerStation(ctx, z);
+}
+
+function drawProteusOuterStation(ctx, z) {
+  drawEnergyHalo(ctx, z, '#66f5ff', 44, 0.18);
+
+  ctx.strokeStyle = 'rgba(139, 246, 255, 0.85)';
+  ctx.lineWidth = 2 * z;
+  ctx.beginPath();
+  ctx.moveTo(-46 * z, 0);
+  ctx.lineTo(46 * z, 0);
+  ctx.moveTo(0, -30 * z);
+  ctx.lineTo(0, 30 * z);
+  ctx.stroke();
+
+  drawCrystal(ctx, z, 0, 0, 18, 34, '#b9fbff', '#1f7f91');
+  drawCrystal(ctx, z, -42, 0, 10, 22, '#89e9f5', '#155b68');
+  drawCrystal(ctx, z, 42, 0, 10, 22, '#89e9f5', '#155b68');
+}
+
+function drawProteusMiddleStation(ctx, z) {
+  drawEnergyHalo(ctx, z, '#8cf7d8', 54, 0.2);
+
+  ctx.strokeStyle = 'rgba(116, 255, 219, 0.72)';
+  ctx.lineWidth = 1.5 * z;
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI * 2 * i) / 6;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * 14 * z, Math.sin(angle) * 14 * z);
+    ctx.lineTo(Math.cos(angle) * 52 * z, Math.sin(angle) * 52 * z);
+    ctx.stroke();
+  }
+
+  drawCrystal(ctx, z, 0, 0, 16, 28, '#c8fff0', '#227e74');
+  drawCrystal(ctx, z, -28, -24, 9, 18, '#8cf7d8', '#185c55');
+  drawCrystal(ctx, z, 34, -10, 11, 20, '#8cf7d8', '#185c55');
+  drawCrystal(ctx, z, -12, 38, 10, 18, '#8cf7d8', '#185c55');
+  drawLightNode(ctx, z, 0, -46, '#eafffb');
+  drawLightNode(ctx, z, 45, 24, '#eafffb');
+  drawLightNode(ctx, z, -45, 20, '#eafffb');
+}
+
+function drawProteusInnerStation(ctx, z) {
+  drawEnergyHalo(ctx, z, '#c896ff', 62, 0.24);
+
+  ctx.strokeStyle = 'rgba(205, 150, 255, 0.78)';
+  ctx.lineWidth = 3 * z;
+  ctx.beginPath();
+  ctx.arc(0, 0, 44 * z, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(105, 245, 255, 0.55)';
+  ctx.lineWidth = 1.25 * z;
+  ctx.beginPath();
+  ctx.arc(0, 0, 28 * z, 0, Math.PI * 2);
+  ctx.stroke();
+
+  drawCrystal(ctx, z, 0, 0, 20, 40, '#ecd7ff', '#5d2f83');
+  for (let i = 0; i < 4; i++) {
+    const angle = Math.PI / 4 + (Math.PI * i) / 2;
+    drawCrystal(
+      ctx,
+      z,
+      Math.cos(angle) * 44,
+      Math.sin(angle) * 44,
+      9,
+      20,
+      '#d8b4ff',
+      '#4a246b'
+    );
+  }
+}
+
+function drawEnergyHalo(ctx, z, color, radius, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 6 * z;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * z, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCrystal(ctx, z, x, y, width, height, fill, stroke) {
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.5 * z;
+  ctx.beginPath();
+  ctx.moveTo(x * z, (y - height * 0.5) * z);
+  ctx.lineTo((x + width * 0.5) * z, y * z);
+  ctx.lineTo(x * z, (y + height * 0.5) * z);
+  ctx.lineTo((x - width * 0.5) * z, y * z);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawLightNode(ctx, z, x, y, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x * z, y * z, 4 * z, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Zeichnet den Docking-Arm mit Port, Gelenk und Anflug-Indikatoren. */

@@ -789,8 +789,8 @@
 
     .overlay.level8 {
       background:
-        radial-gradient(circle at 50% 38%, rgba(120, 216, 255, 0.18), transparent 28%),
-        radial-gradient(circle at 50% 42%, rgba(238, 180, 100, 0.16), transparent 34%),
+        radial-gradient(circle at 50% 38%, rgba(108, 255, 225, 0.2), transparent 28%),
+        radial-gradient(circle at 50% 44%, rgba(188, 120, 255, 0.18), transparent 34%),
         rgba(2, 4, 8, 0.9);
     }
 
@@ -935,14 +935,14 @@
           </span>
         </button>
 
-        <button class="level-card" id="startL8" data-level="8" type="button" style="--accent: #78d8ff; --hazard-x: 58%; --hazard-size: 24px;">
+        <button class="level-card" id="startL8" data-level="8" type="button" style="--accent: #6cffdf; --hazard-x: 58%; --hazard-size: 24px;">
           <span class="level-card__top">
             <span class="level-card__number">Level 8</span>
-            <span class="level-card__risk">Portal</span>
+            <span class="level-card__risk">Proteus</span>
           </span>
           <span class="level-card__mid">
-            <span class="level-card__title">Ringplanet & Portal</span>
-            <span class="level-card__copy">Portaltransit und drei Lieferungen auf gestaffelten Orbits.</span>
+            <span class="level-card__title">Botschafter</span>
+            <span class="level-card__copy">Von Kestrel durchs Tor zu drei Proteus-Clans.</span>
           </span>
           <span class="level-card__route">
             <span class="level-card__hazard level-card__hazard--portal" aria-hidden="true"></span>
@@ -981,15 +981,32 @@
   </div>
 
   <!-- Campaign Complete Screen -->
-  <div class="overlay level6" id="finalCompleteScreen" hidden>
+  <div class="overlay level8" id="finalCompleteScreen" hidden>
     <section class="start-panel" aria-labelledby="finalTitle">
-      <p class="eyebrow" style="color: #ff9030;">Kampagne abgeschlossen</p>
-      <h1 id="finalTitle">Rendezvous</h1>
-      <p class="mission">Andocken erfolgreich. Die Luke öffnet sich – von beiden Seiten zugleich.</p>
-      <p class="mission">Acht Jahre Funkstille enden in diesem Moment.</p>
+      <p class="eyebrow" style="color: #6cffdf;">Mission abgeschlossen</p>
+      <h1 id="finalTitle">Botschafter</h1>
+      <p class="mission">Drei Clans, drei Beziehungen, formell aufgenommen. Soweit du das beurteilen kannst, hast du niemanden beleidigt. Das gilt unter Proteus bereits als großer diplomatischer Erfolg.</p>
+      <p class="mission">Was zwischen den beiden Rassen jetzt beginnt, steht in keinem Vertrag. Du hoffst, dass es ein guter Anfang war.</p>
+      <div class="final-stats">
+        <div class="final-stat"><strong>Status</strong><br>Drei Clans, Kontakt aufgenommen</div>
+        <div class="final-stat"><strong>Zwischenfälle</strong><br>Keine (offiziell)</div>
+        <div class="final-stat"><strong>Nächster Auftrag</strong><br>Unbekannt</div>
+      </div>
       <div class="actions">
         <button id="finalMenuButton" type="button">Hauptmenü</button>
         <button class="secondary" id="finalReplayButton" type="button">Level 8 wiederholen</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 8: Clan Contact Screen -->
+  <div class="overlay level8" id="level8ClanScreen" hidden>
+    <section class="start-panel" aria-labelledby="level8ClanTitle">
+      <p class="eyebrow" id="level8ClanEyebrow" style="color: #6cffdf;">Äußerer Clan</p>
+      <h1 id="level8ClanTitle">Die Vorsichtigen</h1>
+      <p class="mission" id="level8ClanMission">Der äußerste Clan empfängt dich am Rand seines eigenen Systems.</p>
+      <div class="actions">
+        <button id="level8ClanContinueButton" type="button">Weiter</button>
       </div>
     </section>
   </div>
@@ -1000,7 +1017,7 @@
       <p class="eyebrow">Level 1 — First Delivery</p>
       <h1 id="l1Title">Calder-System</h1>
       <p class="mission">Erster Tag bei Halvorsen Logistics. Zwei Stationen im Heimatorbit, der Frachtraum voller Ersatzteile – nichts, was jemand vermissen würde, wenn du es verlierst. Halvorsen sieht dir beim Andocken zu und sagt nichts. Genau das ist der Test.</p>
-      <p class="mission">Im Hintergrund läuft Funkverkehr aus dem ganzen System. Zwischen den üblichen Meldungen taucht für einen Moment ein Signal auf, das in keinem Register verzeichnet ist. Dann ist es wieder weg, bevor jemand reagieren kann.</p>
+      <p class="mission">Einmal, kurz, registriert dein Bordcomputer einen Kontakt, der in keinem Register steht. Dann ist er weg. Wahrscheinlich ein Sensorfehler. Sagst du dir.</p>
       <div class="actions">
         <button id="level1StartButton" type="button">Start</button>
       </div>
@@ -1050,7 +1067,7 @@
       <p class="eyebrow" style="color: #ff9030;">Level 6 — Schwerkraftschleuder</p>
       <h1 id="l6Title">Calder-System</h1>
       <p class="mission">Der Gasriese Vendahl markiert den Rand des Calder-Systems – und den Grund, warum seit Jahren niemand weiter draußen liefert. Der Direktflug ist unmöglich, dein Tank reicht dafür nicht aus. Aber Vendahls Schwerkraft kann dich hinaustragen, wenn du ihr nahe genug kommst, ohne dich zu verlieren. Sein Mond zieht mit – und steht nicht mehr an der Stelle, an der du ihn zuletzt gesehen hast.</p>
-      <p class="mission">Im Schleuderpunkt empfängt dein Bordcomputer dasselbe Signal wie an deinem ersten Tag. Diesmal verschwindet es nicht. Es wird stärker, je weiter es dich nach außen trägt.</p>
+      <p class="mission">Im Schleuderpunkt ist der Kontakt von deinem ersten Tag wieder da. Diesmal kein Flackern. Er hält deine Bahn, als würde er mitfliegen. Als hätte er gewartet, dass du so weit hinauskommst.</p>
       <div class="actions">
         <button id="level6StartButton" type="button">Start</button>
       </div>
@@ -1061,26 +1078,24 @@
   <div class="overlay level5" id="level7StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l7Title">
       <p class="eyebrow" style="color: #44aaff;">Level 7 — Orbital Rendezvous</p>
-      <h1 id="l7Title">Calder-System</h1>
+      <h1 id="l7Title">Kestrel</h1>
       <p class="mission">Kestrel Station. Orbit jenseits von Vendahl. Äußerster Rand des Calder-Systems.</p>
       <p class="mission">Acht Jahre lang gab es kein Lebenszeichen von hier. Die letzte Crew ist nie gegangen – sie hat nur aufgehört zu senden. Diesen Auftrag hat nicht Halvorsen vergeben. Der erste Funkspruch seit acht Jahren kam von der Station selbst.</p>
-      <p class="mission">Bevor du andocken kannst, musst du in einen niedrigen, stabilen Orbit einschwenken – erst dann lässt sich die letzte Distanz überbrücken.</p>
-      <p class="mission">Das Signal, das dich seit deinem ersten Tag begleitet, trifft hier auf seinen Ursprung. Es wiederholt sich nicht mehr. Es hat auf eine Antwort gewartet – und kennt deinen Namen.</p>
-      <p class="mission">Jetzt bist du nah genug, um zu antworten.</p>
-      <p class="mission">Du bist allein hier draußen. Niemand sonst wird kommen.</p>
+      <p class="mission">Die Station treibt auf einer hohen, unstabilen Bahn. Bevor du andocken kannst, musst du in einen niedrigen, stabilen Orbit einschwenken - erst dann lässt sich die letzte Distanz überbrücken.</p>
       <div class="actions">
         <button id="level7StartButton" type="button">Start</button>
       </div>
     </section>
   </div>
 
-  <!-- Level 8: Start Screen (Ringplanet & Portal) -->
+  <!-- Level 8: Start Screen (Proteus Ambassador) -->
   <div class="overlay level8" id="level8StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l8Title">
-      <p class="eyebrow" style="color: #78d8ff;">Level 8 — Ringplanet & Portal</p>
-      <h1 id="l8Title">Jenseits von Calder</h1>
-      <p class="mission">Das Portal liegt außerhalb des Sichtfelds. Der Pfeil führt dich dorthin, aber du musst das Haupttriebwerk nutzen, um es zu erreichen.</p>
-      <p class="mission">Nach dem Transit wartet ein fremdes System: ein Ringplanet, drei Stationen auf gestaffelten Orbits, Auslieferung von außen nach innen.</p>
+      <p class="eyebrow" style="color: #6cffdf;">Level 8 — Botschafter</p>
+      <h1 id="l8Title">Proteus</h1>
+      <p class="mission">Du wolltest ablehnen. Botschafter der Menschheit - das steht so in keinem deiner Verträge, und Halvorsen zahlt dafür garantiert keinen Zuschlag.</p>
+      <p class="mission">Aber für die Proteus ist Ablehnung keine Option, die sie kennen. Sie haben sich auf dich eingelassen, nicht auf ein Formular. Einen Rückzieher würden sie nicht als Bescheidenheit verstehen, sondern als Bruch. Also: nicht.</p>
+      <p class="mission">Sie haben dir den Weg geöffnet. Vor dir liegt ein Tor - Proteus-Technologie, älter als alles, was die Menschheit gebaut hat. Dahinter ihr Heimatsystem. Drei Clans warten dort. Flieg hindurch.</p>
       <div class="actions">
         <button id="level8StartButton" type="button">Start</button>
       </div>
@@ -1093,7 +1108,6 @@
       <p class="eyebrow steel">Level 3 — Asteroid Field</p>
       <h1 id="l3Title">Calder-System</h1>
       <p class="mission">Die schnelle Route führt durch das, was von Praskev übrig ist – einer Bergbaukolonie, die abgeschaltet wurde, als die Ader vor zwanzig Jahren versiegte. Hier ist der Trümmerkern noch dicht. Andere Piloten fliegen außen herum und verlieren zwei Tage. Du hast keine zwei Tage.</p>
-      <p class="mission">Irgendwo zwischen den Trümmern sendet noch immer eine Bake – dieselbe Frachtbestätigung, Jahr für Jahr, an einen Empfänger, der nie quittiert hat. Niemand schaltet sie ab. Vielleicht weiß niemand mehr, wie.</p>
       <div class="actions">
         <button id="level3StartButton" type="button">Start</button>
       </div>
