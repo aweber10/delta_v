@@ -101,13 +101,13 @@ const LEVEL8_CLAN_COPY = [
   {
     eyebrow: 'Mittlerer Clan',
     title: 'Die Neugierigen',
-    mission: 'Der zweite Clan hat keine Geduld mit Förmlichkeiten. Kaum angedockt, prasseln Fragen auf dich ein - über Halvorsen, über Treibstoffpreise, über die Frachtbestätigung, die du auf der Bake bei Praskev nie quittiert hast. Sie finden die Menschheit faszinierend ineffizient. Sie meinen es als Kompliment.',
+    mission: 'Der zweite Clan hat keine Geduld mit Förmlichkeiten. Kaum angedockt, prasseln Fragen auf dich ein - über Halvorsen, über Treibstoffpreise, über die Frachtbestätigung, die du auf der Bake bei Praskev nie quittiert hast.',
     button: 'Weiter zum inneren Clan',
   },
   {
     eyebrow: 'Innerer Clan',
     title: 'Die Tonangebenden',
-    mission: 'Der innerste Clan kreist im Schatten der Ringe, am nächsten am Zentrum der Macht. Hier wird nicht geprüft und nicht gefragt - hier wird entschieden. Sie empfangen dich, als hätten sie dich erwartet, seit du an deinem ersten Tag jenen Kontakt registriert hast, den du für einen Sensorfehler hieltest. Vielleicht haben sie das.',
+    mission: 'Der innerste Clan kreist im Schatten der Ringe, am nächsten am Zentrum der Macht. Hier wird nicht geprüft und nicht gefragt - hier wird entschieden. Sie empfangen dich, als wärst du erwartet worden, nicht erst seit Kestrel, sondern seit jenem kurzen Kontakt an deinem allerersten Tag.',
     button: 'Mission abschließen',
   },
 ];
@@ -1514,7 +1514,7 @@ function getLevelCompleteCopy(completedLevel) {
     return {
       eyebrow: 'Erstkontakt',
       title: 'Kestrel',
-      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew. Acht Jahre lang hat etwas auf Kestrel gewartet und die Menschheit beobachtet. Es hat keine feste Gestalt: Licht und Kristall, nie zweimal dasselbe. In deinem Logbuch tippst du einen Namen ein, weil du einen brauchst: Proteus.',
+      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew.\n\nWas dich erwartet, hat keine feste Gestalt. Es verschiebt sich, Licht und Kristall, nie zweimal dasselbe - als hätte es sich noch nicht entschieden, wie es aussehen will. Acht Jahre lang hat es von dieser einen Station aus die Menschheit beobachtet, leise genug, um nicht zu stören. Du stehst da, Helm in der Hand, und merkst, dass du den Atem anhältst.\n\nDann bewegt es sich - nicht auf dich zu, sondern zur Seite, als würde es Platz machen. Eine Geste. Die erste, die du verstehst, ohne sie verstehen zu müssen.\n\nSie wollen reden. In deinem Logbuch tippst du einen Namen ein, weil du einen brauchst: Proteus.\n\nSie haben bereits entschieden, mit wem: mit dir. Nicht weil du dafür ausgebildet bist. Sondern weil du der Mensch bist, den sie kennen.',
       nextLevelLabel: 'Nächstes Level',
     };
   }
