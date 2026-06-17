@@ -1445,10 +1445,15 @@ function showLevelCompleteCopy(copy) {
   const title = levelCompleteScreen.querySelector('h1');
   const mission = levelCompleteScreen.querySelector('.mission');
   const nextLevelButton = document.getElementById('nextLevelButton');
+  const storyBgClasses = ['story-bg', 'story-bg--kestrel', 'story-bg--proteus'];
 
   eyebrow.textContent = copy.eyebrow;
   title.textContent = copy.title;
   mission.textContent = copy.mission;
+  levelCompleteScreen.classList.remove(...storyBgClasses);
+  if (copy.storyClass) {
+    levelCompleteScreen.classList.add('story-bg', copy.storyClass);
+  }
   if (nextLevelButton) {
     nextLevelButton.hidden = !copy.nextLevelLabel;
     nextLevelButton.textContent = copy.nextLevelLabel || 'Nächstes Level';
@@ -1515,6 +1520,7 @@ function getLevelCompleteCopy(completedLevel) {
       eyebrow: 'Erstkontakt',
       title: 'Kestrel',
       mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew.\n\nWas dich erwartet, hat keine feste Gestalt. Es verschiebt sich, Licht und Kristall, nie zweimal dasselbe - als hätte es sich noch nicht entschieden, wie es aussehen will. Acht Jahre lang hat es von dieser einen Station aus die Menschheit beobachtet, leise genug, um nicht zu stören. Du stehst da, Helm in der Hand, und merkst, dass du den Atem anhältst.\n\nDann bewegt es sich - nicht auf dich zu, sondern zur Seite, als würde es Platz machen. Eine Geste. Die erste, die du verstehst, ohne sie verstehen zu müssen.\n\nSie wollen reden. In deinem Logbuch tippst du einen Namen ein, weil du einen brauchst: Proteus.\n\nSie haben bereits entschieden, mit wem: mit dir. Nicht weil du dafür ausgebildet bist. Sondern weil du der Mensch bist, den sie kennen.',
+      storyClass: 'story-bg--kestrel',
       nextLevelLabel: 'Nächstes Level',
     };
   }
