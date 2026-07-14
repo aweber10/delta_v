@@ -90,3 +90,14 @@ export const L6_MOON_ORBIT_RADIUS = 700;    // Mondabstand vom Gasriesen-Zentrum
 export const L6_MOON_ORBIT_SPEED = 0.00055; // Mondrotationsgeschwindigkeit (rad/frame)
 export const L6_MOON_GRAVITY_STRENGTH = 32.0;
 export const L6_MOON_GRAVITY_RADIUS = 360;
+
+// --- Level 9: Solas ---
+export const L9_FUEL_START = 400;
+export const L9_PLANET_RADIUS = 680;
+export const L9_PLANET_GRAVITY_STRENGTH = 360.0;
+export const L9_PLANET_GRAVITY_RADIUS = 3800;
+export const L9_PLANET_WELL_RADIUS = 695;
+export const L9_ORBIT_RADIUS = 1600;
+export const L9_ORBIT_SPEED = Math.sqrt(L9_PLANET_GRAVITY_STRENGTH / (L9_ORBIT_RADIUS ** 3));
+export const L9_HYPERDRIVE_TRIGGER_RADIUS = 2800;
+export const L9_WHITEOUT_DURATION_MS = 1800;

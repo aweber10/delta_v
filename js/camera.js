@@ -59,6 +59,41 @@ export function updateLevel8Camera(cam, ship, levelState, canvas) {
   cam.zoom += (cam.targetZoom - cam.zoom) * zoomSpeed;
 }
 
+export function updateLevel9Camera(cam, ship, levelState, canvas) {
+  const revealAge = levelState?.revealStart ? performance.now() - levelState.revealStart : Infinity;
+  if (levelState?.phase === 'solas' && revealAge < 4200) {
+    const planet = levelState.level.planet;
+    const revealT = clamp(revealAge / 4200, 0, 1);
+    const focusX = (ship.x + planet.x) * 0.5;
+    const focusY = (ship.y + planet.y) * 0.5;
+    cam.x += (focusX - cam.x) * 0.035;
+    cam.y += (focusY - cam.y) * 0.035;
+    cam.targetZoom = 0.26 + revealT * 0.16;
+    cam.zoom += (cam.targetZoom - cam.zoom) * LEVEL8_ZOOM_OUT_SPEED;
+    return;
+  }
+
+  cam.x += (ship.x - cam.x) * CAMERA_LERP;
+  cam.y += (ship.y - cam.y) * CAMERA_LERP;
+
+  if (levelState?.phase === 'proteus') {
+    const departureZoom = getDepartureZoom(ship, levelState.level.proteusStation);
+    cam.targetZoom = Math.max(0.6, departureZoom);
+  } else {
+    // solas phase
+    const planet = levelState.level.planet;
+    const radius = Math.hypot(ship.x - planet.x, ship.y - planet.y);
+    const zoomT = clamp((radius - 1200) / (3000 - 1200), 0, 1);
+    const orbitZoom = 0.92 - zoomT * 0.5;
+    const stationZoom = getStationApproachZoom(ship, levelState.targetStation);
+
+    cam.targetZoom = Math.max(orbitZoom, stationZoom);
+  }
+
+  const zoomSpeed = cam.targetZoom < cam.zoom ? LEVEL8_ZOOM_OUT_SPEED : CAMERA_ZOOM_SPEED;
+  cam.zoom += (cam.targetZoom - cam.zoom) * zoomSpeed;
+}
+
 function getStationApproachZoom(ship, station) {
   if (!station) return CAMERA_MIN_ZOOM;
 

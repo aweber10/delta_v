@@ -31,6 +31,13 @@ import {
   PLANET_RADIUS,
   PLANET_WELL_RADIUS,
   RELAY_FUEL_START,
+  L9_FUEL_START,
+  L9_PLANET_RADIUS,
+  L9_PLANET_GRAVITY_STRENGTH,
+  L9_PLANET_GRAVITY_RADIUS,
+  L9_PLANET_WELL_RADIUS,
+  L9_ORBIT_RADIUS,
+  L9_ORBIT_SPEED,
 } from './constants.js';
 import { createAsteroid } from './asteroids.js';
 import { createGravityWell } from './gravity.js';
@@ -332,6 +339,65 @@ L5.stations = [L5.stationA, L5.stationB];
 L6.stations = [L6.stationA, L6.stationB];
 L8.stations = [L8.stationOuter, L8.stationMiddle, L8.stationInner];
 
+const L9_PLANET_X = 5000;
+const L9_PLANET_Y = 1800;
+
+const L9 = {
+  shipStart: { x: L8.stationInner.x, y: L8.stationInner.y },
+  proteusStation: createOrbitingStation(
+    L8_PLANET_X,
+    L8_PLANET_Y,
+    L8_ORBIT_INNER_RADIUS,
+    L8_ORBIT_INNER_SPEED,
+    L8.stationInner.orbitAngle
+  ),
+  proteusPlanet: createPlanet(L8_PLANET_X, L8_PLANET_Y, L8_PLANET_RADIUS),
+  phaseBStart: {
+    x: 1200,
+    y: 2800,
+    vx: 0.28,
+    vy: -0.05,
+    angle: 0,
+  },
+  stationComplex: createOrbitingStation(
+    L9_PLANET_X,
+    L9_PLANET_Y,
+    L9_ORBIT_RADIUS,
+    L9_ORBIT_SPEED,
+    Math.PI
+  ),
+  planet: createPlanet(L9_PLANET_X, L9_PLANET_Y, L9_PLANET_RADIUS),
+  well: createGravityWell(L9_PLANET_X, L9_PLANET_Y, L9_PLANET_WELL_RADIUS, false),
+  asteroids: null,
+  fuelStart: L9_FUEL_START,
+  // Bezirke liegen wirklich an verschiedenen Enden der Megastruktur.
+  dockPorts: [
+    { id: 'reception', label: 'Empfangsring', angle: Math.PI, distance: 286, maxSpeed: 0.4, angleTolerance: Math.PI / 9, openMs: 14000 },
+    { id: 'consultation', label: 'Konsultationsebene', angle: -0.34, distance: 300, maxSpeed: 0.35, angleTolerance: Math.PI * 17 / 180, openMs: 11000 },
+    { id: 'chamber', label: 'Zentralkammer', angle: Math.PI / 2, distance: 252, maxSpeed: 0.3, angleTolerance: Math.PI / 12, openMs: 9000 },
+  ],
+  dockWindow: { warningMs: 8000, cycleMs: 30000 },
+  dockRefuelAmount: 80,
+  stationCollisionZones: [
+    { x: 0, y: 0, radius: 86 },
+    { x: -128, y: -8, radius: 62 },
+    { x: 130, y: -20, radius: 68 },
+    { x: 8, y: 112, radius: 58 },
+  ],
+};
+L9.proteusStation.stationVariant = 'proteus-inner';
+L9.stationComplex.stationVariant = 'solas-complex';
+// Aktiver Port startet am ersten Port-Winkel
+L9.stationComplex.activeDockPort = L9.dockPorts[0];
+L9.stationComplex.dockAngleOffset = L9.dockPorts[0].angle;
+// Alle Port-Winkel für die Darstellung (alle Docks sichtbar)
+L9.stationComplex.allDockPorts = L9.dockPorts;
+L9.well.gravityStrength = L9_PLANET_GRAVITY_STRENGTH;
+L9.well.gravityRadius = L9_PLANET_GRAVITY_RADIUS;
+L9.well.isPlanet = true;
+
+L9.stations = [L9.stationComplex];
+
 export function getLevelByNumber(levelNum) {
   if (levelNum === 1) return L1;
   if (levelNum === 2) return L_RELAY;
@@ -341,5 +407,6 @@ export function getLevelByNumber(levelNum) {
   if (levelNum === 6) return L6;
   if (levelNum === 7) return L5;
   if (levelNum === 8) return L8;
+  if (levelNum === 9) return L9;
   throw new RangeError(`Unknown level number: ${levelNum}`);
 }

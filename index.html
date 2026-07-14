@@ -789,10 +789,15 @@
     }
 
     .overlay.level8 {
-      background:
-        radial-gradient(circle at 50% 38%, rgba(108, 255, 225, 0.2), transparent 28%),
-        radial-gradient(circle at 50% 44%, rgba(188, 120, 255, 0.18), transparent 34%),
-        rgba(2, 4, 8, 0.9);
+      background: radial-gradient(circle at 50% -10%, #0d2824, #050a0a);
+    }
+    .overlay.level9 {
+      background: radial-gradient(circle at 50% -10%, #162438, #070b12);
+    }
+    .overlay.story-bg {
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
     .overlay.story-bg {
@@ -813,6 +818,42 @@
         linear-gradient(180deg, rgba(2, 4, 8, 0.18), rgba(2, 4, 8, 0.84)),
         radial-gradient(circle at 50% 38%, rgba(108, 255, 225, 0.16), transparent 34%),
         url("./assets/story/proteus-ambassador.webp");
+    }
+
+    .overlay.story-bg--solas {
+      background-image:
+        linear-gradient(180deg, rgba(2, 4, 8, 0.22), rgba(2, 4, 8, 0.86)),
+        radial-gradient(circle at 50% 42%, rgba(143, 176, 255, 0.18), transparent 38%);
+    }
+
+    .overlay.story-bg--solas-departure {
+      background-image:
+        linear-gradient(180deg, rgba(2, 4, 8, 0.24), rgba(2, 4, 8, 0.88)),
+        url("./assets/story/solas-departure.jpg");
+    }
+
+    .overlay.story-bg--solas-arrival {
+      background-image:
+        linear-gradient(180deg, rgba(2, 4, 8, 0.18), rgba(2, 4, 8, 0.9)),
+        url("./assets/story/solas-arrival.jpg");
+    }
+
+    .overlay.story-bg--solas-reception {
+      background-image:
+        linear-gradient(180deg, rgba(2, 4, 8, 0.2), rgba(2, 4, 8, 0.9)),
+        url("./assets/story/solas-reception.jpg");
+    }
+
+    .overlay.story-bg--solas-consultation {
+      background-image:
+        linear-gradient(180deg, rgba(2, 4, 8, 0.18), rgba(2, 4, 8, 0.9)),
+        url("./assets/story/solas-consultation.jpg");
+    }
+
+    .overlay.story-bg--solas-chamber {
+      background-image:
+        linear-gradient(180deg, rgba(2, 4, 8, 0.16), rgba(2, 4, 8, 0.91)),
+        url("./assets/story/solas-chamber.jpg");
     }
 
     .overlay.story-bg .start-panel {
@@ -973,6 +1014,20 @@
             <span class="level-card__hazard level-card__hazard--portal" aria-hidden="true"></span>
           </span>
         </button>
+
+        <button class="level-card" id="startL9" data-level="9" type="button" style="--accent: #8fb0ff; --hazard-x: 60%; --hazard-size: 26px;">
+          <span class="level-card__top">
+            <span class="level-card__number">Level 9</span>
+            <span class="level-card__risk">Solas</span>
+          </span>
+          <span class="level-card__mid">
+            <span class="level-card__title">Heimkehr</span>
+            <span class="level-card__copy">Der Proteus-Antrieb bringt dich ins Zentrum.</span>
+          </span>
+          <span class="level-card__route">
+            <span class="level-card__hazard level-card__hazard--planet" aria-hidden="true"></span>
+          </span>
+        </button>
       </div>
 
       <div class="demo-strip">
@@ -992,6 +1047,15 @@
     <button class="secondary" id="demoExitButton" type="button">Demo beenden</button>
   </aside>
 
+  <!-- Hyperdrive Hint Overlay -->
+  <aside class="demo-hud" id="hyperdriveHud" hidden aria-live="polite" style="bottom: 24px; top: auto; right: 24px;">
+    <span class="demo-hud__title" style="color: #8fb0ff;">Proteus-Hyperdrive bereit</span>
+    <span class="demo-hud__copy">Jenseits der äußeren Umlaufbahn.</span>
+    <div class="actions" style="margin-top: 12px;">
+      <button id="hyperdriveButton" type="button">Hyperdrive aktivieren (H)</button>
+    </div>
+  </aside>
+
   <!-- Level Complete Screen -->
   <div class="overlay" id="levelCompleteScreen" hidden>
     <section class="start-panel" aria-labelledby="completeTitle">
@@ -1006,20 +1070,20 @@
   </div>
 
   <!-- Campaign Complete Screen -->
-  <div class="overlay level8 story-bg story-bg--proteus" id="finalCompleteScreen" hidden>
+  <div class="overlay level9 story-bg story-bg--solas" id="finalCompleteScreen" hidden>
     <section class="start-panel" aria-labelledby="finalTitle">
-      <p class="eyebrow" style="color: #6cffdf;">Mission abgeschlossen</p>
-      <h1 id="finalTitle">Botschafter</h1>
-      <p class="mission">Drei Clans, drei Beziehungen, formell aufgenommen. Soweit du das beurteilen kannst, hast du niemanden beleidigt. Das gilt unter Proteus bereits als großer diplomatischer Erfolg.</p>
-      <p class="mission">Was zwischen den beiden Rassen jetzt beginnt, steht in keinem Vertrag. Du hoffst, dass es ein guter Anfang war.</p>
+      <p class="eyebrow" style="color: #8fb0ff;">Mission abgeschlossen</p>
+      <h1 id="finalTitle">Solas</h1>
+      <p class="mission">Du sitzt in deinem Schiff, im Orbit über Solas, und schaust auf den Planeten. Er sieht nicht aus wie Calder. Er sieht nicht aus wie das Proteus-System. Er sieht aus wie ein Ort, an dem very viele Menschen very unterschiedliche Entscheidungen treffen.</p>
+      <p class="mission">Manche von denen, mit denen du gesprochen hast, haben verstanden, was auf dem Spiel steht. Nicht alle. Aber manche. Für einen Anfang reicht das.</p>
       <div class="final-stats">
-        <div class="final-stat"><strong>Status</strong><br>Drei Clans, Kontakt aufgenommen</div>
-        <div class="final-stat"><strong>Zwischenfälle</strong><br>Keine (offiziell)</div>
-        <div class="final-stat"><strong>Nächster Auftrag</strong><br>Unbekannt</div>
+        <div class="final-stat"><strong>Status</strong><br>Diplomatische Beziehungen — Aufnahme beschlossen</div>
+        <div class="final-stat"><strong>Kontakte</strong><br>Hergestellt</div>
+        <div class="final-stat"><strong>Nächster Auftrag</strong><br>Offen</div>
       </div>
       <div class="actions">
         <button id="finalMenuButton" type="button">Hauptmenü</button>
-        <button class="secondary" id="finalReplayButton" type="button">Level 8 wiederholen</button>
+        <button class="secondary" id="finalReplayButton" type="button">Kampagne neu starten</button>
       </div>
     </section>
   </div>
@@ -1032,6 +1096,33 @@
       <p class="mission" id="level8ClanMission">Der äußerste Clan empfängt dich am Rand seines eigenen Systems.</p>
       <div class="actions">
         <button id="level8ClanContinueButton" type="button">Weiter</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 9: Stage Contact Screen -->
+  <div class="overlay level9 story-bg story-bg--solas-reception" id="level9StageScreen" hidden>
+    <section class="start-panel" aria-labelledby="level9StageTitle">
+      <p class="eyebrow" id="level9StageEyebrow" style="color: #8fb0ff;">Empfangsring</p>
+      <h1 id="level9StageTitle">Zugang</h1>
+      <p class="mission" id="level9StageMission">Der Empfangsring ist für Händler, Kuriere, akkreditierte Delegationen.</p>
+      <div class="actions">
+        <button id="level9StageContinueButton" type="button">Weiter</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Level 9: Solas Arrival Screen (nach Hyperdrive) -->
+  <div class="overlay level9 story-bg story-bg--solas-arrival" id="level9ArrivalScreen" hidden>
+    <section class="start-panel" aria-labelledby="l9ArrivalTitle">
+      <p class="eyebrow" style="color: #8fb0ff;">Solas-System</p>
+      <h1 id="l9ArrivalTitle">Das Diplomatische Quartier</h1>
+      <p class="mission">Die Reise, die Jahre gedauert hätte, hat Wochen gedauert. Du hast aufgehört, darüber nachzudenken.</p>
+      <p class="mission">Vor dir: Solas. Nicht der Außenposten, nicht der Rand. Das Zentrum — soweit es eines gibt. Ein Planet, dicht besiedelt, alt genug um Narben zu haben. Im Orbit das Diplomatische Quartier, ein Konstrukt das seit Generationen gewachsen ist und es zeigt. Hier werden Verträge geschlossen, die erst in zwanzig Jahren erfüllt werden. Hier sitzen Menschen, die in Jahrzehnten denken.</p>
+      <p class="mission">Du hast keine Akkreditierung. Du hast kein Formular. Du hast Beweise, die für sich sprechen.</p>
+      <p class="mission">Dein Transferorbit ist eng kalkuliert. Die Verkehrskorridore öffnen sich nur kurz in jedem Zyklus.</p>
+      <div class="actions">
+        <button id="level9ArrivalContinueButton" type="button">Andocken beginnen</button>
       </div>
     </section>
   </div>
@@ -1105,7 +1196,7 @@
       <h1 id="l7Title">Kestrel</h1>
       <p class="mission">Kestrel Station. Orbit jenseits von Vendahl. Äußerster Rand des Calder-Systems.</p>
       <p class="mission">Acht Jahre lang gab es kein Lebenszeichen von hier. Die letzte Crew ist nie gegangen – sie hat nur aufgehört zu senden. Diesen Auftrag hat nicht Halvorsen vergeben. Der erste Funkspruch seit acht Jahren kam von der Station selbst.</p>
-      <p class="mission">Die Station treibt auf einer hohen, unstabilen Bahn. Bevor du andocken kannst, musst du in einen niedrigen, stabilen Orbit einschwenken – erst dann lässt sich die letzte Distanz überbrücken.</p>
+      <p class="mission">Die Station treibt voraus in einem hohen Orbit. Um sie einzuholen, schwenkst du tiefer ein — dort, wo die Bahnen schneller werden.</p>
       <div class="actions">
         <button id="level7StartButton" type="button">Start</button>
       </div>
@@ -1126,6 +1217,20 @@
     </section>
   </div>
 
+  <!-- Level 9: Start Screen (Proteus-Abflug) -->
+  <div class="overlay level9 story-bg story-bg--solas-departure" id="level9StartScreen" hidden>
+    <section class="start-panel" aria-labelledby="l9Title">
+      <p class="eyebrow" style="color: #8fb0ff;">Level 9 — Heimkehr</p>
+      <h1 id="l9Title">Aufbruch</h1>
+      <p class="mission">Das Schiff ist dasselbe. Fast.</p>
+      <p class="mission">Die Proteus haben etwas an den Antrieb gebaut — kein Bauteil das du kennst, kein Prinzip das du erklären könntest. Es funktioniert.</p>
+      <p class="mission">Dein Ziel: Solas. Das Zentrum menschlicher Macht. Flieg hinaus — jenseits der äußeren Umlaufbahn aktiviert sich der Proteus-Antrieb.</p>
+      <div class="actions">
+        <button id="level9StartButton" type="button">Start</button>
+      </div>
+    </section>
+  </div>
+
   <!-- Level 3: Start Screen -->
   <div class="overlay level3" id="level3StartScreen" hidden>
     <section class="start-panel" aria-labelledby="l3Title">
@@ -1138,6 +1243,6 @@
     </section>
   </div>
 
-  <script type="module" src="./js/main.js?v=57"></script>
+  <script type="module" src="./js/main.js?v=55"></script>
 </body>
 </html>

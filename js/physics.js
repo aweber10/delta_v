@@ -39,10 +39,9 @@ function updateDockedShip(ship, dt) {
     // Orbiting station: Schiff wird aktiv zur aktuellen Port-Position der Station geführt
     // und übernimmt die Stationsgeschwindigkeit (für korrekten Abflug nach Undock)
     const s = ship.dockedStation;
-    const portX = s.x + Math.cos(s.dockAngle) * 40; // ARM_LENGTH = 40
-    const portY = s.y + Math.sin(s.dockAngle) * 40;
-    ship.x = portX;
-    ship.y = portY;
+    const port = getPortPosition(s);
+    ship.x = port.x;
+    ship.y = port.y;
     ship.vx = s.vx;
     ship.vy = s.vy;
     ship.angle = s.dockAngle + Math.PI;

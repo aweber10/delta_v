@@ -6,12 +6,44 @@ export function clear(ctx, canvas) {
   ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 }
 
-export function drawStars(ctx, stars, cam, canvas) {
+export function drawStars(ctx, stars, cam, canvas, warpState = null) {
+  if (warpState) {
+    drawWarpStars(ctx, stars, canvas, warpState);
+    return;
+  }
   ctx.fillStyle = '#fff';
   for (const s of stars) {
     const p = worldToScreen(cam, s.x, s.y, canvas);
     ctx.fillRect(p.x, p.y, 1 * cam.zoom, 1 * cam.zoom);
   }
+}
+
+function drawWarpStars(ctx, stars, canvas, warpState) {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const progress = Math.max(0, Math.min(1, warpState.progress));
+  const dx = Math.cos(warpState.angle);
+  const dy = Math.sin(warpState.angle);
+  const streakBase = 4 + Math.pow(progress, 1.35) * Math.hypot(w, h) * 0.48;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (let i = 0; i < stars.length; i++) {
+    const star = stars[i];
+    // Während des Sprungs werden alle Weltsterne deterministisch über den Viewport verteilt.
+    const x = ((star.x * 0.731 + star.y * 0.193 + i * 67) % w + w) % w;
+    const y = ((star.y * 0.619 + star.x * 0.127 + i * 43) % h + h) % h;
+    const depth = 0.45 + ((i * 37) % 100) / 180;
+    const length = streakBase * depth;
+    const alpha = 0.28 + progress * 0.68 * depth;
+    ctx.strokeStyle = `rgba(218, 232, 255, ${alpha})`;
+    ctx.lineWidth = 0.7 + progress * 1.9 * depth;
+    ctx.beginPath();
+    ctx.moveTo(x + dx * length * 0.18, y + dy * length * 0.18);
+    ctx.lineTo(x - dx * length * 0.82, y - dy * length * 0.82);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 export function drawRcsZone(ctx, ship, cam, canvas, flags) {
@@ -115,12 +147,76 @@ export function drawStation(ctx, station, cam, canvas, color = 'red') {
 
   if (station.stationVariant?.startsWith('proteus-')) {
     drawProteusStation(ctx, station, z);
+    drawDockingArm(ctx, station, z, color);
+  } else if (station.stationVariant === 'solas-complex') {
+    ctx.rotate(station.orbitAngle + Math.PI / 2);
+    drawSolasStation(ctx, station, z);
+    drawSolasDockPorts(ctx, station, z, color);
   } else {
     drawStationBody(ctx, z);
     drawSolarPanels(ctx, z);
+    drawDockingArm(ctx, station, z, color);
   }
-  drawDockingArm(ctx, station, z, color);
 
+  ctx.restore();
+}
+
+/**
+ * Zeichnet alle Docking-Ports des Solas-Komplexes.
+ * Inaktive Ports neutral (grau), der aktive Port farbig (Rot/Gelb/Grün).
+ */
+function drawSolasDockPorts(ctx, station, z, activeColor) {
+  const ports = station.allDockPorts ?? [0];
+  const activeId = station.activeDockPort?.id;
+
+  for (const port of ports) {
+    const isActive = port.id === activeId;
+    if (!isActive) {
+      drawInactiveSolasDock(ctx, port, z);
+      continue;
+    }
+    drawDockingArmAt(ctx, port.angle, z, activeColor, station.docked, port.distance, true);
+  }
+}
+
+function drawInactiveSolasDock(ctx, port, z) {
+  ctx.save();
+  ctx.rotate(port.angle);
+  ctx.translate(port.distance * z, 0);
+  ctx.fillStyle = '#172331';
+  ctx.strokeStyle = 'rgba(115, 145, 170, 0.5)';
+  ctx.lineWidth = Math.max(1, 1.25 * z);
+  ctx.beginPath();
+  ctx.arc(0, 0, 5 * z, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function drawSolasCollisionGuides(ctx, station, zones, ship, cam, canvas) {
+  if (!zones?.length || Math.hypot(ship.x - station.x, ship.y - station.y) > 650) return;
+  const p = worldToScreen(cam, station.x, station.y, canvas);
+  const proximity = 1 - Math.min(1, Math.hypot(ship.x - station.x, ship.y - station.y) / 650);
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(station.orbitAngle + Math.PI / 2);
+  ctx.setLineDash([5, 7]);
+  for (const zone of zones) {
+    ctx.fillStyle = `rgba(255, 148, 70, ${0.025 + proximity * 0.055})`;
+    ctx.strokeStyle = `rgba(255, 166, 92, ${0.22 + proximity * 0.42})`;
+    ctx.lineWidth = Math.max(1, 1.2 * cam.zoom);
+    ctx.beginPath();
+    ctx.arc(
+      zone.x * cam.zoom,
+      zone.y * cam.zoom,
+      (zone.radius + SHIP_RADIUS) * cam.zoom,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -190,6 +286,269 @@ function drawProteusStation(ctx, station, z) {
   }
 
   drawProteusInnerStation(ctx, z);
+}
+
+function drawSolasStation(ctx, station, z) {
+  // Orbitale Hauptstadt: breite Silhouette, klare Magistrale und warme Stadtlichter.
+  const s = z * 2.75;
+
+  drawSolasCityGlow(ctx, s);
+  drawSolasStructuralFrame(ctx, s);
+  drawSolasRotatingHabitatRing(ctx, s);
+  drawSolasModules(ctx, s);
+  drawSolasSolarArrays(ctx, s);
+  drawSolasCoreTower(ctx, s);
+  drawSolasDetails(ctx, s);
+  drawSolasTraffic(ctx, s);
+}
+
+function drawSolasCityGlow(ctx, s) {
+  const glow = ctx.createRadialGradient(0, 0, 8 * s, 0, 0, 105 * s);
+  glow.addColorStop(0, 'rgba(255, 218, 145, 0.16)');
+  glow.addColorStop(0.45, 'rgba(95, 155, 215, 0.07)');
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 136 * s, 62 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#202b38';
+  ctx.beginPath();
+  ctx.roundRect(-108 * s, -12 * s, 216 * s, 24 * s, 7 * s);
+  ctx.fill();
+}
+
+/** Tragstruktur: Haupt- und Querträger, diagonale Streben. */
+function drawSolasStructuralFrame(ctx, s) {
+  ctx.strokeStyle = '#6a788c';
+  ctx.lineWidth = 3 * s;
+  ctx.beginPath();
+  ctx.moveTo(-112 * s, -6 * s);
+  ctx.lineTo(114 * s, 9 * s);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#5a6b80';
+  ctx.lineWidth = 2.5 * s;
+  ctx.beginPath();
+  ctx.moveTo(-18 * s, -48 * s);
+  ctx.lineTo(22 * s, 52 * s);
+  ctx.stroke();
+
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(-96 * s, -28 * s);
+  ctx.lineTo(-42 * s, 22 * s);
+  ctx.moveTo(48 * s, -30 * s);
+  ctx.lineTo(102 * s, 28 * s);
+  ctx.stroke();
+}
+
+/** Rotierender Habitatring (zeitbasiert, rein visuell). */
+function drawSolasRotatingHabitatRing(ctx, s) {
+  const ringAngle = performance.now() * 0.00035;
+
+  ctx.save();
+  // Zwei unabhängige Habitatbezirke brechen die zentrale Ringsilhouette auf.
+  ctx.strokeStyle = '#8195aa';
+  ctx.lineWidth = 6 * s;
+  ctx.beginPath();
+  ctx.arc(-66 * s, -2 * s, 30 * s, ringAngle + 0.35, ringAngle + 2.75);
+  ctx.arc(68 * s, 4 * s, 25 * s, -ringAngle - 2.6, -ringAngle - 0.15);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#334457';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.arc(-66 * s, -2 * s, 37 * s, ringAngle + 0.45, ringAngle + 2.65);
+  ctx.arc(68 * s, 4 * s, 31 * s, -ringAngle - 2.5, -ringAngle - 0.25);
+  ctx.stroke();
+
+  for (let i = 0; i < 10; i++) {
+    const left = i < 5;
+    const a = (i / 5) * Math.PI * 2 + (left ? ringAngle : -ringAngle);
+    const cx = (left ? -66 : 68) * s;
+    const cy = (left ? -2 : 4) * s;
+    const radius = (left ? 30 : 25) * s;
+    const rx = cx + Math.cos(a) * radius;
+    const ry = cy + Math.sin(a) * radius;
+    ctx.fillStyle = i % 2 === 0 ? '#64788d' : '#405064';
+    ctx.fillRect(rx - 2.5 * s, ry - 2.5 * s, 5 * s, 5 * s);
+    if (i % 2 === 0) {
+      ctx.fillStyle = '#ffd58f';
+      ctx.beginPath();
+      ctx.arc(rx, ry, 1 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+/** Asymmetrisch angebaute Habitat- und Verwaltungsmodule. */
+function drawSolasModules(ctx, s) {
+  const modules = [
+    { x: -108, y: -17, w: 24, h: 25, color: '#405268' },
+    { x: -84, y: 10, w: 30, h: 18, color: '#52677e' },
+    { x: -56, y: -34, w: 20, h: 22, color: '#485e75' },
+    { x: -38, y: 12, w: 26, h: 18, color: '#5a6b80' },
+    { x: -14, y: -42, w: 22, h: 18, color: '#4a5e78' },
+    { x: 18, y: 18, w: 28, h: 17, color: '#5a6e85' },
+    { x: 42, y: -32, w: 24, h: 20, color: '#485e75' },
+    { x: 66, y: 12, w: 25, h: 22, color: '#52677e' },
+    { x: 88, y: -18, w: 28, h: 24, color: '#405268' },
+    { x: 104, y: 12, w: 18, h: 16, color: '#5a6b80' },
+  ];
+
+  for (const m of modules) {
+    ctx.fillStyle = m.color;
+    ctx.fillRect(m.x * s, m.y * s, m.w * s, m.h * s);
+    ctx.strokeStyle = '#7a8da8';
+    ctx.lineWidth = 1 * s;
+    ctx.strokeRect(m.x * s, m.y * s, m.w * s, m.h * s);
+
+    // Fensterreihen (besiedelt)
+      ctx.fillStyle = (m.x + m.y) % 3 === 0 ? '#b9dcff' : '#ffd18a';
+    const cols = Math.max(2, Math.floor(m.w / 6));
+    const rows = Math.max(1, Math.floor(m.h / 6));
+    for (let cx = 0; cx < cols; cx++) {
+      for (let ry = 0; ry < rows; ry++) {
+        if ((cx + ry) % 2 !== 0) continue;
+        const wx = (m.x + 2 + cx * 5) * s;
+        const wy = (m.y + 2 + ry * 5) * s;
+        ctx.fillRect(wx, wy, 1.4 * s, 1.4 * s);
+      }
+    }
+  }
+
+  // Verbindungsrohre
+  ctx.strokeStyle = 'rgba(130, 150, 170, 0.6)';
+  ctx.lineWidth = 1.5 * s;
+  ctx.beginPath();
+  ctx.moveTo(-96 * s, 2 * s); ctx.lineTo(-70 * s, 14 * s);
+  ctx.moveTo(-55 * s, -16 * s); ctx.lineTo(-28 * s, 14 * s);
+  ctx.moveTo(-5 * s, -28 * s); ctx.lineTo(25 * s, 20 * s);
+  ctx.moveTo(50 * s, -14 * s); ctx.lineTo(74 * s, 15 * s);
+  ctx.moveTo(92 * s, -2 * s); ctx.lineTo(110 * s, 14 * s);
+  ctx.stroke();
+}
+
+/** Ausladende Solarpanel-Arrays. */
+function drawSolasSolarArrays(ctx, s) {
+  const panels = [
+    { x: -42, y: -58, w: 40, h: 6 },
+    { x: 40, y: -28, w: 6, h: 36 },
+    { x: 22, y: 52, w: 34, h: 6 },
+    { x: -66, y: -24, w: 6, h: 30 },
+  ];
+  for (const pnl of panels) {
+    ctx.fillStyle = '#2a3a55';
+    ctx.fillRect(pnl.x * s, pnl.y * s, pnl.w * s, pnl.h * s);
+    ctx.strokeStyle = '#4a6a90';
+    ctx.lineWidth = 0.5 * s;
+    ctx.strokeRect(pnl.x * s, pnl.y * s, pnl.w * s, pnl.h * s);
+    // Panel-Gitterlinien
+    ctx.strokeStyle = 'rgba(74, 106, 144, 0.7)';
+    if (pnl.w > pnl.h) {
+      for (let gx = 1; gx < pnl.w / 8; gx++) {
+        const lx = (pnl.x + gx * 8) * s;
+        ctx.beginPath();
+        ctx.moveTo(lx, pnl.y * s);
+        ctx.lineTo(lx, (pnl.y + pnl.h) * s);
+        ctx.stroke();
+      }
+    } else {
+      for (let gy = 1; gy < pnl.h / 8; gy++) {
+        const ly = (pnl.y + gy * 8) * s;
+        ctx.beginPath();
+        ctx.moveTo(pnl.x * s, ly);
+        ctx.lineTo((pnl.x + pnl.w) * s, ly);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+/** Zentraler gestaffelter Turm/Kern. */
+function drawSolasCoreTower(ctx, s) {
+  // Basis
+  ctx.fillStyle = '#5a6b80';
+  ctx.fillRect(-14 * s, -14 * s, 28 * s, 28 * s);
+  ctx.strokeStyle = '#8a9ab0';
+  ctx.lineWidth = 1.5 * s;
+  ctx.strokeRect(-14 * s, -14 * s, 28 * s, 28 * s);
+
+  // Mittelebene
+  ctx.fillStyle = '#6a7a90';
+  ctx.fillRect(-10 * s, -10 * s, 20 * s, 20 * s);
+  ctx.strokeRect(-10 * s, -10 * s, 20 * s, 20 * s);
+
+  // Leuchtende Zentralkammer
+  ctx.shadowColor = 'rgba(255, 218, 150, 0.8)';
+  ctx.shadowBlur = 12 * s;
+  ctx.fillStyle = '#f0c982';
+  ctx.beginPath();
+  ctx.arc(0, 0, 6 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff4d2';
+  ctx.beginPath();
+  ctx.arc(0, 0, 3 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function drawSolasTraffic(ctx, s) {
+  const time = performance.now() * 0.00035;
+  const lanes = [
+    { y: -72, width: 88, phase: 0, color: '#9ed9ff' },
+    { y: 68, width: 76, phase: 1.7, color: '#ffd08a' },
+    { y: 26, width: 112, phase: 3.1, color: '#b8e6ff' },
+  ];
+  for (const lane of lanes) {
+    const t = (time + lane.phase) % 1;
+    const x = (-lane.width + t * lane.width * 2) * s;
+    ctx.strokeStyle = lane.color;
+    ctx.globalAlpha = 0.28;
+    ctx.lineWidth = 0.8 * s;
+    ctx.beginPath();
+    ctx.moveTo(x - 10 * s, lane.y * s);
+    ctx.lineTo(x, lane.y * s);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = lane.color;
+    ctx.fillRect(x, lane.y * s - 0.8 * s, 2.2 * s, 1.6 * s);
+  }
+}
+
+/** Antennen, Navigationslichter, Ambient-Glow. */
+function drawSolasDetails(ctx, s) {
+  // Kommunikationsantennen
+  ctx.strokeStyle = '#9ab0c8';
+  ctx.lineWidth = 1 * s;
+  ctx.beginPath();
+  ctx.moveTo(66 * s, 9 * s); ctx.lineTo(78 * s, 14 * s);
+  ctx.moveTo(66 * s, 9 * s); ctx.lineTo(75 * s, 2 * s);
+  ctx.moveTo(-58 * s, -6 * s); ctx.lineTo(-70 * s, -14 * s);
+  ctx.moveTo(-12 * s, -50 * s); ctx.lineTo(-16 * s, -62 * s);
+  ctx.moveTo(16 * s, 54 * s); ctx.lineTo(22 * s, 64 * s);
+  ctx.stroke();
+
+  // Blinkende Navigationslichter (rot/grün an Enden)
+  const blink = 0.5 + 0.5 * Math.sin(performance.now() * 0.004);
+  ctx.fillStyle = `rgba(255, 80, 80, ${0.4 + blink * 0.6})`;
+  ctx.beginPath();
+  ctx.arc(78 * s, 14 * s, 1.6 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(80, 255, 120, ${0.4 + (1 - blink) * 0.6})`;
+  ctx.beginPath();
+  ctx.arc(-70 * s, -14 * s, 1.6 * s, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Schwacher Ambient-Glow
+  ctx.strokeStyle = 'rgba(143, 176, 255, 0.06)';
+  ctx.lineWidth = 1 * s;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 90 * s, 74 * s, 0.15, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 function drawProteusOuterStation(ctx, z) {
@@ -308,48 +667,74 @@ function drawDockingArm(ctx, station, z, color) {
   ctx.restore();
 }
 
+/** Zeichnet einen Docking-Arm an einem expliziten Winkel (für Multi-Port-Komplexe). */
+function drawDockingArmAt(ctx, angle, z, color, docked, armLength = ARM_LENGTH, pulse = false) {
+  ctx.save();
+  ctx.rotate(angle);
+
+  drawArmStrut(ctx, z, armLength);
+  drawArmJoint(ctx, z, armLength);
+  drawDockingPort(ctx, z, color, armLength);
+  if (docked) drawDockedRing(ctx, z, armLength);
+  drawApproachIndicator(ctx, z, color, armLength);
+  if (pulse) drawActivePortPulse(ctx, z, color, armLength);
+
+  ctx.restore();
+}
+
+function drawActivePortPulse(ctx, z, color, armLength) {
+  const pulse = 0.5 + Math.sin(performance.now() * 0.006) * 0.5;
+  ctx.globalAlpha = 0.35 + pulse * 0.5;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1.5, 2.5 * z);
+  ctx.beginPath();
+  ctx.arc(armLength * z, 0, (10 + pulse * 7) * z, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
 /** Zeichnet die Hauptverbindung des Docking-Arms. */
-function drawArmStrut(ctx, z) {
+function drawArmStrut(ctx, z, armLength = ARM_LENGTH) {
   ctx.strokeStyle = '#aaa';
   ctx.lineWidth = 2.5 * z;
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(ARM_LENGTH * z, 0);
+  ctx.lineTo(armLength * z, 0);
   ctx.stroke();
 }
 
 /** Zeichnet das Gelenk am Mittelpunkt des Arms. */
-function drawArmJoint(ctx, z) {
+function drawArmJoint(ctx, z, armLength = ARM_LENGTH) {
   ctx.fillStyle = '#bbb';
   ctx.beginPath();
-  ctx.arc(ARM_LENGTH * 0.5 * z, 0, 3 * z, 0, Math.PI * 2);
+  ctx.arc(armLength * 0.5 * z, 0, 3 * z, 0, Math.PI * 2);
   ctx.fill();
 }
 
 /** Zeichnet den Docking-Port am Ende des Arms. */
-function drawDockingPort(ctx, z, color) {
+function drawDockingPort(ctx, z, color, armLength = ARM_LENGTH) {
   ctx.strokeStyle = color;
   ctx.lineWidth = 2 * z;
   ctx.fillStyle = '#333';
   ctx.beginPath();
-  ctx.arc(ARM_LENGTH * z, 0, 5 * z, 0, Math.PI * 2);
+  ctx.arc(armLength * z, 0, 5 * z, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 }
 
 /** Zeichnet den grünen Glow-Ring für erfolgreiche Dockings. */
-function drawDockedRing(ctx, z) {
+function drawDockedRing(ctx, z, armLength = ARM_LENGTH) {
   ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
   ctx.lineWidth = 3.5 * z;
   ctx.beginPath();
-  ctx.arc(ARM_LENGTH * z, 0, 8 * z, 0, Math.PI * 2);
+  ctx.arc(armLength * z, 0, 8 * z, 0, Math.PI * 2);
   ctx.stroke();
 }
 
 /** Zeichnet Pfeil und Kegel für die Anflugrichtung. */
-function drawApproachIndicator(ctx, z, color) {
+function drawApproachIndicator(ctx, z, color, armLength = ARM_LENGTH) {
   const arrowDist = 18 * z;
-  const ax = ARM_LENGTH * z + arrowDist;
+  const ax = armLength * z + arrowDist;
 
   // Approach arrow
   ctx.fillStyle = '#fff';
@@ -364,10 +749,10 @@ function drawApproachIndicator(ctx, z, color) {
   ctx.strokeStyle = `${color}55`;
   ctx.lineWidth = 1 * z;
   ctx.beginPath();
-  ctx.moveTo(ARM_LENGTH * z, 0);
-  ctx.lineTo(ARM_LENGTH * z + 40 * z,  15 * z);
-  ctx.moveTo(ARM_LENGTH * z, 0);
-  ctx.lineTo(ARM_LENGTH * z + 40 * z, -15 * z);
+  ctx.moveTo(armLength * z, 0);
+  ctx.lineTo(armLength * z + 40 * z,  15 * z);
+  ctx.moveTo(armLength * z, 0);
+  ctx.lineTo(armLength * z + 40 * z, -15 * z);
   ctx.stroke();
 }
 
@@ -390,6 +775,7 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas, options =
   const color = options?.color ?? '#ff4444';
   const glow = options?.glow ?? 'rgba(255, 80, 80, 0.3)';
   const labelColor = options?.labelColor ?? '#ff9999';
+  const showDistance = options?.showDistance ?? true;
 
   const dx = targetStation.x - ship.x;
   const dy = targetStation.y - ship.y;
@@ -439,6 +825,8 @@ export function drawTargetArrow(ctx, ship, targetStation, cam, canvas, options =
   ctx.fillRect(-10, -3, 16, 6);
 
   ctx.restore();
+
+  if (!showDistance) return;
 
   // Distance label next to arrow
   const labelX = cx + Math.cos(angle) * (edgeR + 28);
@@ -607,6 +995,59 @@ export function drawLevel8Hint(ctx, canvas) {
   ctx.font = '12px sans-serif';
   ctx.fillStyle = '#e8f6ff';
   ctx.fillText('Rot: Zielstation. Gold: Planetenzentrum.', x + 12, y + 42);
+  ctx.restore();
+}
+
+export function drawSolasWindowHud(ctx, canvas, data) {
+  const width = Math.min(330, canvas.clientWidth - 24);
+  const x = (canvas.clientWidth - width) / 2;
+  const y = 14;
+  const seconds = Math.max(0, data.remainingMs / 1000).toFixed(1);
+  const isOpen = data.phase === 'open';
+  const accent = isOpen ? '#76f0b0' : data.phase === 'warning' ? '#ffd080' : '#8fb9df';
+  const status = isOpen
+    ? `ANDOCKEN FREIGEGEBEN · ${seconds}s`
+    : data.phase === 'warning'
+      ? `KORRIDOR ÖFFNET IN ${seconds}s`
+      : `NÄCHSTE FREIGABE IN ${seconds}s`;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = 'rgba(3, 9, 16, 0.78)';
+  ctx.fillRect(x, y, width, 58);
+  ctx.strokeStyle = accent;
+  ctx.globalAlpha = 0.7;
+  ctx.strokeRect(x + 0.5, y + 0.5, width - 1, 57);
+  ctx.globalAlpha = 1;
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#b9c8d8';
+  ctx.fillText(data.label.toUpperCase(), x + 12, y + 20);
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillStyle = accent;
+  ctx.fillText(status, x + 12, y + 42);
+  ctx.restore();
+}
+
+export function drawHyperdriveWhiteout(ctx, canvas, elapsedMs, durationMs) {
+  const progress = Math.min(1, elapsedMs / durationMs);
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+
+  ctx.save();
+
+  // Whiteout über den gesamten Bildschirm
+  let whiteAlpha = 0;
+  if (progress < 0.8) {
+    whiteAlpha = Math.pow(progress / 0.8, 2);
+  } else {
+    whiteAlpha = 1.0 - ((progress - 0.8) / 0.2);
+  }
+
+  if (whiteAlpha > 0) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${whiteAlpha})`;
+    ctx.fillRect(0, 0, w, h);
+  }
+
   ctx.restore();
 }
 
@@ -1250,6 +1691,84 @@ const CLOUD_BANDS = [
  * Zeichnet einen schönen Erdplaneten mit Atmosphäre, Kontinenten und Wolken.
  * @param {object} planet - { x, y, radius, cloudAngle }
  */
+export function drawSolasPlanet(ctx, planet, cam, canvas) {
+  const p = worldToScreen(cam, planet.x, planet.y, canvas);
+  const z = cam.zoom;
+  const r = planet.radius * z;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  // --- Hauptkörper: warmer, erdiger Ton (besiedelt, alt, Narben) ---
+  const baseGrad = ctx.createRadialGradient(-r * 0.25, -r * 0.28, r * 0.05, 0, 0, r);
+  baseGrad.addColorStop(0, '#c4a86a');    // helles Gold (Highlight)
+  baseGrad.addColorStop(0.3, '#8a7548');  // warmes Braun
+  baseGrad.addColorStop(0.6, '#5a4e38');  // dunkles Braun
+  baseGrad.addColorStop(1, '#2a2218');    // sehr dunkel am Rand
+  ctx.fillStyle = baseGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Narben/Lichter: dicht besiedelte Oberfläche ---
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.998, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Stadtlichter / Besiedelungsmuster (goldene Punkte/Linien)
+  ctx.globalAlpha = 0.35;
+  const rot = planet.rotation * 0.3;
+  for (let i = 0; i < 30; i++) {
+    const angle = rot + (i * 7.3) % (Math.PI * 2);
+    const dist = 0.2 + ((i * 13) % 60) / 100;
+    const cx = Math.cos(angle) * dist * r;
+    const cy = Math.sin(angle) * dist * r;
+    const size = (2 + (i % 4)) * z;
+    ctx.fillStyle = '#ffd080';
+    ctx.beginPath();
+    ctx.arc(cx, cy, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Narben / alte Krater (dunkle Flecken)
+  ctx.globalAlpha = 0.15;
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * 11.7) % (Math.PI * 2);
+    const dist = 0.3 + ((i * 17) % 40) / 100;
+    const cx = Math.cos(angle) * dist * r;
+    const cy = Math.sin(angle) * dist * r;
+    const size = (8 + (i * 5 % 12)) * z;
+    ctx.fillStyle = '#1a1510';
+    ctx.beginPath();
+    ctx.arc(cx, cy, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // --- Atmosphäre: dünner warmer Glührand ---
+  const atmoGrad = ctx.createRadialGradient(0, 0, r * 0.92, 0, 0, r * 1.06);
+  atmoGrad.addColorStop(0, 'rgba(200, 160, 100, 0)');
+  atmoGrad.addColorStop(0.6, 'rgba(200, 160, 100, 0.08)');
+  atmoGrad.addColorStop(1, 'rgba(200, 160, 100, 0)');
+  ctx.fillStyle = atmoGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Schattierung: Kugel-Effekt ---
+  const shadowGrad = ctx.createRadialGradient(r * 0.3, r * 0.3, 0, 0, 0, r);
+  shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  shadowGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)');
+  shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 export function drawPlanet(ctx, planet, cam, canvas) {
   const p = worldToScreen(cam, planet.x, planet.y, canvas);
   const z = cam.zoom;

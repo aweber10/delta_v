@@ -59,7 +59,7 @@ export function updateOrbitingStation(station, dt) {
   station.y = newY;
 
   // Docking-Arm bleibt seitlich am Orbit, tangential zur Flugbahn.
-  station.dockAngle = station.orbitAngle + Math.PI / 2;
+  station.dockAngle = station.orbitAngle + Math.PI / 2 + (station.dockAngleOffset ?? 0);
 }
 
 function getOrbitVelocityX(angle, orbitRadius, orbitSpeed) {
@@ -71,10 +71,11 @@ function getOrbitVelocityY(angle, orbitRadius, orbitSpeed) {
 }
 
 export function getPortPosition(station) {
+  const armLength = station.activeDockPort?.distance ?? ARM_LENGTH;
   // Port is at the end of the arm, pointing opposite to dockAngle
   return {
-    x: station.x + Math.cos(station.dockAngle) * ARM_LENGTH,
-    y: station.y + Math.sin(station.dockAngle) * ARM_LENGTH
+    x: station.x + Math.cos(station.dockAngle) * armLength,
+    y: station.y + Math.sin(station.dockAngle) * armLength
   };
 }
 
@@ -98,13 +99,15 @@ export function checkDock(ship, station) {
   const angleDiff = Math.abs(normalizeAngle(ship.angle - targetApproachAngle));
 
   const posOk = dist <= DOCK_RADIUS;
-  const speedOk = speed < V_DOCK_MAX;
-  const angleOk = angleDiff <= ANGLE_DOCK_TOL;
+  const speedOk = speed < (station.dockRules?.maxSpeed ?? V_DOCK_MAX);
+  const angleOk = angleDiff <= (station.dockRules?.angleTolerance ?? ANGLE_DOCK_TOL);
+  const windowOk = station.dockWindowOpen ?? true;
 
-  return { posOk, speedOk, angleOk, dist, relSpeed: speed };
+  return { posOk, speedOk, angleOk, windowOk, dist, relSpeed: speed };
 }
 
 export function dockColor(check) {
+  if (check.windowOk === false) return '#75a7d8';
   // Grün: alle 3 Bedingungen erfüllt
   if (check.posOk && check.speedOk && check.angleOk) return 'green';
   // Gelb: sobald Geschwindigkeit UND Winkel passen (Position egal)

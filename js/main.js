@@ -1,11 +1,11 @@
 import { createShip } from './ship.js';
-import { createCamera, updateCamera, updateLevel8Camera, isWorldPointOnScreen } from './camera.js';
+import { createCamera, updateCamera, updateLevel8Camera, updateLevel9Camera, isWorldPointOnScreen } from './camera.js';
 import { createInputFlags, setupDesktopInput } from './input-desktop.js';
 import { setupMobileInput } from './input-mobile.js';
 import { updatePhysics } from './physics.js';
 import { updateOrbitingStation, checkDock, dockColor, getPortPosition } from './station.js';
 import * as renderer from './renderer.js';
-import { FUEL_MAIN, FUEL_START, EVENT_HORIZON, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, THRUST_MAIN, normalizeAngle } from './constants.js';
+import { FUEL_MAIN, FUEL_START, EVENT_HORIZON, ORBIT_STATION_RADIUS, ORBIT_STATION_SPEED, ORBIT_TOLERANCE, ORBIT_RADIAL_SPEED_OK, ORBIT_TANGENTIAL_SPEED_OK, THRUST_MAIN, normalizeAngle, L9_HYPERDRIVE_TRIGGER_RADIUS, L9_WHITEOUT_DURATION_MS } from './constants.js';
 import { initAudio, isMuted, playDeliveryComplete, playDock, playStart, toggleMute } from './audio.js';
 import { createTutorial, updateTutorial, drawTutorial, setTutorialNearStation, setTutorialStationVisible, setTutorialArrowTarget } from './tutorial.js';
 import { checkWellCollision, predictTrajectory } from './gravity.js';
@@ -28,6 +28,17 @@ const level8ClanEyebrow = document.getElementById('level8ClanEyebrow');
 const level8ClanTitle = document.getElementById('level8ClanTitle');
 const level8ClanMission = document.getElementById('level8ClanMission');
 const level8ClanContinueButton = document.getElementById('level8ClanContinueButton');
+
+const level9StageScreen = document.getElementById('level9StageScreen');
+const level9StageEyebrow = document.getElementById('level9StageEyebrow');
+const level9StageTitle = document.getElementById('level9StageTitle');
+const level9StageMission = document.getElementById('level9StageMission');
+const level9StageContinueButton = document.getElementById('level9StageContinueButton');
+const hyperdriveHud = document.getElementById('hyperdriveHud');
+const hyperdriveButton = document.getElementById('hyperdriveButton');
+const level9ArrivalScreen = document.getElementById('level9ArrivalScreen');
+const level9ArrivalContinueButton = document.getElementById('level9ArrivalContinueButton');
+
 const startL1 = document.getElementById('startL1');
 const startL2 = document.getElementById('startL2');
 const startL3 = document.getElementById('startL3');
@@ -95,13 +106,13 @@ const LEVEL8_CLAN_COPY = [
   {
     eyebrow: 'Äußerer Clan',
     title: 'Die Vorsichtigen',
-    mission: 'Der äußerste Clan empfängt dich am Rand seines eigenen Systems - so weit draußen, dass ihr Planet nur ein Gerücht ist. Sie prüfen dich lange, bevor sie überhaupt antworten. Als sie es tun, ist es ein einzelner, exakt formulierter Satz der Begrüßung. Du verstehst: Das war, für sie, überschwänglich.',
+    mission: 'Der äußerste Clan empfängt dich förmlich. Sie prüfen dich lange, bevor sie überhaupt antworten. Als sie es tun, ist es ein einzelner, exakt formulierter Satz der Begrüßung. Du verstehst: Das war, für sie, überschwänglich.',
     button: 'Weiter zum zweiten Clan',
   },
   {
     eyebrow: 'Mittlerer Clan',
     title: 'Die Neugierigen',
-    mission: 'Der zweite Clan hat keine Geduld mit Förmlichkeiten. Kaum angedockt, prasseln Fragen auf dich ein - über Halvorsen, über Treibstoffpreise, über die Frachtbestätigung, die du auf der Bake bei Praskev nie quittiert hast.',
+    mission: 'Der zweite Clan stellt Fragen. Viele. Über Halvorsen, über Praskev, über Entscheidungen, die du vor Jahren getroffen hast und längst vergessen hattest. Sie haben nichts vergessen. Irgendwann merkst du, dass es kein Verhör ist – sie sind schlicht fasziniert. Eine Rasse, die in Jahrtausenden denkt, studiert eine, die in Quartalen plant. Du bist dir nicht sicher, ob das Bewunderung ist oder Sorge.',
     button: 'Weiter zum inneren Clan',
   },
   {
@@ -111,6 +122,45 @@ const LEVEL8_CLAN_COPY = [
     button: 'Mission abschließen',
   },
 ];
+
+const level9State = {
+  phase: 'proteus',
+  hyperdriveTriggered: false,
+  whiteoutStart: 0,
+  pendingFinal: false,
+  cameraFocusStation: null,
+  portIndex: 0,
+  windowCycleStart: 0,
+  windowPhase: 'warning',
+  windowRemainingMs: 0,
+  lastDockIndex: -1,
+  revealStart: 0,
+};
+
+const LEVEL9_STAGE_COPY = [
+  {
+    backgroundClass: 'story-bg--solas-reception',
+    eyebrow: 'Empfangsring',
+    title: 'Zugang',
+    mission: 'Der Empfangsring ist für Händler, Kuriere, akkreditierte Delegationen. Nicht für dich. Du landest trotzdem.\n\nDie erste Stunde ist Bürokratie. Formulare, Wartelisten, ein Sachbearbeiter der höflich erklärt, dass dein Anliegen an die zuständige Stelle weitergeleitet wird. Du fragst, welche Stelle das ist. Er weiß es nicht genau.\n\nDann zeigst du das Antriebsprotokoll. Die Reisedauer. Die Koordinaten von Kestrel. Er liest es zweimal. Dann steht er auf und holt jemanden.',
+    button: 'Weiter zur Konsultationsebene',
+  },
+  {
+    backgroundClass: 'story-bg--solas-consultation',
+    eyebrow: 'Konsultationsebene',
+    title: 'Position',
+    mission: 'Die Konsultationsebene ist für Gespräche, die offiziell nicht stattfinden. Hier sitzen Menschen, die verstehen, was es bedeutet wenn etwas nicht ins Register passt.\n\nZwei von ihnen hören dir zu, ohne dich zu unterbrechen. Das ist ungewöhnlich. Einer stellt Fragen — nicht über die Proteus, sondern über dich. Wie lange du draußen warst. Ob du allein geflogen bist. Ob du weißt, was du mitgebracht hast.\n\nDu sagst: eine Geste. Einen Anfang. Keine Garantien.\n\nEr nickt. Er hat in seinem Leben zwei interstellare Verträge verhandelt. Er weiß, dass Anfänge das Wertvollste sind, was es gibt.',
+    button: 'Weiter zur Zentralkammer',
+  },
+  {
+    backgroundClass: 'story-bg--solas-chamber',
+    eyebrow: 'Zentralkammer',
+    title: 'Entscheidung',
+    mission: 'Die Zentralkammer ist nicht groß. Das überrascht dich.\n\nHier wird nicht debattiert — das ist anderswo passiert, über Jahre, über Jahrzehnte. Hier wird nur noch entschieden. Drei Personen, ein Tisch, kein Publikum.\n\nDu trägst vor, was du weißt. Was du gesehen hast. Was die Proteus sind, soweit du das beurteilen kannst. Dass sie in Jahrtausenden denken. Dass sie die Menschheit studiert haben, nicht weil sie eine Bedrohung sahen, sondern weil sie etwas sahen, das sie nicht selbst haben.\n\nKeiner der drei unterbricht dich. Als du fertig bist, sagt niemand etwas. Dann, ohne Kommentar: die Menschheit wird antworten. Offiziell. Das wird Zeit brauchen.\n\nWas du mitgebracht hast, gehört ab jetzt nicht mehr nur dir.',
+    button: 'Mission abschließen',
+  },
+];
+
 const demoMode = {
   active: false,
   phase: 'idle',
@@ -226,6 +276,8 @@ function startLevel(targetLevel) {
   levelCompleteScreen.hidden = true;
   finalCompleteScreen.hidden = true;
   if (level8ClanScreen) level8ClanScreen.hidden = true;
+  if (level9StageScreen) level9StageScreen.hidden = true;
+  if (level9ArrivalScreen) level9ArrivalScreen.hidden = true;
   showLevelIntroOrStart(targetLevel);
 }
 
@@ -276,7 +328,22 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && demoMode.active) {
     stopDemoAndShowMenu();
   }
+  if ((e.key === 'h' || e.key === 'H') && level === 9 && level9State.phase === 'proteus' && !level9State.hyperdriveTriggered) {
+    const dist = Math.hypot(ship.x - currentLevel.proteusStation.x, ship.y - currentLevel.proteusStation.y);
+    // Outer orbit radius of L8 is ~3000. Let's use the constant L9_HYPERDRIVE_TRIGGER_RADIUS
+    if (dist >= 2800) {
+      triggerHyperdrive();
+    }
+  }
 });
+
+if (hyperdriveButton) {
+  hyperdriveButton.addEventListener('click', () => {
+    if (level === 9 && level9State.phase === 'proteus' && !level9State.hyperdriveTriggered) {
+      triggerHyperdrive();
+    }
+  });
+}
 
 muteButton.addEventListener('click', async () => {
   await initAudio();
@@ -297,11 +364,13 @@ finalReplayButton.addEventListener('click', () => {
   finalCompleteScreen.hidden = true;
   levelCompleteScreen.hidden = true;
   if (level8ClanScreen) level8ClanScreen.hidden = true;
+  if (level9StageScreen) level9StageScreen.hidden = true;
+  if (level9ArrivalScreen) level9ArrivalScreen.hidden = true;
   startScreen.hidden = true;
-  selectLevel(TOTAL_LEVELS);
+  selectLevel(1);
   score = 0;
   resetLevel();
-  showLevelIntroOrStart(TOTAL_LEVELS);
+  showLevelIntroOrStart(1);
 });
 
 function showMainMenu() {
@@ -309,6 +378,9 @@ function showMainMenu() {
   levelCompleteScreen.hidden = true;
   finalCompleteScreen.hidden = true;
   if (level8ClanScreen) level8ClanScreen.hidden = true;
+  if (level9StageScreen) level9StageScreen.hidden = true;
+  if (level9ArrivalScreen) level9ArrivalScreen.hidden = true;
+  if (hyperdriveHud) hyperdriveHud.hidden = true;
   startScreen.hidden = false;
   gameState = 'start';
   updateLevelSelectUI();
@@ -331,6 +403,8 @@ function startDemoLevel5() {
   levelCompleteScreen.hidden = true;
   finalCompleteScreen.hidden = true;
   if (level8ClanScreen) level8ClanScreen.hidden = true;
+  if (level9StageScreen) level9StageScreen.hidden = true;
+  if (level9ArrivalScreen) level9ArrivalScreen.hidden = true;
   setDemoHud(true);
   beginGameplay();
 }
@@ -387,11 +461,17 @@ function getStations() {
   if (level === 8) {
     return level8State.phase === 'calder' ? [currentLevel.stationA] : currentLevel.stations;
   }
+  if (level === 9) {
+    return level9State.phase === 'proteus' ? [currentLevel.proteusStation] : (targetStation ? [targetStation] : []);
+  }
   return currentLevel.stations;
 }
 
 function getGravityWells(sourceLevel = currentLevel) {
   if (level === 8 && sourceLevel === currentLevel && level8State.phase !== 'ring') {
+    return [];
+  }
+  if (level === 9 && sourceLevel === currentLevel && level9State.phase !== 'solas') {
     return [];
   }
 
@@ -400,14 +480,20 @@ function getGravityWells(sourceLevel = currentLevel) {
     sourceLevel.moonWell.y = sourceLevel.moon.y;
   }
 
-  const wells = sourceLevel.wells ?? (sourceLevel.well ? [sourceLevel.well] : []);
-  return sourceLevel.moonWell ? [...wells, sourceLevel.moonWell] : wells;
+  const wells = [];
+  if (sourceLevel.well) wells.push(sourceLevel.well);
+  if (sourceLevel.moonWell) wells.push(sourceLevel.moonWell);
+  return wells;
 }
 
 function getMissionStations() {
-  const sequence = currentLevel.missionSequence;
-  if (!sequence) return currentLevel.stations;
-  return sequence.map(key => currentLevel[key]).filter(Boolean);
+  if (level === 8) {
+    return level8State.phase === 'calder' ? [currentLevel.stationA] : currentLevel.stations;
+  }
+  if (level === 9) {
+    return level9State.phase === 'proteus' ? [currentLevel.proteusStation] : currentLevel.stations;
+  }
+  return currentLevel.stations;
 }
 
 function getOptionalDockStations() {
@@ -435,6 +521,13 @@ function loop() {
         level: currentLevel,
         targetStation: level8State.cameraFocusStation ?? targetStation,
         departureStation: level8State.departureStation,
+      }, canvas);
+    } else if (level === 9) {
+      updateLevel9Camera(cam, ship, {
+        phase: level9State.phase,
+        level: currentLevel,
+        targetStation: level9State.cameraFocusStation ?? targetStation,
+        revealStart: level9State.revealStart,
       }, canvas);
     } else {
       updateCamera(cam, ship, getStations());
@@ -560,6 +653,9 @@ function updateLevelSystems(dt, now) {
   if (level === 8) {
     updateLevel8Systems(dt);
   }
+  if (level === 9) {
+    updateLevel9Systems(performance.now());
+  }
 }
 
 function updateDynamicLevelBodies(dt) {
@@ -583,6 +679,17 @@ function updateDynamicLevelBodies(dt) {
       if (station.orbiting) updateOrbitingStation(station, dt);
     }
   }
+
+  if (level === 9 && level9State.phase === 'solas') {
+    // Ein Komplex-Objekt, immer aktualisiert → stabile Position im Orbit
+    updateOrbitingStation(currentLevel.stationComplex, dt);
+    currentLevel.planet.rotation += 0.00012 * dt;
+  }
+
+  if (level === 9 && level9State.phase === 'proteus') {
+    updateOrbitingStation(currentLevel.proteusStation, dt);
+    currentLevel.proteusPlanet.rotation += 0.00012 * dt;
+  }
 }
 
 function updateLevel8Systems(dt) {
@@ -599,6 +706,146 @@ function updateLevel8Systems(dt) {
   if (level8State.hintTimer > 0) {
     level8State.hintTimer = Math.max(0, level8State.hintTimer - dt);
   }
+}
+
+function updateLevel9Systems(now) {
+  if (level !== 9) return;
+
+  if (level9State.phase === 'solas') {
+    updateSolasDockWindow(now);
+    updateSolasStationCollision();
+    return;
+  }
+
+  if (level9State.phase !== 'proteus') return;
+
+  const dist = Math.hypot(ship.x - currentLevel.proteusStation.x, ship.y - currentLevel.proteusStation.y);
+
+  if (!level9State.hyperdriveTriggered) {
+    if (dist >= 2800) { // L9_HYPERDRIVE_TRIGGER_RADIUS
+      hyperdriveHud.hidden = false;
+    } else {
+      hyperdriveHud.hidden = true;
+    }
+  } else {
+    // Hyperdrive sequence running
+    if (now - level9State.whiteoutStart > 1800) { // L9_WHITEOUT_DURATION_MS
+      enterLevel9SolasSystem();
+    }
+  }
+}
+
+function updateSolasDockWindow(now) {
+  const port = currentLevel.dockPorts[level9State.portIndex];
+  const config = currentLevel.dockWindow;
+  const elapsed = Math.max(0, now - level9State.windowCycleStart) % config.cycleMs;
+  const openStart = config.warningMs;
+  const openEnd = openStart + port.openMs;
+
+  if (elapsed < openStart) {
+    level9State.windowPhase = 'warning';
+    level9State.windowRemainingMs = openStart - elapsed;
+  } else if (elapsed < openEnd) {
+    level9State.windowPhase = 'open';
+    level9State.windowRemainingMs = openEnd - elapsed;
+  } else {
+    level9State.windowPhase = 'closed';
+    level9State.windowRemainingMs = config.cycleMs - elapsed + openStart;
+  }
+
+  currentLevel.stationComplex.dockWindowOpen = level9State.windowPhase === 'open';
+}
+
+function updateSolasStationCollision() {
+  if (ship.dockedTimer > 0 || gameState !== 'playing') return;
+  const station = currentLevel.stationComplex;
+  const orientation = station.orbitAngle + Math.PI / 2;
+  const cos = Math.cos(orientation);
+  const sin = Math.sin(orientation);
+
+  for (const zone of currentLevel.stationCollisionZones) {
+    const zoneX = station.x + zone.x * cos - zone.y * sin;
+    const zoneY = station.y + zone.x * sin + zone.y * cos;
+    if (Math.hypot(ship.x - zoneX, ship.y - zoneY) < zone.radius + 10) {
+      crashAtSolasStation();
+      return;
+    }
+  }
+}
+
+function crashAtSolasStation() {
+  spawnExplosion(ship.x, ship.y);
+  gameState = 'crashed';
+  freezeShipInput();
+  setTimeout(restoreSolasCheckpoint, 1200);
+}
+
+function restoreSolasCheckpoint() {
+  particles = [];
+  const station = currentLevel.stationComplex;
+  if (level9State.lastDockIndex < 0) {
+    const start = currentLevel.phaseBStart;
+    Object.assign(ship, { x: start.x, y: start.y, vx: start.vx, vy: start.vy, angle: start.angle, targetAngle: start.angle });
+  } else {
+    const checkpointPort = currentLevel.dockPorts[level9State.lastDockIndex];
+    const angle = station.orbitAngle + Math.PI / 2 + checkpointPort.angle;
+    const safeDistance = checkpointPort.distance + 75;
+    ship.x = station.x + Math.cos(angle) * safeDistance;
+    ship.y = station.y + Math.sin(angle) * safeDistance;
+    ship.vx = station.vx;
+    ship.vy = station.vy;
+    ship.angle = angle + Math.PI;
+    ship.targetAngle = ship.angle;
+  }
+  ship.angularVel = 0;
+  ship.dockedTimer = 0;
+  ship.dockedStation = null;
+  station.docked = false;
+  resetTrajectoryState();
+  syncRenderStates();
+  resumeGameplay();
+}
+
+function triggerHyperdrive() {
+  level9State.hyperdriveTriggered = true;
+  level9State.whiteoutStart = performance.now();
+  hyperdriveHud.hidden = true;
+}
+
+function enterLevel9SolasSystem() {
+  level9State.phase = 'solas';
+  level9State.hyperdriveTriggered = false;
+  level9State.cameraFocusStation = null;
+
+  const start = currentLevel.phaseBStart;
+  ship.x = start.x;
+  ship.y = start.y;
+  ship.vx = start.vx;
+  ship.vy = start.vy;
+  ship.angle = start.angle;
+  ship.targetAngle = start.angle;
+  ship.angularVel = 0;
+  ship.fuel = currentLevel.fuelStart ?? FUEL_START;
+  ship.cargo = 1;
+  ship.dockedTimer = 0;
+  ship.dockedStation = null;
+  ship.thrustHeld = false;
+  ship.tapThrustTime = 0;
+  ship.pendingBrakeImpulse = false;
+
+  missionTargetIndex = 0;
+  level9State.portIndex = 0;
+  level9State.lastDockIndex = -1;
+  level9State.revealStart = 0;
+  activateSolasDockPort(0);
+  resetSolasDockWindow();
+  currentLevel.stationComplex.docked = false;
+  targetStation = currentLevel.stationComplex;
+  resetCameraState();
+
+  // Solas-Ankunfts-Briefing anzeigen
+  gameState = 'storyOverlay';
+  if (level9ArrivalScreen) level9ArrivalScreen.hidden = false;
 }
 
 function enterLevel8RingSystem() {
@@ -730,6 +977,7 @@ function updateAsteroidTrajectoryPrediction() {
 function updateDocking() {
   if (ship.dockedTimer > 0) return;
   if (level === 8 && level8State.phase !== 'ring') return;
+  if (level === 9 && level9State.phase !== 'solas') return;
 
   const station = getDockableTargetStation();
   if (!station) return;
@@ -829,7 +1077,13 @@ function renderFrame(alpha = 1) {
 
 function drawWorldBackground(wells, asteroids, stationB) {
   renderer.clear(ctx, canvas);
-  renderer.drawStars(ctx, stars, renderCam, canvas);
+  const warpState = level === 9 && level9State.hyperdriveTriggered
+    ? {
+        progress: (performance.now() - level9State.whiteoutStart) / L9_WHITEOUT_DURATION_MS,
+        angle: renderShip.angle,
+      }
+    : null;
+  renderer.drawStars(ctx, stars, renderCam, canvas, warpState);
 
   if (level === 6 && currentLevel.planet) {
     renderer.drawGasPlanet(ctx, currentLevel.planet, renderCam, canvas);
@@ -851,6 +1105,14 @@ function drawWorldBackground(wells, asteroids, stationB) {
     renderer.drawRingPlanet(ctx, currentLevel.planet, renderCam, canvas);
   }
 
+  if (level === 9 && level9State.phase === 'solas' && currentLevel.planet) {
+    renderer.drawSolasPlanet(ctx, currentLevel.planet, renderCam, canvas);
+  }
+
+  if (level === 9 && level9State.phase === 'proteus' && currentLevel.proteusPlanet) {
+    renderer.drawRingPlanet(ctx, currentLevel.proteusPlanet, renderCam, canvas);
+  }
+
   for (const well of wells) {
     if (!well.isPlanet && !well.isMoon) {
       renderer.drawGravityWell(ctx, well, renderCam, canvas, EVENT_HORIZON);
@@ -864,6 +1126,10 @@ function drawWorldBackground(wells, asteroids, stationB) {
 
   if (level === 8 && level8State.phase === 'ring' && currentLevel.planet) {
     drawLevel8OrbitGuides();
+  }
+
+  if (level === 9 && level9State.phase === 'solas' && currentLevel.planet) {
+    drawOrbitGuideForTarget();
   }
 
   if (level === 8 && level8State.phase === 'calder' && currentLevel.calderPlanet) {
@@ -893,6 +1159,16 @@ function drawStations(stations) {
     const check = checkDock(ship, station);
     const color = dockColor(check);
     renderer.drawStation(ctx, station, renderCam, canvas, color);
+    if (level === 9 && level9State.phase === 'solas' && station === currentLevel.stationComplex) {
+      renderer.drawSolasCollisionGuides(
+        ctx,
+        station,
+        currentLevel.stationCollisionZones,
+        renderShip,
+        renderCam,
+        canvas
+      );
+    }
     return { station, check, color };
   });
 }
@@ -904,6 +1180,12 @@ function drawLevel8OrbitGuides() {
       : { orbitOk: false, radialSpeed: 0, tangentialError: 0 };
     renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, station, station.orbitRadius, renderCam, canvas, orbitStatus);
   }
+}
+
+function drawOrbitGuideForTarget() {
+  if (!targetStation?.orbiting) return;
+  const orbitStatus = getOrbitStatusForRadius(renderShip, currentLevel.planet, targetStation.orbitRadius, targetStation.orbitSpeed);
+  renderer.drawOrbitGuide(ctx, currentLevel.planet, renderShip, targetStation, targetStation.orbitRadius, renderCam, canvas, orbitStatus);
 }
 
 function drawTrajectoryPreview(wells, asteroids) {
@@ -987,14 +1269,31 @@ function drawHudAndOverlays(wells, stationB, stationRenderState) {
   }
 
   if (level === 8 && level8State.phase === 'ring') {
-    const orbitHudData = computeOrbitHudDataForTarget(renderShip, targetStation, currentLevel.planet);
-    renderer.drawOrbitHud(ctx, canvas, orbitHudData);
+    drawOrbitHudForTarget();
     if (level8State.hintTimer > 0) {
       renderer.drawLevel8Hint(ctx, canvas);
     }
   }
 
+  if (level === 9 && level9State.phase === 'solas') {
+    drawOrbitHudForTarget();
+    renderer.drawSolasWindowHud(ctx, canvas, {
+      label: currentLevel.dockPorts[level9State.portIndex].label,
+      phase: level9State.windowPhase,
+      remainingMs: level9State.windowRemainingMs,
+    });
+  }
+
+  if (level === 9 && level9State.hyperdriveTriggered) {
+    renderer.drawHyperdriveWhiteout(ctx, canvas, performance.now() - level9State.whiteoutStart, L9_WHITEOUT_DURATION_MS);
+  }
+
   if (level === 1) drawTutorial(ctx, canvas, tut, renderShip, flags, renderCam);
+}
+
+function drawOrbitHudForTarget() {
+  const orbitHudData = computeOrbitHudDataForTarget(renderShip, targetStation, currentLevel.planet);
+  renderer.drawOrbitHud(ctx, canvas, orbitHudData);
 }
 
 function getLevel8PortalHudCheck() {
@@ -1021,7 +1320,24 @@ function drawNavigationMarkers() {
     return;
   }
 
-  if (targetStation) {
+  if (level === 9 && level9State.phase === 'proteus' && !level9State.hyperdriveTriggered) {
+    const dist = Math.hypot(
+      renderShip.x - currentLevel.proteusStation.x,
+      renderShip.y - currentLevel.proteusStation.y
+    );
+    if (dist >= L9_HYPERDRIVE_TRIGGER_RADIUS) return;
+    // Pfeil Richtung "Solas" — weg vom Proteus-System (nach links/oben)
+    const solasWaypoint = { x: -2000, y: -2000 };
+    renderer.drawTargetArrow(ctx, renderShip, solasWaypoint, renderCam, canvas, {
+      color: '#8fb0ff',
+      glow: 'rgba(143, 176, 255, 0.32)',
+      labelColor: '#c2d4ff',
+      showDistance: false,
+    });
+    return;
+  }
+
+  if (targetStation && level !== 9) {
     renderer.drawTargetArrow(ctx, renderShip, targetStation, renderCam, canvas);
   }
 
@@ -1030,6 +1346,20 @@ function drawNavigationMarkers() {
       color: '#f0c47a',
       glow: 'rgba(240, 196, 122, 0.24)',
       labelColor: '#f3d69a',
+    });
+  }
+
+  if (level === 9 && level9State.phase === 'solas') {
+    const activePort = getPortPosition(currentLevel.stationComplex);
+    renderer.drawTargetArrow(ctx, renderShip, activePort, renderCam, canvas, {
+      color: currentLevel.stationComplex.dockWindowOpen ? '#76f0b0' : '#8fb9df',
+      glow: 'rgba(118, 240, 176, 0.28)',
+      labelColor: '#c7f7df',
+    });
+    renderer.drawTargetArrow(ctx, renderShip, currentLevel.planet, renderCam, canvas, {
+      color: '#8fb0ff',
+      glow: 'rgba(143, 176, 255, 0.24)',
+      labelColor: '#c2d4ff',
     });
   }
 }
@@ -1268,17 +1598,20 @@ function updateOrbitAssist() {
 }
 
 function getCurrentOrbitAssistRadius() {
-  if (level === 8 && level8State.phase === 'ring' && targetStation?.orbiting) {
-    return targetStation.orbitRadius;
-  }
+  if (isOrbitingTargetInRingPhase()) return targetStation.orbitRadius;
   return ORBIT_STATION_RADIUS;
 }
 
 function getCurrentOrbitAssistSpeed() {
-  if (level === 8 && level8State.phase === 'ring' && targetStation?.orbiting) {
-    return targetStation.orbitSpeed;
-  }
+  if (isOrbitingTargetInRingPhase()) return targetStation.orbitSpeed;
   return ORBIT_STATION_SPEED;
+}
+
+function isOrbitingTargetInRingPhase() {
+  if (!targetStation?.orbiting) return false;
+  if (level === 8 && level8State.phase === 'ring') return true;
+  if (level === 9 && level9State.phase === 'solas') return true;
+  return false;
 }
 
 /** Durchsucht die Trajektorie nach Apoapsis und Periapsis. */
@@ -1319,7 +1652,11 @@ function handleDocking(ship, station) {
 function dockShipAtStation(ship, station) {
   const port = getPortPosition(station);
   ship.dockedTimer = 1500;
-  ship.fuel = currentLevel.fuelStart ?? FUEL_START;
+  if (level === 9 && level9State.phase === 'solas') {
+    ship.fuel = Math.min(currentLevel.fuelStart, ship.fuel + currentLevel.dockRefuelAmount);
+  } else {
+    ship.fuel = currentLevel.fuelStart ?? FUEL_START;
+  }
   ship.x = port.x;
   ship.y = port.y;
   ship.angle = station.dockAngle + Math.PI;
@@ -1341,6 +1678,11 @@ function dockShipAtStation(ship, station) {
 function advanceMissionAfterDock(station) {
   if (getOptionalDockStations().includes(station)) {
     station.optionalDockUsed = true;
+    return;
+  }
+
+  if (level === 9 && level9State.phase === 'solas') {
+    advanceSolasDockPort(station);
     return;
   }
 
@@ -1371,6 +1713,30 @@ function advanceMissionAfterDock(station) {
   completeLevel();
 }
 
+/**
+ * Fortschritt am Solas-Komplex: Nach jedem Andocken wird der nächste
+ * Docking-Port (an einer anderen Seite desselben Komplexes) aktiviert.
+ */
+function advanceSolasDockPort(station) {
+  if (station !== currentLevel.stationComplex) return;
+
+  const ports = currentLevel.dockPorts;
+  const completedIndex = level9State.portIndex;
+  level9State.lastDockIndex = completedIndex;
+
+  if (completedIndex === 0) ship.cargo = 1;
+
+  const isLastPort = completedIndex >= ports.length - 1;
+  if (isLastPort) {
+    ship.cargo = 0;
+    score += 1;
+    showLevel9StageScreen(completedIndex, true);
+    return;
+  }
+
+  showLevel9StageScreen(completedIndex, false);
+}
+
 function showLevel8ClanScreen(clanIndex, pendingFinal) {
   const copy = LEVEL8_CLAN_COPY[clanIndex];
   if (!copy || !level8ClanScreen) return;
@@ -1383,6 +1749,26 @@ function showLevel8ClanScreen(clanIndex, pendingFinal) {
   level8ClanContinueButton.textContent = copy.button;
   gameState = 'storyOverlay';
   level8ClanScreen.hidden = false;
+}
+
+function showLevel9StageScreen(stageIndex, pendingFinal) {
+  const copy = LEVEL9_STAGE_COPY[stageIndex];
+  if (!copy || !level9StageScreen) return;
+
+  level9State.pendingFinal = pendingFinal;
+  level9State.cameraFocusStation = currentLevel.stationComplex;
+  level9StageEyebrow.textContent = copy.eyebrow;
+  level9StageTitle.textContent = copy.title;
+  level9StageMission.textContent = copy.mission;
+  level9StageContinueButton.textContent = copy.button;
+  level9StageScreen.classList.remove(
+    'story-bg--solas-reception',
+    'story-bg--solas-consultation',
+    'story-bg--solas-chamber'
+  );
+  level9StageScreen.classList.add(copy.backgroundClass);
+  gameState = 'storyOverlay';
+  level9StageScreen.hidden = false;
 }
 
 function scheduleUndock(station) {
@@ -1445,7 +1831,7 @@ function showLevelCompleteCopy(copy) {
   const title = levelCompleteScreen.querySelector('h1');
   const mission = levelCompleteScreen.querySelector('.mission');
   const nextLevelButton = document.getElementById('nextLevelButton');
-  const storyBgClasses = ['story-bg', 'story-bg--kestrel', 'story-bg--proteus'];
+  const storyBgClasses = ['story-bg', 'story-bg--kestrel', 'story-bg--proteus', 'story-bg--solas'];
 
   eyebrow.textContent = copy.eyebrow;
   title.textContent = copy.title;
@@ -1519,7 +1905,7 @@ function getLevelCompleteCopy(completedLevel) {
     return {
       eyebrow: 'Erstkontakt',
       title: 'Kestrel',
-      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew.\n\nWas dich erwartet, hat keine feste Gestalt. Es verschiebt sich, Licht und Kristall, nie zweimal dasselbe - als hätte es sich noch nicht entschieden, wie es aussehen will. Acht Jahre lang hat es von dieser einen Station aus die Menschheit beobachtet, leise genug, um nicht zu stören. Du stehst da, Helm in der Hand, und merkst, dass du den Atem anhältst.\n\nDann bewegt es sich - nicht auf dich zu, sondern zur Seite, als würde es Platz machen. Eine Geste. Die erste, die du verstehst, ohne sie verstehen zu müssen.\n\nSie wollen reden. In deinem Logbuch tippst du einen Namen ein, weil du einen brauchst: Proteus.\n\nSie haben bereits entschieden, mit wem: mit dir. Nicht weil du dafür ausgebildet bist. Sondern weil du der Mensch bist, den sie kennen.',
+      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew.\n\nWas dich erwartet, hat keine feste Gestalt. Es verschiebt sich, Licht und Kristall, nie zweimal dasselbe - als hätte es sich noch nicht entschieden, wie es aussehen will. Acht Jahre lang hat es von dieser einen Station aus die Menschheit beobachtet, leise genug, um nicht zu stören. Du stehst da, Helm in der Hand, und merkst, dass du den Atem anhältst.\n\nDann bewegt es sich - nicht auf dich zu, sondern zur Seite. Es macht Platz. Du verstehst.\n\nSie wollen reden. In deinem Logbuch tippst du einen Namen ein, weil du einen brauchst: Proteus.\n\nSie haben bereits entschieden, mit wem: mit dir. Nicht weil du dafür ausgebildet bist. Sondern weil du der Mensch bist, den sie kennen.',
       storyClass: 'story-bg--kestrel',
       nextLevelLabel: 'Nächstes Level',
     };
@@ -1527,9 +1913,18 @@ function getLevelCompleteCopy(completedLevel) {
 
   if (completedLevel === 8) {
     return {
-      eyebrow: 'Mission abgeschlossen',
+      eyebrow: 'Level 8 abgeschlossen',
       title: 'Botschafter',
-      mission: 'Drei Clans, drei Beziehungen, formell aufgenommen.',
+      mission: 'Drei Clans, drei Beziehungen, formell aufgenommen. Soweit du das beurteilen kannst, hast du niemanden beleidigt.',
+      nextLevelLabel: 'Nächstes Level',
+    };
+  }
+
+  if (completedLevel === 9) {
+    return {
+      eyebrow: 'Mission abgeschlossen',
+      title: 'Solas',
+      mission: 'Für einen Anfang reicht das.', // placeholder, handled by finalCompleteScreen
       nextLevelLabel: null,
     };
   }
@@ -1540,6 +1935,7 @@ function getLevelCompleteCopy(completedLevel) {
 function resetLevel() {
   clearBlackHoleTimers();
   resetLevel8State();
+  resetLevel9State();
   resetShipState();
   resetStationStates();
   resetTrajectoryState();
@@ -1554,6 +1950,21 @@ function resetLevel8State() {
   level8State.pendingFinal = false;
   level8State.cameraFocusStation = null;
   level8State.departureStation = currentLevel.stationA;
+}
+
+function resetLevel9State() {
+  if (level !== 9) return;
+  level9State.phase = 'proteus';
+  level9State.hyperdriveTriggered = false;
+  level9State.whiteoutStart = 0;
+  level9State.pendingFinal = false;
+  level9State.cameraFocusStation = null;
+  level9State.portIndex = 0;
+  level9State.lastDockIndex = -1;
+  level9State.revealStart = 0;
+  activateSolasDockPort(0);
+  resetSolasDockWindow();
+  if (hyperdriveHud) hyperdriveHud.hidden = true;
 }
 
 /** Bricht laufende Black-Hole-Animationen ab und räumt Timer auf. */
@@ -1590,9 +2001,12 @@ function resetShipState() {
 
 /** Setzt Andockstatus und Startpositionen aller Stationen zurück. */
 function resetStationStates() {
-  const resetStations = level === 8
-    ? [currentLevel.stationA, ...currentLevel.stations]
-    : currentLevel.stations;
+  let resetStations = currentLevel.stations;
+  if (level === 8) {
+    resetStations = [currentLevel.stationA, ...currentLevel.stations];
+  } else if (level === 9) {
+    resetStations = [currentLevel.proteusStation, ...currentLevel.stations];
+  }
 
   for (const station of resetStations) {
     station.docked = false;
@@ -1607,23 +2021,35 @@ function resetStationStates() {
   }
 
   missionTargetIndex = 0;
-  targetStation = level === 8 && level8State.phase === 'calder'
-    ? currentLevel.stationA
-    : getMissionStations()[missionTargetIndex];
   if (level === 8 && level8State.phase === 'calder') {
+    targetStation = currentLevel.stationA;
     level8State.departureStation = currentLevel.stationA;
     placeShipAtKestrelPort();
+  } else if (level === 9 && level9State.phase === 'proteus') {
+    targetStation = currentLevel.proteusStation;
+    placeShipAtL9StartPort();
+  } else {
+    targetStation = getMissionStations()[missionTargetIndex];
   }
   dockingApproach = null;
 }
 
 function placeShipAtKestrelPort() {
   const station = currentLevel.stationA;
+  placeShipAtStationPort(station);
+}
+
+function placeShipAtL9StartPort() {
+  const station = currentLevel.proteusStation;
+  placeShipAtStationPort(station);
+}
+
+function placeShipAtStationPort(station) {
   const port = getPortPosition(station);
   ship.x = port.x;
   ship.y = port.y;
-  ship.vx = station.vx;
-  ship.vy = station.vy;
+  ship.vx = station.vx ?? 0;
+  ship.vy = station.vy ?? 0;
   ship.angle = station.dockAngle + Math.PI;
   ship.targetAngle = ship.angle;
 }
@@ -1693,6 +2119,8 @@ if (nextLevelButton) {
     resetLevel();
     levelCompleteScreen.hidden = true;
     if (level8ClanScreen) level8ClanScreen.hidden = true;
+    if (level9StageScreen) level9StageScreen.hidden = true;
+  if (level9ArrivalScreen) level9ArrivalScreen.hidden = true;
     showLevelIntroOrStart(nextLevel);
     last = performance.now();
   });
@@ -1709,6 +2137,59 @@ if (level8ClanContinueButton) {
     }
 
     level8State.cameraFocusStation = null;
+    resumeGameplay();
+  });
+}
+
+if (level9StageContinueButton) {
+  level9StageContinueButton.addEventListener('click', () => {
+    level9StageScreen.hidden = true;
+
+    if (level9State.pendingFinal) {
+      level9State.pendingFinal = false;
+      completeLevel();
+      return;
+    }
+
+    activateNextSolasDockPort();
+    level9State.cameraFocusStation = null;
+    resumeGameplay();
+  });
+}
+
+/** Aktiviert den nächsten Docking-Port am Solas-Komplex. */
+function activateNextSolasDockPort() {
+  const ports = currentLevel.dockPorts;
+  level9State.portIndex += 1;
+  activateSolasDockPort(level9State.portIndex);
+  resetSolasDockWindow();
+  currentLevel.stationComplex.docked = false;
+  ship.dockedStation = null;
+}
+
+function activateSolasDockPort(index) {
+  const complex = currentLevel.stationComplex;
+  const port = currentLevel.dockPorts[index];
+  complex.activeDockPort = port;
+  complex.dockAngleOffset = port.angle;
+  complex.dockRules = {
+    maxSpeed: port.maxSpeed,
+    angleTolerance: port.angleTolerance,
+  };
+  updateOrbitingStation(complex, 0);
+}
+
+function resetSolasDockWindow() {
+  level9State.windowCycleStart = performance.now();
+  level9State.windowPhase = 'warning';
+  level9State.windowRemainingMs = currentLevel.dockWindow.warningMs;
+  currentLevel.stationComplex.dockWindowOpen = false;
+}
+
+if (level9ArrivalContinueButton) {
+  level9ArrivalContinueButton.addEventListener('click', () => {
+    level9ArrivalScreen.hidden = true;
+    level9State.revealStart = performance.now();
     resumeGameplay();
   });
 }
@@ -1784,6 +2265,14 @@ const level8StartButton = document.getElementById('level8StartButton');
 if (level8StartButton) {
   level8StartButton.addEventListener('click', () => {
     document.getElementById('level8StartScreen').hidden = true;
+    beginGameplay();
+  });
+}
+
+const level9StartButton = document.getElementById('level9StartButton');
+if (level9StartButton) {
+  level9StartButton.addEventListener('click', () => {
+    document.getElementById('level9StartScreen').hidden = true;
     beginGameplay();
   });
 }

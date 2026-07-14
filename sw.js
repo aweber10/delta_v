@@ -1,9 +1,14 @@
-const CACHE_NAME = 'delta-v-v47';
+const CACHE_NAME = 'delta-v-v55';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icons/icon.svg',
+  './assets/story/solas-departure.jpg',
+  './assets/story/solas-arrival.jpg',
+  './assets/story/solas-reception.jpg',
+  './assets/story/solas-consultation.jpg',
+  './assets/story/solas-chamber.jpg',
   './js/asteroids.js',
   './js/audio.js',
   './js/camera.js',
