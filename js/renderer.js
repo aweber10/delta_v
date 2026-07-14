@@ -1600,7 +1600,7 @@ export function drawBlackHole(ctx, well, cam, canvas, eventHorizon) {
   // 5. Event Horizon (lichtloser Kern).
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.arc(0, 0, horizon * 0.98, 0, Math.PI * 2);
+  ctx.arc(0, 0, horizon, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();

@@ -45,7 +45,9 @@ export const WELL_RADIUS = 40;    // sichtbarer/tödlicher Körperradius
 export const EVENT_HORIZON = 80;  // Warnschwelle: ab hier ist Absturz gefährlich
 export const GRAVITY_EVENT_STRENGTH = 18.0; // Black-hole-Multiplier ergibt spürbaren Swing-by
 export const GRAVITY_EVENT_RADIUS = 720;
-export const GRAVITY_EVENT_BODY = 45;
+// Mittelpunktgrenze: Sobald die angenäherte Schiffshülle den sichtbaren
+// Ereignishorizont berührt, ist ein Entkommen nicht mehr möglich.
+export const GRAVITY_EVENT_BODY = EVENT_HORIZON + SHIP_RADIUS;
 
 // --- Level 3: Asteroid Field ---
 export const ASTEROID_BOUNCE_MAX_SPEED = V_DOCK_MAX;
