@@ -13,7 +13,7 @@ Die Hauptsteuerung funktioniert mit Maus oder Touch.
 - Tippe oder klicke außerhalb der Zone um das Schiff, um einen Zielwinkel zu setzen.
 - Kurzer Tap: kurzer Reiseimpuls, sobald das Schiff ausgerichtet ist.
 - Halten: Hauptschub in Richtung des Zielwinkels.
-- Doppeltap: Bremsimpuls, sobald das Schiff passend ausgerichtet ist.
+- Doppeltap: Bremst die Bewegung entlang der angetippten Achse; exakt entgegen der Drift bis zum Stillstand.
 - Tippe oder klicke in die Zone um das Schiff, um einen kurzen Steuerdüsen-Impuls in diese Richtung auszulösen.
 
 ## Fluggefühl

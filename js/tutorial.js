@@ -48,10 +48,10 @@ export function createTutorial() {
       // 4 — Gerichteter Bremsimpuls
       {
         title: "4. Gezielt bremsen",
-        text: "Doppel-Tap auf ein Ziel stoppt die Drift, die dich daran vorbeizieht.",
-        desktop: "Doppelklick auf die Station: nur die Drift weg von ihr wird gebremst.",
-        mobile:  "Doppel-Tap auf die Station: nur die Drift weg von ihr wird gebremst.",
-        subtext: "Die restliche Drift — z.B. auf die Station zu — bleibt erhalten.",
+        text: "Doppel-Tap in Gegenrichtung bremst deine Drift entlang dieser Achse.",
+        desktop: "Doppelklick exakt entgegen der Bewegung stoppt das Schiff vollständig.",
+        mobile:  "Doppel-Tap exakt entgegen der Bewegung stoppt das Schiff vollständig.",
+        subtext: "Tippst du seitlich versetzt, bleibt die seitliche Drift erhalten.",
         arrowBlink: true,
       },
       // 5 — RCS-Steuerdüsen

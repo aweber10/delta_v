@@ -120,8 +120,15 @@ function applyPendingBrakeImpulse(ship, flags) {
 
   const dx = Math.cos(ship.angle);
   const dy = Math.sin(ship.angle);
-  ship.vx += dx * speed;
-  ship.vy += dy * speed;
+  const velocityAlongBrakeAxis = ship.vx * dx + ship.vy * dy;
+
+  // Nur Bewegung entfernen, die dem angetippten Punkt entgegenläuft.
+  // Bei exakt entgegengesetzter Ausrichtung entspricht die Projektion der
+  // gesamten Geschwindigkeit und das Schiff kommt vollständig zum Stillstand.
+  if (velocityAlongBrakeAxis >= 0) return;
+
+  ship.vx -= velocityAlongBrakeAxis * dx;
+  ship.vy -= velocityAlongBrakeAxis * dy;
 
   if (Math.hypot(ship.vx, ship.vy) <= ZERO_SPEED_EPSILON) {
     ship.vx = 0;
