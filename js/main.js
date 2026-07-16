@@ -112,13 +112,13 @@ const LEVEL8_CLAN_COPY = [
   {
     eyebrow: 'Mittlerer Clan',
     title: 'Die Neugierigen',
-    mission: 'Der zweite Clan stellt Fragen. Viele. Über Halvorsen, über Praskev, über Entscheidungen, die du vor Jahren getroffen hast und längst vergessen hattest. Sie haben nichts vergessen. Irgendwann merkst du, dass es kein Verhör ist – sie sind schlicht fasziniert. Eine Rasse, die in Jahrtausenden denkt, studiert eine, die in Quartalen plant. Du bist dir nicht sicher, ob das Bewunderung ist oder Sorge.',
+    mission: 'Der zweite Clan stellt Fragen. Viele. Über Halvorsen, über Praskev, über Kurskorrekturen, an die du dich kaum erinnerst. Sie haben nichts vergessen. Irgendwann merkst du, dass es kein Verhör ist – sie sind schlicht fasziniert. Eine Rasse, die in Jahrtausenden denkt, studiert eine, die in Quartalen plant. Du bist dir nicht sicher, ob das Bewunderung ist oder Sorge.',
     button: 'Weiter zum inneren Clan',
   },
   {
     eyebrow: 'Innerer Clan',
     title: 'Die Tonangebenden',
-    mission: 'Der innerste Clan kreist im Schatten der Ringe, am nächsten am Zentrum der Macht. Hier wird nicht geprüft und nicht gefragt - hier wird entschieden. Sie empfangen dich, als wärst du erwartet worden, nicht erst seit Kestrel, sondern seit jenem kurzen Kontakt an deinem allerersten Tag.',
+    mission: 'Der innerste Clan kreist im Schatten der Ringe, am nächsten am Zentrum der Macht. Hier wird nicht geprüft und nicht gefragt - hier wird entschieden. Sie kennen die Signatur von deinem ersten Tag. Du warst keine Wahl. Du warst ein Versuch, den sie nicht abgebrochen haben.',
     button: 'Mission abschließen',
   },
 ];
@@ -1905,7 +1905,7 @@ function getLevelCompleteCopy(completedLevel) {
     return {
       eyebrow: 'Erstkontakt',
       title: 'Kestrel',
-      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew, nur ihr letzter Logbucheintrag, acht Jahre alt, und die Zeile bricht mitten im Satz ab.\n\nWas im Korridor auf dich wartet, hat keine feste Gestalt. Licht und Kristall, nie zweimal dasselbe. Du bleibst stehen, den Helm noch in der Hand, und merkst, dass du den Atem anhältst.\n\nEs kommt nicht näher. Es tritt zur Seite und gibt den Weg frei. Und du erkennst es wieder - die Spur von deinem ersten Tag.\n\nSie wollen reden. In dein Logbuch tippst du einen Namen, weil du einen brauchst: Proteus.',
+      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew, nur ihr letzter Logbucheintrag, acht Jahre alt und rätselhaft.\n\nWas im Korridor auf dich wartet, hat keine feste Gestalt. Licht und Kristall, nie zweimal dasselbe. Du bleibst stehen, den Helm noch in der Hand, und merkst, dass du den Atem anhältst.\n\nEs kommt nicht näher. Es tritt zur Seite und gibt den Weg frei. Und du erkennst es wieder - die Spur von deinem ersten Tag.\n\nSie wollen reden. In dein Logbuch tippst du einen Namen, weil du einen brauchst: Proteus.',
       storyClass: 'story-bg--kestrel',
       nextLevelLabel: 'Nächstes Level',
     };
