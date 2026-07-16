@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delta-v-v57';
+const CACHE_NAME = 'delta-v-v58';
 const ASSETS = [
   './',
   './index.html',

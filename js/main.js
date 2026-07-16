@@ -1905,7 +1905,7 @@ function getLevelCompleteCopy(completedLevel) {
     return {
       eyebrow: 'Erstkontakt',
       title: 'Kestrel',
-      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew.\n\nWas dich erwartet, hat keine feste Gestalt. Es verschiebt sich, Licht und Kristall, nie zweimal dasselbe - als hätte es sich noch nicht entschieden, wie es aussehen will. Acht Jahre lang hat es von dieser einen Station aus die Menschheit beobachtet, leise genug, um nicht zu stören. Du stehst da, Helm in der Hand, und merkst, dass du den Atem anhältst.\n\nDann bewegt es sich - nicht auf dich zu, sondern zur Seite. Es macht Platz. Du verstehst.\n\nSie wollen reden. In deinem Logbuch tippst du einen Namen ein, weil du einen brauchst: Proteus.\n\nSie haben bereits entschieden, mit wem: mit dir. Nicht weil du dafür ausgebildet bist. Sondern weil du der Mensch bist, den sie kennen.',
+      mission: 'Andocken erfolgreich. Die Luke öffnet sich - aber dahinter ist keine Crew, nur ihr letzter Logbucheintrag, acht Jahre alt, und die Zeile bricht mitten im Satz ab.\n\nWas im Korridor auf dich wartet, hat keine feste Gestalt. Licht und Kristall, nie zweimal dasselbe. Du bleibst stehen, den Helm noch in der Hand, und merkst, dass du den Atem anhältst.\n\nEs kommt nicht näher. Es tritt zur Seite und gibt den Weg frei. Und du erkennst es wieder - die Spur von deinem ersten Tag.\n\nSie wollen reden. In dein Logbuch tippst du einen Namen, weil du einen brauchst: Proteus.',
       storyClass: 'story-bg--kestrel',
       nextLevelLabel: 'Nächstes Level',
     };
